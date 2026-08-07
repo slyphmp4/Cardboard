@@ -49,8 +49,8 @@ configurations.all {
 }
 
 // Paper-API
-def PAPER_VER_A = "26.1.2.build.69-stable" // "1.21.11-R0.1-SNAPSHOT"
-def PAPER_VER_B = "26.1.2.build.69-stable" // "1.21.11-R0.1-20260511.115010-91" // "1.21.11-R0.1-20260120.191825-59"
+def PAPER_VER_A = "26.2.build.110-stable" // "26.1.2.build.69-stable"
+def PAPER_VER_B = "26.2.build.110-stable" // "26.1.2.build.69-stable"
 
 def PAPER_API_VER = "io.papermc.paper:paper-api:" + PAPER_VER_B
 
@@ -102,11 +102,11 @@ dependencies {
 	implementation(PAPER_API_VER)
 	
 	implementation("net.md-5:bungeecord-chat:1.21-R0.2")
-	implementation("net.kyori:adventure-api:4.25.0")
-	implementation("net.kyori:adventure-text-serializer-gson:4.25.0")
-	implementation("net.kyori:adventure-text-serializer-legacy:4.25.0")
-	implementation("net.kyori:adventure-text-serializer-plain:4.25.0")
-	implementation("net.kyori:adventure-text-minimessage:4.25.0")
+	implementation("net.kyori:adventure-api:5.2.0")
+	implementation("net.kyori:adventure-text-serializer-gson:5.2.0")
+	implementation("net.kyori:adventure-text-serializer-legacy:5.2.0")
+	implementation("net.kyori:adventure-text-serializer-plain:5.2.0")
+	implementation("net.kyori:adventure-text-minimessage:5.2.0")
 
     // compileOnly fileTree(dir: 'libs', include: 'commons-lang-2.6.jar')
     // compileOnly group: "org.jetbrains", name: "annotations", version: "18.0.0"
@@ -261,3 +261,4 @@ publishing {
     //    }
     //}
 }
+
