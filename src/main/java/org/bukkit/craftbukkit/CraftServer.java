@@ -1008,7 +1008,13 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 	public boolean dispatchCommand(CommandSender sender, String commandLine) throws CommandException {
 		if(sender instanceof Entity) {
 			ServerLevel world = (ServerLevel) ((CraftEntity) sender).getHandle().level();
-			CommandSourceStack source = ((CraftEntity) sender).getHandle().createCommandSourceStackForNameResolution(world);
+			// A name-resolution source discards all command feedback, so commands whose
+			// only result is text (/list, /help) appeared to do nothing. Players get a
+			// real source that routes success/failure back to them.
+			net.minecraft.world.entity.Entity handle = ((CraftEntity) sender).getHandle();
+			CommandSourceStack source = (handle instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
+					? serverPlayer.createCommandSourceStack()
+					: handle.createCommandSourceStackForNameResolution(world);
 
 			try {
 				String theCommand;
