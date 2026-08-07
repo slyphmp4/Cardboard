@@ -2036,9 +2036,14 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         return null;
     }
 
+    /** Bukkit's stock permission-denied text, overridable via bukkit.yml. */
+    private static final String DEFAULT_PERMISSION_MESSAGE =
+            "I'm sorry, but you do not have permission to perform this command. "
+            + "Please contact the server administrators if you believe that this is in error.";
+
     @Override
     public String getPermissionMessage() {
-        return "No Permission";
+        return this.configuration.getString("settings.permissions-message", DEFAULT_PERMISSION_MESSAGE);
     }
 
     @Override
@@ -2347,8 +2352,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull Component permissionMessage() {
-		// TODO Auto-generated method stub
-		return Component.text("todo: permissionMessage");
+		return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+				.deserialize(this.getPermissionMessage());
 	}
 
 	@Override
