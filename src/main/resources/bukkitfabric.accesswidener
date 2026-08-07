@@ -955,3 +955,5 @@ accessible	method	net/minecraft/world/entity/LivingEntity	getHurtSound	(Lnet/min
 accessible	field	net/minecraft/world/level/block/entity/CreakingHeartBlockEntity	creakingInfo	Lcom/mojang/datafixers/util/Either;
 # 26.2: expose CombatTracker#lastDamageTime for the Paper CombatTracker API
 accessible	field	net/minecraft/world/damagesource/CombatTracker	lastDamageTime	I
+# 26.2: expose SulfurCube fuse setter for the Bukkit SulfurCube API
+accessible	method	net/minecraft/world/entity/monster/cubemob/SulfurCube	setFuse	(I)V

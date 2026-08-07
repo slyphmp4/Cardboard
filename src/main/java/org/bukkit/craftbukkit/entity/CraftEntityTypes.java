@@ -131,6 +131,8 @@ public final class CraftEntityTypes {
         register(new EntityTypeData<>(EntityType.SILVERFISH, Silverfish.class, CraftSilverfish::new, createLiving(net.minecraft.world.entity.EntityTypes.SILVERFISH)));
         register(new EntityTypeData<>(EntityType.BLAZE, Blaze.class, CraftBlaze::new, createLiving(net.minecraft.world.entity.EntityTypes.BLAZE)));
         register(new EntityTypeData<>(EntityType.MAGMA_CUBE, MagmaCube.class, CraftMagmaCube::new, createLiving(net.minecraft.world.entity.EntityTypes.MAGMA_CUBE)));
+        // 26.2: new cube mob
+        register(new EntityTypeData<>(EntityType.SULFUR_CUBE, org.bukkit.entity.SulfurCube.class, CraftSulfurCube::new, createLiving(net.minecraft.world.entity.EntityTypes.SULFUR_CUBE)));
         register(new EntityTypeData<>(EntityType.WITHER, Wither.class, CraftWither::new, createLiving(net.minecraft.world.entity.EntityTypes.WITHER)));
         register(new EntityTypeData<>(EntityType.BAT, Bat.class, CraftBat::new, createLiving(net.minecraft.world.entity.EntityTypes.BAT)));
         register(new EntityTypeData<>(EntityType.WITCH, Witch.class, CraftWitch::new, createLiving(net.minecraft.world.entity.EntityTypes.WITCH)));
