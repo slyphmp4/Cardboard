@@ -239,7 +239,7 @@ import java.util.logging.Logger;
 public class CraftServer extends CardboardAbstractServer implements Server {
 
     public final String serverName = "Cardboard";
-    public final String bukkitVersion = "26.1.2"; // "1.21.11-R0.1-SNAPSHOT"; // "1.21.10-R0.1-SNAPSHOT"; // "1.21.8-R0.1-SNAPSHOT"; // "1.21.1-R0.1-SNAPSHOT";
+    public final String bukkitVersion = "26.2"; // "26.1.2"; // "1.21.11-R0.1-SNAPSHOT"; // "1.21.10-R0.1-SNAPSHOT"; // "1.21.8-R0.1-SNAPSHOT"; // "1.21.1-R0.1-SNAPSHOT";
 
     private final Logger logger = BukkitLogger.getLogger();
 
