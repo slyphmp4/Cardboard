@@ -148,6 +148,8 @@ public final class CraftBlockStates {
         register(BlockEntityTypes.TRAPPED_CHEST, CraftChest.class, CraftChest::new);
         register(BlockEntityTypes.TRIAL_SPAWNER, CraftTrialSpawner.class, CraftTrialSpawner::new);
         register(BlockEntityTypes.VAULT, CraftVault.class, CraftVault::new);
+        // 26.2: new block entity
+        register(BlockEntityTypes.POTENT_SULFUR, CraftPotentSulfur.class, CraftPotentSulfur::new);
         // End generate - CraftBlockEntityStates
     }
 
