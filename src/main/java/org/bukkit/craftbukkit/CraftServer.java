@@ -2024,12 +2024,16 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     // PaperAPI - start
+    @Override
     public long[] getTickTimes() {
-        return new long[] {(long) server.tickCount};
+        return ((org.cardboardpowered.bridge.server.MinecraftServerTickMetricsBridge)
+                (Object) this.server).cardboard$getTickTimes();
     }
 
+    @Override
     public double getAverageTickTime() {
-        return server.tickCount;
+        return ((org.cardboardpowered.bridge.server.MinecraftServerTickMetricsBridge)
+                (Object) this.server).cardboard$getAverageTickTime();
     }
 
     @Override
@@ -2091,7 +2095,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public double[] getTPS() {
-        return new double[] {server.tickCount};
+        return ((org.cardboardpowered.bridge.server.MinecraftServerTickMetricsBridge)
+                (Object) this.server).cardboard$getTPS();
     }
 
     @Override
