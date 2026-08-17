@@ -110,9 +110,102 @@ public abstract class PlayerListMixin implements PlayerListBridge {
 
     @Unique private CraftPlayer plr;
 
-    @Inject(method = "placeNewPlayer", at = @At("HEAD"))
-    public void onConnect(Connection connection, ServerPlayer player, CommonListenerCookie clientData, CallbackInfo ci) {
-        this.plr = (CraftPlayer) CraftServer.INSTANCE.getPlayer(player);
+    @Inject(
+            method = "placeNewPlayer",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    public void onConnect(
+            Connection connection,
+            ServerPlayer player,
+            CommonListenerCookie clientData,
+            CallbackInfo ci
+    ) {
+        CraftPlayer craftPlayer =
+                (CraftPlayer) CraftServer.INSTANCE.getPlayer(player);
+
+        this.plr = craftPlayer;
+
+        /*
+         * Minecraft/Paper 26.2 moved parts of the login flow into the
+         * configuration phase.
+         *
+         * Cardboard currently does not fire the legacy Bukkit
+         * PlayerLoginEvent there. A number of Bukkit plugins, most notably
+         * LuckPerms, still rely on this event to attach their Permissible to
+         * the real CraftPlayer.
+         *
+         * Fire it here, at the very beginning of placeNewPlayer, before the
+         * player is actually added to the server.
+         */
+
+        java.net.InetAddress address =
+                java.net.InetAddress.getLoopbackAddress();
+
+        java.net.SocketAddress remoteAddress =
+                connection.getRemoteAddress();
+
+        if (remoteAddress instanceof java.net.InetSocketAddress inet) {
+            address = inet.getAddress();
+        }
+
+        java.net.InetAddress realAddress = address;
+
+        java.net.SocketAddress rawAddress =
+                ((org.cardboardpowered.bridge.network.ConnectionBridge)
+                        (Object) connection)
+                        .getRawAddress();
+
+        if (rawAddress instanceof java.net.InetSocketAddress rawInet) {
+            realAddress = rawInet.getAddress();
+        }
+
+        org.bukkit.event.player.PlayerLoginEvent loginEvent =
+                new org.bukkit.event.player.PlayerLoginEvent(
+                        craftPlayer,
+
+                        /*
+                         * Cardboard currently does not preserve the virtual
+                         * hostname on Connection itself.
+                         *
+                         * Empty hostname is preferable to inventing one.
+                         */
+                        "",
+
+                        address,
+                        realAddress
+                );
+
+        CraftEventFactory.callEvent(loginEvent);
+
+        /*
+         * Plugins must still be able to reject a login from PlayerLoginEvent.
+         */
+        if (loginEvent.getResult()
+                != org.bukkit.event.player.PlayerLoginEvent.Result.ALLOWED) {
+
+            this.plr = null;
+
+            net.kyori.adventure.text.Component kickMessage =
+                    loginEvent.kickMessage();
+
+            Component disconnectReason;
+
+            if (kickMessage != null) {
+                disconnectReason =
+                        io.papermc.paper.adventure.PaperAdventure
+                                .asVanilla(kickMessage);
+            } else {
+                disconnectReason =
+                        Component.translatable(
+                                "multiplayer.disconnect.generic"
+                        );
+            }
+
+            connection.disconnect(disconnectReason);
+
+            ci.cancel();
+        }
     }
 
     @Redirect(method = "placeNewPlayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/players/PlayerList;broadcastSystemMessage(Lnet/minecraft/network/chat/Component;Z)V"))

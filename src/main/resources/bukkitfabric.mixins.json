@@ -18,6 +18,7 @@
     "commands.CommandsMixin",
     "commands.CommandSourceMixin",
     "commands.CommandSourceStackMixin",
+    "commands.PermissionProviderCheckMixin",
     "core.HolderLookup_RegistryLookupMixin",
     "core.MappedRegistryMixin",
     "core.RegistryLookup_DelegateMixin",

@@ -4,18 +4,21 @@
  */
 package org.cardboardpowered.bridge.commands;
 
+import net.minecraft.server.permissions.Permission;
 import org.bukkit.command.CommandSender;
 import org.cardboardpowered.mixin.commands.CommandSourceStackMixin;
 
 /**
  * Injection Interface for ServerCommandSource.
- * 
- * @see {@link CommandSourceStackMixin}
+ *
+ * @see CommandSourceStackMixin
  */
 public interface CommandSourceStackBridge {
 
-	/**
-	 */
-    CommandSender getBukkitSender();
+	CommandSender getBukkitSender();
 
+	boolean cardboard$hasPermission(
+			Permission permission,
+			String bukkitPermission
+	);
 }
