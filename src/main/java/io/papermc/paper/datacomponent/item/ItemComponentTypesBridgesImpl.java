@@ -99,7 +99,12 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public MapDecorations.DecorationEntry decorationEntry(final MapCursor.Type type, final double x, final double z, final float rotation) {
+    public MapDecorations.DecorationEntry decorationEntry(
+            final MapCursor.Type type,
+            final double x,
+            final double z,
+            final float rotation
+    ) {
         return PaperMapDecorations.PaperDecorationEntry.toApi(type, x, z, rotation);
     }
 
@@ -124,7 +129,11 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public Tool.Rule rule(final RegistryKeySet<BlockType> blocks, final @Nullable Float speed, final TriState correctForDrops) {
+    public Tool.Rule rule(
+            final RegistryKeySet<BlockType> blocks,
+            final @Nullable Float speed,
+            final TriState correctForDrops
+    ) {
         return PaperItemTool.PaperRule.fromUnsafe(blocks, speed, correctForDrops);
     }
 
@@ -134,7 +143,10 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public WrittenBookContent.Builder writtenBookContent(final Filtered<String> title, final String author) {
+    public WrittenBookContent.Builder writtenBookContent(
+            final Filtered<String> title,
+            final String author
+    ) {
         return new PaperWrittenBookContent.BuilderImpl(title, author);
     }
 
@@ -180,15 +192,23 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
 
     @Override
     public MapId mapId(final int id) {
-        return new PaperMapId(new net.minecraft.world.level.saveddata.maps.MapId(id));
+        return new PaperMapId(
+                new net.minecraft.world.level.saveddata.maps.MapId(id)
+        );
     }
 
     @Override
     public UseRemainder useRemainder(final ItemStack itemStack) {
         Preconditions.checkArgument(itemStack != null, "Item cannot be null");
-        Preconditions.checkArgument(!itemStack.isEmpty(), "Remaining item cannot be empty!");
+        Preconditions.checkArgument(
+                !itemStack.isEmpty(),
+                "Remaining item cannot be empty!"
+        );
+
         return new PaperUseRemainder(
-            new net.minecraft.world.item.component.UseRemainder(CraftItemStack.asTemplate(itemStack))
+                new net.minecraft.world.item.component.UseRemainder(
+                        CraftItemStack.asTemplate(itemStack)
+                )
         );
     }
 
@@ -199,29 +219,52 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
 
     @Override
     public UseCooldown.Builder useCooldown(final float seconds) {
-        Preconditions.checkArgument(seconds > 0, "seconds must be positive, was %s", seconds);
+        Preconditions.checkArgument(
+                seconds > 0,
+                "seconds must be positive, was %s",
+                seconds
+        );
+
         return new PaperUseCooldown.BuilderImpl(seconds);
     }
 
     @Override
-    public DamageResistant damageResistant(final RegistryKeySet<DamageType> types) {
-        return new PaperDamageResistant(new net.minecraft.world.item.component.DamageResistant(PaperRegistrySets.convertToNms(Registries.DAMAGE_TYPE, Conversions.global().lookup(), types)));
+    public DamageResistant damageResistant(
+            final RegistryKeySet<DamageType> types
+    ) {
+        return new PaperDamageResistant(
+                new net.minecraft.world.item.component.DamageResistant(
+                        PaperRegistrySets.convertToNms(
+                                Registries.DAMAGE_TYPE,
+                                Conversions.global().lookup(),
+                                types
+                        )
+                )
+        );
     }
 
     @Override
     public Enchantable enchantable(final int level) {
-        return new PaperEnchantable(new net.minecraft.world.item.enchantment.Enchantable(level));
+        return new PaperEnchantable(
+                new net.minecraft.world.item.enchantment.Enchantable(level)
+        );
     }
 
     @Override
     public Repairable repairable(final RegistryKeySet<ItemType> types) {
-        return new PaperRepairable(new net.minecraft.world.item.enchantment.Repairable(
-            PaperRegistrySets.convertToNms(Registries.ITEM, Registries_Bridge.BUILT_IN_CONVERSIONS.lookup(), types)
-        ));
+        return new PaperRepairable(
+                new net.minecraft.world.item.enchantment.Repairable(
+                        PaperRegistrySets.convertToNms(
+                                Registries.ITEM,
+                                Registries_Bridge.BUILT_IN_CONVERSIONS.lookup(),
+                                types
+                        )
+                )
+        );
     }
 
     @Override
-    public Equippable.Builder equippable(EquipmentSlot slot) {
+    public Equippable.Builder equippable(final EquipmentSlot slot) {
         return new PaperEquippable.BuilderImpl(slot);
     }
 
@@ -236,83 +279,101 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public PaperOminousBottleAmplifier ominousBottleAmplifier(final int amplifier) {
-        Preconditions.checkArgument(OminousBottleAmplifier.MIN_AMPLIFIER <= amplifier && amplifier <= OminousBottleAmplifier.MAX_AMPLIFIER,
-            "amplifier must be between %s-%s, was %s", OminousBottleAmplifier.MIN_AMPLIFIER, OminousBottleAmplifier.MAX_AMPLIFIER, amplifier
+    public PaperOminousBottleAmplifier ominousBottleAmplifier(
+            final int amplifier
+    ) {
+        Preconditions.checkArgument(
+                OminousBottleAmplifier.MIN_AMPLIFIER <= amplifier
+                        && amplifier <= OminousBottleAmplifier.MAX_AMPLIFIER,
+                "amplifier must be between %s-%s, was %s",
+                OminousBottleAmplifier.MIN_AMPLIFIER,
+                OminousBottleAmplifier.MAX_AMPLIFIER,
+                amplifier
         );
+
         return new PaperOminousBottleAmplifier(
-            new OminousBottleAmplifier(amplifier)
+                new OminousBottleAmplifier(amplifier)
         );
     }
 
-	@Override
-	public Builder blocksAttacks() {
-		return new PaperBlocksAttacks.BuilderImpl();
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.TooltipDisplay.Builder tooltipDisplay() {
-		return new PaperTooltipDisplay.BuilderImpl();
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.Weapon.Builder weapon() {
-		return new PaperWeapon.BuilderImpl();
-	}
-
-	@Override
-	public SkinPatchBuilder skinPatch() {
-		return new PaperResolvableProfile.SkinPatchBuilderImpl();
-	}
-
-	@Override
-	public SkinPatch emptySkinPatch() {
-		return new PaperResolvableProfile.PaperSkinPatch(null, null, null, null);
-	}
-
-	// TODO: Update this
-	
-	@Override
-	public io.papermc.paper.datacomponent.item.KineticWeapon.Builder kineticWeapon() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Condition kineticWeaponCondition(int arg0, float arg1, float arg2) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.PiercingWeapon.Builder piercingWeapon() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.SwingAnimation.Builder swingAnimation() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.UseEffects.Builder useEffects() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public io.papermc.paper.datacomponent.item.AttackRange.Builder attackRange() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-    // 26.2: new component type bridge
     @Override
-    public io.papermc.paper.datacomponent.item.SulfurCubeContent sulfurCubeContent(org.bukkit.inventory.ItemStack stack) {
-        return new PaperSulfurCubeContent(net.minecraft.world.item.component.SulfurCubeContent.ofNonEmpty(
-                org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(stack)));
+    public Builder blocksAttacks() {
+        return new PaperBlocksAttacks.BuilderImpl();
     }
 
+    @Override
+    public TooltipDisplay.Builder tooltipDisplay() {
+        return new PaperTooltipDisplay.BuilderImpl();
+    }
+
+    @Override
+    public Weapon.Builder weapon() {
+        return new PaperWeapon.BuilderImpl();
+    }
+
+    @Override
+    public SkinPatchBuilder skinPatch() {
+        return new PaperResolvableProfile.SkinPatchBuilderImpl();
+    }
+
+    @Override
+    public SkinPatch emptySkinPatch() {
+        return new PaperResolvableProfile.PaperSkinPatch(
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    // Minecraft / Paper 26.2 data components
+
+    @Override
+    public KineticWeapon.Builder kineticWeapon() {
+        return new PaperKineticWeapon.BuilderImpl();
+    }
+
+    @Override
+    public Condition kineticWeaponCondition(
+            final int maxDurationTicks,
+            final float minSpeed,
+            final float minRelativeSpeed
+    ) {
+        return new PaperKineticWeapon.PaperKineticWeaponCondition(
+                new net.minecraft.world.item.component.KineticWeapon.Condition(
+                        maxDurationTicks,
+                        minSpeed,
+                        minRelativeSpeed
+                )
+        );
+    }
+
+    @Override
+    public PiercingWeapon.Builder piercingWeapon() {
+        return new PaperPiercingWeapon.BuilderImpl();
+    }
+
+    @Override
+    public SwingAnimation.Builder swingAnimation() {
+        return new PaperSwingAnimation.BuilderImpl();
+    }
+
+    @Override
+    public UseEffects.Builder useEffects() {
+        return new PaperUseEffects.BuilderImpl();
+    }
+
+    @Override
+    public AttackRange.Builder attackRange() {
+        return new PaperAttackRange.BuilderImpl();
+    }
+
+    @Override
+    public SulfurCubeContent sulfurCubeContent(final ItemStack stack) {
+        return new PaperSulfurCubeContent(
+                net.minecraft.world.item.component.SulfurCubeContent.ofNonEmpty(
+                        CraftItemStack.asNMSCopy(stack)
+                )
+        );
+    }
 }
