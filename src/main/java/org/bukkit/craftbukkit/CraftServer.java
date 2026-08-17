@@ -362,7 +362,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         ((CraftMagicNumbers) CraftMagicNumbers.INSTANCE).getCommodore().updateReroute(activeCompatibilities::contains);
 
         this.playerList = server.getPlayerList();
-
         // this.pluginRemapper = Boolean.getBoolean("paper.disablePluginRemapping") ? null : PluginRemapper.create(new File("plugins").toPath());
 
         // Register PotionEffectType
@@ -2108,8 +2107,41 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public UUID getPlayerUniqueId(String arg0) {
-        return Bukkit.getPlayer(arg0).getUniqueId();
+    public UUID getPlayerUniqueId(String name) {
+        Player player = this.getPlayerExact(name);
+
+        if (player != null) {
+            return player.getUniqueId();
+        }
+
+        NameAndId nameAndId;
+
+        if (this.getOnlineMode() || SpigotConfig.bungee) {
+            nameAndId = this.console.services()
+                    .nameToIdCache()
+                    .get(name)
+                    .orElse(null);
+
+            // Vanilla 26.2 may create an offline profile after a failed
+            // remote lookup. Paper does not do this in proxy-online mode.
+            if (nameAndId != null) {
+                UUID offlineExact =
+                        NameAndId.createOffline(name).id();
+                UUID offlineLower =
+                        NameAndId.createOffline(
+                                name.toLowerCase(Locale.ROOT)
+                        ).id();
+
+                if (nameAndId.id().equals(offlineExact)
+                        || nameAndId.id().equals(offlineLower)) {
+                    nameAndId = null;
+                }
+            }
+        } else {
+            nameAndId = NameAndId.createOffline(name);
+        }
+
+        return nameAndId != null ? nameAndId.id() : null;
     }
 
     @Override
