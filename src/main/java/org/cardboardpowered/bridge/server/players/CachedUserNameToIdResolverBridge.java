@@ -1,15 +1,10 @@
 package org.cardboardpowered.bridge.server.players;
 
-/**
- * 1.21.9 has moved lots of GameProfile over to PlayerConfigEntry
- */
-@Deprecated(forRemoval = true)
+import net.minecraft.server.players.NameAndId;
+import org.jetbrains.annotations.Nullable;
+
 public interface CachedUserNameToIdResolverBridge {
 
-	/*
-    Optional<GameProfile> card_getByUuid(UUID uuid);
-
-    Optional<GameProfile> card_findByName(String name);
-    */
-
+    @Nullable
+    NameAndId cardboard$getIfCached(String name);
 }

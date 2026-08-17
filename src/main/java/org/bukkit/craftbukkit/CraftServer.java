@@ -38,6 +38,7 @@ import org.cardboardpowered.BukkitLogger;
 import org.cardboardpowered.bridge.advancements.AdvancementHolderBridge;
 import org.cardboardpowered.bridge.server.MinecraftServerBridge;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
+import org.cardboardpowered.bridge.server.players.CachedUserNameToIdResolverBridge;
 import org.cardboardpowered.bridge.server.players.PlayerListBridge;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.item.crafting.RecipeManagerBridge;
@@ -2075,9 +2076,27 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public OfflinePlayer getOfflinePlayerIfCached(String arg0) {
-        // TODO Auto-generated method stub
-        return null;
+    @Nullable
+    public OfflinePlayer getOfflinePlayerIfCached(String name) {
+        Preconditions.checkArgument(name != null, "Name cannot be null");
+        Preconditions.checkArgument(!name.isEmpty(), "Name cannot be empty");
+
+        OfflinePlayer result = this.getPlayerExact(name);
+
+        if (result == null) {
+            NameAndId profile =
+                    ((CachedUserNameToIdResolverBridge) (Object)
+                            this.console.services().nameToIdCache())
+                            .cardboard$getIfCached(name);
+
+            if (profile != null) {
+                result = this.getOfflinePlayer(profile);
+            }
+        } else {
+            this.offlinePlayers.remove(result.getUniqueId());
+        }
+
+        return result;
     }
 
     @Override

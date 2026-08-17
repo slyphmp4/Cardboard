@@ -76,6 +76,7 @@
     "server.network.ServerLoginPacketListenerImplMixin",
     "server.network.ServerStatusPacketListenerImplMixin",
     "server.players.CachedUserNameToIdResolverMixin",
+    "server.players.CachedUserNameToIdResolverGameProfileInfoAccessor",
     "server.players.NameAndIdMixin",
     "server.players.PlayerListMixin",
     "server.players.PlayerListMixin_ChatEvent",
