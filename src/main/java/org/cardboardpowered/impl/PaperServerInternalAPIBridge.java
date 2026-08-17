@@ -10,6 +10,7 @@ import io.papermc.paper.world.damagesource.CombatEntry;
 import io.papermc.paper.world.damagesource.FallLocationType;
 import io.papermc.paper.world.damagesource.PaperCombatEntryWrapper;
 import io.papermc.paper.world.damagesource.PaperCombatTrackerWrapper;
+import io.papermc.paper.entity.poi.PaperPoiType;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -22,6 +23,7 @@ import net.minecraft.world.damagesource.FallLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.entity.player.PlayerModelPart;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import org.bukkit.GameRule;
 import org.bukkit.block.Biome;
 import org.bukkit.craftbukkit.CraftGameRule;
@@ -119,11 +121,12 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
 		return CraftMannequin.VALID_POSES;
 	}
 
-	@Override
-	public Occupancy createOccupancy(String enumNameEntry) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public Occupancy createOccupancy(final String enumNameEntry) {
+        return new PaperPoiType.PaperOccupancy(
+                PoiManager.Occupancy.valueOf(enumNameEntry)
+        );
+    }
 
 
     // 26.2: Paper moved the adventure serializer accessors off UnsafeValues onto InternalAPIBridge
