@@ -34,6 +34,7 @@
     "network.protocol.game.ClientboundSystemChatPacketMixin",
     "network.syncher.SynchedEntityDataMixin",
     "paper.PaperInternalAPIBridgeMixin",
+    "paper.MaterialSetTagMixin",
     "paper.utils.PaperPluginLoggerMixin",
     "core.RegistryAccess_FrozenMixin",
     "resources.RegistryDataLoader_RegistryDataMixin",
