@@ -27,6 +27,7 @@ configurations {
     extraLibs
     removeLibs
     metest
+    nestedMods
 }
 
 
@@ -78,6 +79,7 @@ dependencies {
 	compileOnly fileTree(dir: 'libs', include: 'iCommon-Fabric-26.2.jar')
 
 	implementation fileTree(dir: 'libs', include: 'iCommon-Fabric-26.2.jar')
+    nestedMods fileTree(dir: 'libs', include: 'iCommon-Fabric-26.2.jar')
 	
 	// TODO: Maven repo this
 	compileOnly fileTree(dir: 'libs', include: 'icommon-configuration-1.0.jar')
@@ -217,6 +219,8 @@ jar {
     }
     exclude("**/mojang-translations/")
 }
+
+loom.nestJars(tasks.named("jar"), configurations.nestedMods)
 
 shadowJar {
     configurations = [project.configurations.api]
