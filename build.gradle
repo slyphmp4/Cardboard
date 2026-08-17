@@ -237,7 +237,7 @@ modrinth {
     versionNumber = project.mod_version + "-" + System.env.BUILD_NUMBER
     versionType = "beta"
     uploadFile = jar
-    gameVersions = ["26.1.2"]
+    gameVersions = ["26.2"]
     loaders = ["fabric"]
 }
 
