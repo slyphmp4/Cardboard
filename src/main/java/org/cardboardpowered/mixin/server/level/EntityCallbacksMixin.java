@@ -1,17 +1,17 @@
 /**
  * This file is a part of Cardboard & iCommonLib
  * Copyright (c) 2020-2021 by Isaiah
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 3
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -32,23 +32,37 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityCallbacks.class)
 public class EntityCallbacksMixin {
 
+    @Inject(at = @At("TAIL"), method = "onTrackingStart(Lnet/minecraft/world/entity/Entity;)V")
+    public void validateEntityBF(Entity entity, CallbackInfo ci) {
+        EntityBridge bf = (EntityBridge) entity;
+
+        bf.setValid(true);
+        bf.cb$setInWorld(true);
+
+        if (bf.getOriginBF() == null && bf.getBukkitEntity() != null) {
+            bf.setOriginBF(bf.getBukkitEntity().getLocation());
+        }
+
+        CraftEventFactory.callEvent(
+                new EntityAddToWorldEvent(
+                        bf.getBukkitEntity(),
+                        entity.level().cardboard$getWorld()
+                )
+        );
+    }
+
     @Inject(at = @At("TAIL"), method = "onTrackingEnd(Lnet/minecraft/world/entity/Entity;)V")
     public void unvalidateEntityBF(Entity entity, CallbackInfo ci) {
         EntityBridge bf = (EntityBridge) entity;
+
         bf.setValid(false);
-        CraftEventFactory.callEvent( new EntityRemoveFromWorldEvent(bf.getBukkitEntity(), entity.level().cardboard$getWorld()) );
+        bf.cb$setInWorld(false);
+
+        CraftEventFactory.callEvent(
+                new EntityRemoveFromWorldEvent(
+                        bf.getBukkitEntity(),
+                        entity.level().cardboard$getWorld()
+                )
+        );
     }
-
-    @Inject(at = @At("TAIL"), method = "onTickingStart(Lnet/minecraft/world/entity/Entity;)V")
-    public void validateEntityBF(Entity entity, CallbackInfo ci) {
-        EntityBridge bf = (EntityBridge) entity;
-        bf.setValid(true);
-        bf.cb$setInWorld(true);
-        
-        if (null == bf.getOriginBF() && bf.getBukkitEntity() != null)
-            bf.setOriginBF(bf.getBukkitEntity().getLocation()); // Paper Entity Origin API
-
-        CraftEventFactory.callEvent( new EntityAddToWorldEvent(bf.getBukkitEntity(), entity.level().cardboard$getWorld()) );
-    } 
-
 }

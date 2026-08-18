@@ -2035,8 +2035,31 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 		if(function != null)
 			function.accept((T) ((EntityBridge) entity).getBukkitEntity());
 
-		world.addEntity(entity); // TODO spawn reason
-		return (T) ((EntityBridge) entity).getBukkitEntity();
+net.minecraft.world.level.ChunkPos cardboard$chunkPos = entity.chunkPosition();
+
+// A synchronous Bukkit spawn must see the entity chunk as accessible
+// before the entity is registered. Vanilla chunk promotion callbacks
+// may still be queued even though the ChunkHolder is already FULL.
+world.getChunk(entity.blockPosition());
+
+net.minecraft.server.level.ChunkHolder cardboard$holder =
+((ChunkMapBridge) (Object) world.getChunkSource().chunkMap)
+.getUpdatingChunkHoldersBF()
+.get(cardboard$chunkPos.pack());
+
+if (cardboard$holder != null) {
+int cardboard$currentTicket = cardboard$holder.getTicketLevel();
+
+world.entityManager.updateChunkStatus(
+cardboard$chunkPos,
+net.minecraft.server.level.ChunkLevel.fullStatus(
+cardboard$currentTicket
+)
+);
+}
+
+world.addFreshEntity(entity); // TODO spawn reason
+return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
@@ -2326,11 +2349,15 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+    @Override
+    public Entity getEntity(UUID uuid) {
+        net.minecraft.world.entity.Entity entity =
+                this.world.getEntity(uuid);
 
-	@Override
-	public Entity getEntity(UUID arg0) {
-		return ((EntityBridge) world.getEntity(arg0)).getBukkitEntity();
-	}
+        return entity == null
+                ? null
+                : ((EntityBridge) entity).getBukkitEntity();
+    }
 
 	@Override
 	public int getEntityCount() {
