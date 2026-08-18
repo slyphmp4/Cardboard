@@ -98,15 +98,14 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
     private final EntityType entityType;
     private EntityDamageEvent lastDamageEvent;
     private final CraftPersistentDataContainer persistentDataContainer = new CraftPersistentDataContainer(CraftEntity.DATA_TYPE_REGISTRY);
-    // Paper start - Folia shedulers
-    //public final io.papermc.paper.threadedregions.EntityScheduler taskScheduler = new io.papermc.paper.threadedregions.EntityScheduler(this);
-    //private final io.papermc.paper.threadedregions.scheduler.FoliaEntityScheduler apiScheduler = new io.papermc.paper.threadedregions.scheduler.FoliaEntityScheduler(this);
+    // Paper start - Folia schedulers
+    private final io.papermc.paper.threadedregions.scheduler.FallbackEntityScheduler apiScheduler =
+            new io.papermc.paper.threadedregions.scheduler.FallbackEntityScheduler(this);
 
     @Override
     public final io.papermc.paper.threadedregions.scheduler.EntityScheduler getScheduler() {
-        //return this.apiScheduler; // TODO
-        return null;
-    };
+        return this.apiScheduler;
+    }
     // Paper end - Folia schedulers
 
     public CraftEntity(final Entity entity) {

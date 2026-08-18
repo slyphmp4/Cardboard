@@ -271,6 +271,70 @@ public final class CraftItemStack extends ItemStack {
     public int getMaxStackSize() {
         return (this.handle == null) ? Item.DEFAULT_MAX_STACK_SIZE : this.handle.getMaxStackSize(); // Paper - air stacks to 64
     }
+    @Override
+    public @NotNull Map<String, Object> serialize() {
+        if (this.isEmpty()) {
+            return Map.of(
+                    "id", "minecraft:air",
+                    net.minecraft.SharedConstants.DATA_VERSION_TAG,
+                    org.bukkit.Bukkit.getUnsafe().getDataVersion(),
+                    "schema_version", 1
+            );
+        }
+
+        final CompoundTag tag =
+                (CompoundTag) net.minecraft.world.item.ItemStack.CODEC.encodeStart(
+                        CraftRegistry.getMinecraftRegistry().createSerializationContext(
+                                net.minecraft.nbt.NbtOps.INSTANCE
+                        ),
+                        this.handle
+                ).getOrThrow();
+
+        net.minecraft.nbt.NbtUtils.addCurrentDataVersion(tag);
+
+        final Map<String, Object> result =
+                new java.util.LinkedHashMap<>();
+
+        tag.asCompound().get().forEach((key, value) -> {
+            switch (key) {
+                case "id" ->
+                        result.put("id", value.asString().get());
+
+                case "count" ->
+                        result.put("count", value.asInt().get());
+
+                case "components" -> {
+                    final Map<String, Object> components =
+                            new java.util.LinkedHashMap<>();
+
+                    value.asCompound().ifPresent(compound -> {
+                        compound.forEach((componentKey, componentTag) ->
+                                components.put(
+                                        componentKey,
+                                        componentTag.toString()
+                                )
+                        );
+                    });
+
+                    result.put("components", components);
+                }
+
+                case net.minecraft.SharedConstants.DATA_VERSION_TAG ->
+                        result.put(
+                                net.minecraft.SharedConstants.DATA_VERSION_TAG,
+                                value.asInt().get()
+                        );
+
+                default ->
+                        throw new IllegalStateException(
+                                "Unexpected value: " + key
+                        );
+            }
+        });
+
+        result.put("schema_version", 1);
+        return result;
+    }
 
     @Override
     public int getMaxItemUseDuration(final org.bukkit.entity.LivingEntity entity) {

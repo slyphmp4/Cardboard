@@ -17,6 +17,7 @@ public class ChunkTicketBridge {
     public static final ChunkTicketType CHUNK_LOAD = ChunkTicketType.register("chunk_load", 0L, false, Use.LOADING);
     */
     
+    public static final TicketType PLUGIN = TicketType.register("cardboard_plugin_load", 600L, 6);
     public static final TicketType POST_TELEPORT = TicketType.register("post_teleport", 5L, 6);
     public static final TicketType PLUGIN_TICKET = TicketType.register("plugin_ticket", 0L, 6);
     public static final TicketType FUTURE_AWAIT = TicketType.register("future_await", 0L, 6);

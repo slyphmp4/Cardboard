@@ -187,6 +187,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 	private ServerLevel world;
 	private String name;
 	private WorldBorder worldBorder;
+private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.HashMap<>();
 	private final List<BlockPopulator> populators = new ArrayList<BlockPopulator>();
 
 	private static final Random rand = new Random();
@@ -237,11 +238,47 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 	}
 
 	@Override
-	public boolean addPluginChunkTicket(int arg0, int arg1, Plugin arg2) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+	public boolean addPluginChunkTicket(int x, int z, Plugin plugin) {
+		Preconditions.checkArgument(plugin != null, "null plugin");
+		Preconditions.checkArgument(plugin.isEnabled(), "plugin is not enabled");
 
+		ChunkPos pos = new ChunkPos(x, z);
+
+		synchronized (this.pluginChunkTickets) {
+			Set<Plugin> plugins = this.pluginChunkTickets.computeIfAbsent(
+					pos,
+					ignored -> new HashSet<>()
+			);
+
+			if (plugins.contains(plugin)) {
+				return false;
+			}
+
+			if (plugins.isEmpty()) {
+				this.world.getChunkSource().addTicketWithRadius(
+						ChunkTicketBridge.PLUGIN_TICKET,
+						pos,
+						1
+				);
+
+				try {
+					this.getChunkAt(x, z);
+				} catch (RuntimeException | Error ex) {
+					this.world.getChunkSource().removeTicketWithRadius(
+							ChunkTicketBridge.PLUGIN_TICKET,
+							pos,
+							1
+					);
+
+					this.pluginChunkTickets.remove(pos);
+					throw ex;
+				}
+			}
+
+			plugins.add(plugin);
+			return true;
+		}
+	}
 	@Override
 	public boolean canGenerateStructures() {
 		return true; // TODO
@@ -912,14 +949,44 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 
 	@Override
 	public Map<Plugin, Collection<Chunk>> getPluginChunkTickets() {
-		return Collections.emptyMap();
+		Map<Plugin, Collection<Chunk>> result = new java.util.HashMap<>();
+
+		synchronized (this.pluginChunkTickets) {
+			for (Map.Entry<ChunkPos, Set<Plugin>> entry : this.pluginChunkTickets.entrySet()) {
+				ChunkPos pos = entry.getKey();
+				Chunk chunk = this.getChunkAt(pos.x(), pos.z());
+
+				for (Plugin plugin : entry.getValue()) {
+					result.computeIfAbsent(
+							plugin,
+							ignored -> new ArrayList<>()
+					).add(chunk);
+				}
+			}
+		}
+
+		result.replaceAll(
+				(plugin, chunks) -> Collections.unmodifiableCollection(chunks)
+		);
+
+		return Collections.unmodifiableMap(result);
 	}
 
 	@Override
-	public Collection<Plugin> getPluginChunkTickets(int arg0, int arg1) {
-		return Collections.emptySet();
-	}
+	public Collection<Plugin> getPluginChunkTickets(int x, int z) {
+		synchronized (this.pluginChunkTickets) {
+			Set<Plugin> plugins =
+					this.pluginChunkTickets.get(new ChunkPos(x, z));
 
+			if (plugins == null || plugins.isEmpty()) {
+				return Collections.emptySet();
+			}
+
+			return Collections.unmodifiableSet(
+					new HashSet<>(plugins)
+			);
+		}
+	}
 	@Override
 	public List<BlockPopulator> getPopulators() {
 		return populators;
@@ -1110,7 +1177,7 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 			chunk = world.getChunkSource().getChunk(x, z, ChunkStatus.FULL, true);
 
 		if(chunk instanceof net.minecraft.world.level.chunk.LevelChunk) {
-			world.getChunkSource().addTicketWithRadius(ChunkTicketBridge.PLUGIN_TICKET, new ChunkPos(x, z), 1);
+			world.getChunkSource().addTicketWithRadius(ChunkTicketBridge.PLUGIN, new ChunkPos(x, z), 1);
 			// nms.getChunkManager().addTicket(ChunkTicketType.START, new ChunkPos(x, z), 1, Unit.INSTANCE);
 			return true;
 		}
@@ -1399,16 +1466,63 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 	}
 
 	@Override
-	public boolean removePluginChunkTicket(int arg0, int arg1, Plugin arg2) {
-		// TODO Auto-generated method stub
-		return false;
+	public boolean removePluginChunkTicket(int x, int z, Plugin plugin) {
+		Preconditions.checkNotNull(plugin, "null plugin");
+
+		ChunkPos pos = new ChunkPos(x, z);
+
+		synchronized (this.pluginChunkTickets) {
+			Set<Plugin> plugins = this.pluginChunkTickets.get(pos);
+
+			if (plugins == null || !plugins.remove(plugin)) {
+				return false;
+			}
+
+			if (plugins.isEmpty()) {
+				this.pluginChunkTickets.remove(pos);
+
+				this.world.getChunkSource().removeTicketWithRadius(
+						ChunkTicketBridge.PLUGIN_TICKET,
+						pos,
+						1
+				);
+			}
+
+			return true;
+		}
 	}
 
 	@Override
-	public void removePluginChunkTickets(Plugin arg0) {
-		// TODO Auto-generated method stub
+	public void removePluginChunkTickets(Plugin plugin) {
+		Preconditions.checkNotNull(plugin, "null plugin");
+
+		synchronized (this.pluginChunkTickets) {
+			List<ChunkPos> ticketsToRelease = new ArrayList<>();
+
+			this.pluginChunkTickets.entrySet().removeIf(entry -> {
+				Set<Plugin> plugins = entry.getValue();
+
+				if (!plugins.remove(plugin)) {
+					return false;
+				}
+
+				if (plugins.isEmpty()) {
+					ticketsToRelease.add(entry.getKey());
+					return true;
+				}
+
+				return false;
+			});
+
+			for (ChunkPos pos : ticketsToRelease) {
+				this.world.getChunkSource().removeTicketWithRadius(
+						ChunkTicketBridge.PLUGIN_TICKET,
+						pos,
+						1
+				);
+			}
+		}
 	}
-	
 	@Override
 	public void save() {
 		save(false);

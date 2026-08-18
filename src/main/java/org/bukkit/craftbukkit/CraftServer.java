@@ -717,7 +717,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         return Iterators.unmodifiableIterator(Iterators.transform(getServer().getCustomBossEvents().getEvents().iterator(), new Function<CustomBossEvent, org.bukkit.boss.KeyedBossBar>() {
             @Override
             public org.bukkit.boss.KeyedBossBar apply(CustomBossEvent bossBattleCustom) {
-                return (KeyedBossBar) ((EntityBridge)bossBattleCustom).getBukkitEntity();
+                return new CardboardBossBar(bossBattleCustom);
             }
         }));
     }
@@ -726,7 +726,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public KeyedBossBar getBossBar(NamespacedKey key) {
         Preconditions.checkArgument(key != null, "key");
         net.minecraft.server.bossevents.CustomBossEvent bossBattleCustom = getServer().getCustomBossEvents().get(CraftNamespacedKey.toMinecraft(key));
-        return (bossBattleCustom == null) ? null : (KeyedBossBar) ((EntityBridge)bossBattleCustom).getBukkitEntity();
+        return (bossBattleCustom == null) ? null : new CardboardBossBar(bossBattleCustom);
     }
 
     @Override
@@ -2357,11 +2357,17 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 		return null;
 	}
 
-	@Override
-	public @NotNull WorldBorder createWorldBorder() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public @NotNull WorldBorder createWorldBorder() {
+        net.minecraft.world.level.border.WorldBorder border =
+                new net.minecraft.world.level.border.WorldBorder();
+
+        border.setWarningTime(
+                net.minecraft.world.level.border.WorldBorder.Settings.DEFAULT.warningTime()
+        );
+
+        return new CraftWorldBorder(border);
+    }
 
 	@Override
 	public boolean getHideOnlinePlayers() {

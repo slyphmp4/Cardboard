@@ -5,7 +5,7 @@ import org.bukkit.Bukkit;
 public class GlobalConfiguration {
 
     static final int CURRENT_VERSION = 30;
-    private static GlobalConfiguration instance;
+    private static GlobalConfiguration instance = new GlobalConfiguration();
     public static boolean isFirstStart;
 
     public int version = 30;
