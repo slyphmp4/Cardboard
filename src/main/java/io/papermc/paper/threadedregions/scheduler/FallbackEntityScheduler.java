@@ -36,6 +36,9 @@ public final class FallbackEntityScheduler implements EntityScheduler {
     private final Set<PendingExecute> pendingExecutes =
             new HashSet<>();
 
+    private final Set<EntityScheduledTask> pendingScheduledTasks =
+            new HashSet<>();
+
     private boolean retired;
 
     public FallbackEntityScheduler(final CraftEntity entity) {
@@ -75,6 +78,31 @@ public final class FallbackEntityScheduler implements EntityScheduler {
         }
     }
 
+    private boolean registerScheduledTask(
+            final EntityScheduledTask task
+    ) {
+        synchronized (this.lifecycleLock) {
+            if (
+                    this.retired
+                            || this.entity.getHandleRaw() == null
+                            || this.entity.getHandleRaw().isRemoved()
+            ) {
+                return false;
+            }
+
+            this.pendingScheduledTasks.add(task);
+            return true;
+        }
+    }
+
+    private void unregisterScheduledTask(
+            final EntityScheduledTask task
+    ) {
+        synchronized (this.lifecycleLock) {
+            this.pendingScheduledTasks.remove(task);
+        }
+    }
+
     /**
      * Retires this scheduler and immediately settles pending execute()
      * tasks through their retired callback.
@@ -84,7 +112,8 @@ public final class FallbackEntityScheduler implements EntityScheduler {
      * original execution tick.
      */
     public void retire() {
-        final PendingExecute[] pending;
+        final PendingExecute[] pendingExecutes;
+        final EntityScheduledTask[] pendingScheduledTasks;
 
         synchronized (this.lifecycleLock) {
             if (this.retired) {
@@ -93,15 +122,25 @@ public final class FallbackEntityScheduler implements EntityScheduler {
 
             this.retired = true;
 
-            pending =
+            pendingExecutes =
                     this.pendingExecutes.toArray(
                             new PendingExecute[0]
                     );
 
+            pendingScheduledTasks =
+                    this.pendingScheduledTasks.toArray(
+                            new EntityScheduledTask[0]
+                    );
+
             this.pendingExecutes.clear();
+            this.pendingScheduledTasks.clear();
         }
 
-        for (final PendingExecute task : pending) {
+        for (final PendingExecute task : pendingExecutes) {
+            task.retireInternal();
+        }
+
+        for (final EntityScheduledTask task : pendingScheduledTasks) {
             task.retireInternal();
         }
     }
@@ -260,7 +299,7 @@ public final class FallbackEntityScheduler implements EntityScheduler {
             final EntityScheduledTask task,
             final long delay
     ) {
-        if (this.isRetired()) {
+        if (!this.registerScheduledTask(task)) {
             return false;
         }
 
@@ -275,6 +314,7 @@ public final class FallbackEntityScheduler implements EntityScheduler {
 
             return true;
         } catch (final IllegalPluginAccessException ignored) {
+            this.unregisterScheduledTask(task);
             return false;
         }
     }
@@ -439,6 +479,7 @@ public final class FallbackEntityScheduler implements EntityScheduler {
         private void executeInternal() {
             if (!this.plugin.isEnabled()) {
                 this.setStateVolatile(STATE_CANCELLED);
+                FallbackEntityScheduler.this.unregisterScheduledTask(this);
                 this.clearCallbacks();
                 return;
             }
@@ -498,6 +539,7 @@ public final class FallbackEntityScheduler implements EntityScheduler {
                 }
 
                 if (!reschedule) {
+                    FallbackEntityScheduler.this.unregisterScheduledTask(this);
                     this.clearCallbacks();
                 } else if (
                         !FallbackEntityScheduler.this.scheduleInternal(
@@ -506,7 +548,60 @@ public final class FallbackEntityScheduler implements EntityScheduler {
                         )
                 ) {
                     this.setStateVolatile(STATE_CANCELLED);
+                    FallbackEntityScheduler.this.unregisterScheduledTask(this);
                     this.clearCallbacks();
+                }
+            }
+        }
+
+        private void retireInternal() {
+            for (int current = this.getStateVolatile();;) {
+                switch (current) {
+                    case STATE_IDLE -> {
+                        current = this.compareAndExchangeState(
+                                STATE_IDLE,
+                                STATE_EXECUTING
+                        );
+
+                        if (current != STATE_IDLE) {
+                            continue;
+                        }
+
+                        FallbackEntityScheduler.this.unregisterScheduledTask(this);
+
+                        try {
+                            if (
+                                    this.plugin.isEnabled()
+                                            && this.retired != null
+                            ) {
+                                this.retired.run();
+                            }
+                        } catch (final Throwable throwable) {
+                            this.plugin.getLogger().log(
+                                    Level.WARNING,
+                                    "Entity retired task for "
+                                            + this.plugin.getDescription().getFullName()
+                                            + " generated an exception",
+                                    throwable
+                            );
+                        } finally {
+                            this.setStateVolatile(STATE_CANCELLED);
+                            this.clearCallbacks();
+                        }
+
+                        return;
+                    }
+
+                    case STATE_EXECUTING,
+                         STATE_EXECUTING_CANCELLED,
+                         STATE_FINISHED,
+                         STATE_CANCELLED -> {
+                        return;
+                    }
+
+                    default -> throw new IllegalStateException(
+                            "Unknown task state: " + current
+                    );
                 }
             }
         }
@@ -532,6 +627,7 @@ public final class FallbackEntityScheduler implements EntityScheduler {
                         );
 
                         if (current == STATE_IDLE) {
+                            FallbackEntityScheduler.this.unregisterScheduledTask(this);
                             this.clearCallbacks();
                             return CancelledState.CANCELLED_BY_CALLER;
                         }
