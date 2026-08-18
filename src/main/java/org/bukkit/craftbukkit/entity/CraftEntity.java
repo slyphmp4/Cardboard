@@ -106,6 +106,10 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
     public final io.papermc.paper.threadedregions.scheduler.EntityScheduler getScheduler() {
         return this.apiScheduler;
     }
+
+    public final void cardboard$retireScheduler() {
+        this.apiScheduler.retire();
+    }
     // Paper end - Folia schedulers
 
     public CraftEntity(final Entity entity) {

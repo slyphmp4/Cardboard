@@ -21,6 +21,7 @@ package org.cardboardpowered.mixin.server.level;
 import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import net.minecraft.server.level.ServerLevel.EntityCallbacks;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
@@ -57,6 +58,28 @@ public class EntityCallbacksMixin {
 
         bf.setValid(false);
         // Paper compatibility: isInWorld remains true after an entity has been added to a world
+
+        final Entity.RemovalReason removalReason =
+                entity.getRemovalReason();
+
+        /*
+         * Paper retires an entity scheduler only when the entity is
+         * truly removed from the server. Dimension changes keep the
+         * scheduler alive, and players use their own retirement path.
+         */
+        if (
+                !(entity instanceof ServerPlayer)
+                        && removalReason != null
+                        && removalReason
+                                != Entity.RemovalReason.CHANGED_DIMENSION
+        ) {
+            final org.bukkit.craftbukkit.entity.CraftEntity bukkitEntity =
+                    bf.getBukkitEntity();
+
+            if (bukkitEntity != null) {
+                bukkitEntity.cardboard$retireScheduler();
+            }
+        }
 
         CraftEventFactory.callEvent(
                 new EntityRemoveFromWorldEvent(

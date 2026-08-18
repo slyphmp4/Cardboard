@@ -7,7 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -22,13 +25,85 @@ public final class FallbackEntityScheduler implements EntityScheduler {
 
     private final CraftEntity entity;
 
+    /*
+     * Paper maintains a persistent retired state for an EntityScheduler.
+     * Merely checking Entity#isRemoved when the delayed task finally runs
+     * is insufficient: retirement must actively settle already-scheduled
+     * callbacks as soon as the entity leaves the server permanently.
+     */
+    private final Object lifecycleLock = new Object();
+
+    private final Set<PendingExecute> pendingExecutes =
+            new HashSet<>();
+
+    private boolean retired;
+
     public FallbackEntityScheduler(final CraftEntity entity) {
         this.entity = Objects.requireNonNull(entity, "entity");
     }
 
     private boolean isRetired() {
-        return this.entity.getHandleRaw() == null
-                || this.entity.getHandleRaw().isRemoved();
+        synchronized (this.lifecycleLock) {
+            return this.retired
+                    || this.entity.getHandleRaw() == null
+                    || this.entity.getHandleRaw().isRemoved();
+        }
+    }
+
+    private boolean registerPendingExecute(
+            final PendingExecute task
+    ) {
+        synchronized (this.lifecycleLock) {
+            if (
+                    this.retired
+                            || this.entity.getHandleRaw() == null
+                            || this.entity.getHandleRaw().isRemoved()
+            ) {
+                return false;
+            }
+
+            this.pendingExecutes.add(task);
+            return true;
+        }
+    }
+
+    private void unregisterPendingExecute(
+            final PendingExecute task
+    ) {
+        synchronized (this.lifecycleLock) {
+            this.pendingExecutes.remove(task);
+        }
+    }
+
+    /**
+     * Retires this scheduler and immediately settles pending execute()
+     * tasks through their retired callback.
+     *
+     * Paper performs scheduler retirement when an entity is truly
+     * removed from the server rather than waiting for each task's
+     * original execution tick.
+     */
+    public void retire() {
+        final PendingExecute[] pending;
+
+        synchronized (this.lifecycleLock) {
+            if (this.retired) {
+                return;
+            }
+
+            this.retired = true;
+
+            pending =
+                    this.pendingExecutes.toArray(
+                            new PendingExecute[0]
+                    );
+
+            this.pendingExecutes.clear();
+        }
+
+        for (final PendingExecute task : pending) {
+            task.retireInternal();
+        }
     }
 
     @Override
@@ -46,12 +121,21 @@ public final class FallbackEntityScheduler implements EntityScheduler {
         }
 
         /*
-         * Paper's execute() does not reject a disabled plugin at
-         * registration through EntityScheduler itself. Its wrapped
-         * callback simply does not execute in that case.
+         * Keep the existing disabled-plugin compatibility behaviour.
          */
         if (!plugin.isEnabled()) {
             return true;
+        }
+
+        final PendingExecute pending =
+                new PendingExecute(
+                        plugin,
+                        run,
+                        retired
+                );
+
+        if (!this.registerPendingExecute(pending)) {
+            return false;
         }
 
         try {
@@ -59,38 +143,17 @@ public final class FallbackEntityScheduler implements EntityScheduler {
                     .getGlobalRegionScheduler()
                     .runDelayed(
                             plugin,
-                            ignored -> {
-                                if (!plugin.isEnabled()) {
-                                    return;
-                                }
-
-                                try {
-                                    if (this.isRetired()) {
-                                        if (retired != null) {
-                                            retired.run();
-                                        }
-                                    } else {
-                                        run.run();
-                                    }
-                                } catch (final Throwable throwable) {
-                                    plugin.getLogger().log(
-                                            Level.WARNING,
-                                            "Entity task for "
-                                                    + plugin.getDescription().getFullName()
-                                                    + " generated an exception",
-                                            throwable
-                                    );
-                                }
-                            },
+                            ignored -> pending.executeInternal(),
                             Math.max(1L, delay)
                     );
 
             return true;
         } catch (final IllegalPluginAccessException ignored) {
             /*
-             * Plugin may have become disabled between the enabled
-             * check above and registration.
+             * Plugin may have become disabled between registration
+             * and delegation to the global scheduler.
              */
+            pending.cancelInternal();
             return true;
         }
     }
@@ -213,6 +276,89 @@ public final class FallbackEntityScheduler implements EntityScheduler {
             return true;
         } catch (final IllegalPluginAccessException ignored) {
             return false;
+        }
+    }
+
+    private final class PendingExecute {
+
+        private final Plugin plugin;
+        private final Runnable run;
+        private final Runnable retired;
+
+        private final AtomicBoolean settled =
+                new AtomicBoolean(false);
+
+        private PendingExecute(
+                final Plugin plugin,
+                final Runnable run,
+                final Runnable retired
+        ) {
+            this.plugin = plugin;
+            this.run = run;
+            this.retired = retired;
+        }
+
+        private void executeInternal() {
+            if (!this.settled.compareAndSet(false, true)) {
+                return;
+            }
+
+            FallbackEntityScheduler.this.unregisterPendingExecute(this);
+
+            if (!this.plugin.isEnabled()) {
+                return;
+            }
+
+            final boolean entityRetired =
+                    FallbackEntityScheduler.this.isRetired();
+
+            this.invoke(
+                    entityRetired
+                            ? this.retired
+                            : this.run
+            );
+        }
+
+        private void retireInternal() {
+            if (!this.settled.compareAndSet(false, true)) {
+                return;
+            }
+
+            FallbackEntityScheduler.this.unregisterPendingExecute(this);
+
+            if (!this.plugin.isEnabled()) {
+                return;
+            }
+
+            this.invoke(this.retired);
+        }
+
+        private void cancelInternal() {
+            if (!this.settled.compareAndSet(false, true)) {
+                return;
+            }
+
+            FallbackEntityScheduler.this.unregisterPendingExecute(this);
+        }
+
+        private void invoke(
+                final Runnable callback
+        ) {
+            if (callback == null) {
+                return;
+            }
+
+            try {
+                callback.run();
+            } catch (final Throwable throwable) {
+                this.plugin.getLogger().log(
+                        Level.WARNING,
+                        "Entity task for "
+                                + this.plugin.getDescription().getFullName()
+                                + " generated an exception",
+                        throwable
+                );
+            }
         }
     }
 
