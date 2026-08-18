@@ -56,7 +56,7 @@ public class EntityCallbacksMixin {
         EntityBridge bf = (EntityBridge) entity;
 
         bf.setValid(false);
-        bf.cb$setInWorld(false);
+        // Paper compatibility: isInWorld remains true after an entity has been added to a world
 
         CraftEventFactory.callEvent(
                 new EntityRemoveFromWorldEvent(
