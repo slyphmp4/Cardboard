@@ -486,6 +486,9 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
     @Inject(at = @At("HEAD"), method = "tickChildren")
     public void doBukkitRunnables(BooleanSupplier b, CallbackInfo ci) {
         ((CraftScheduler)CraftServer.INSTANCE.getScheduler()).mainThreadHeartbeat(tickCount);
+
+        ((io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler)
+                CraftServer.INSTANCE.getGlobalRegionScheduler()).tick();
         while (!processQueue.isEmpty())
             processQueue.remove().run();
     }
