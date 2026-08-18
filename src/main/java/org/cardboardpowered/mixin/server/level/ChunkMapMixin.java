@@ -15,9 +15,17 @@ public class ChunkMapMixin implements ChunkMapBridge {
     @Shadow
     public Long2ObjectLinkedOpenHashMap<ChunkHolder> visibleChunkMap;
 
+    @Shadow
+    public Long2ObjectLinkedOpenHashMap<ChunkHolder> updatingChunkMap;
+
     @Override
     public Long2ObjectLinkedOpenHashMap<ChunkHolder> getChunkHoldersBF() {
         return visibleChunkMap;
+    }
+
+    @Override
+    public Long2ObjectLinkedOpenHashMap<ChunkHolder> getUpdatingChunkHoldersBF() {
+        return updatingChunkMap;
     }
 
 }

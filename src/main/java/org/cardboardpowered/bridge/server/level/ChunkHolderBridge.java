@@ -18,12 +18,27 @@ public interface ChunkHolderBridge {
     // CraftBukkit end
 
     static LevelChunk getFullChunkNow(ChunkHolder holder) {
-    	 if (!ChunkLevel.fullStatus(holder.oldTicketLevel).isOrAfter(FullChunkStatus.FULL)) {
-             return null; // note: using oldTicketLevel for isLoaded checks
-         }
-         return getFullChunkNowUnchecked(holder);
-    }
+        int ticketLevel = holder.oldTicketLevel;
 
+        /*
+         * C2ME's rewritten chunk system uses its own ChunkHolder subclass.
+         * The inherited vanilla ticket fields are intentionally not kept
+         * authoritative there, so use the holder's virtual ticket-level API.
+         *
+         * Keep oldTicketLevel for vanilla/Paper parity.
+         */
+        if (holder.getClass().getName().equals(
+                "com.ishland.c2me.rewrites.chunksystem.common.NewChunkHolderVanillaInterface"
+        )) {
+            ticketLevel = holder.getTicketLevel();
+        }
+
+        if (!ChunkLevel.fullStatus(ticketLevel).isOrAfter(FullChunkStatus.FULL)) {
+            return null;
+        }
+
+        return getFullChunkNowUnchecked(holder);
+    }
     static LevelChunk getFullChunkNowUnchecked(ChunkHolder holder) {
     	// CompletableFuture<Either<Chunk, ChunkHolder.Unloaded>> statusFuture = holder.getFutureFor(ChunkStatus.FULL);
         // Either<Chunk, ChunkHolder.Unloaded> either = statusFuture.getNow(null);
@@ -36,5 +51,6 @@ public interface ChunkHolderBridge {
         // return (either == null) ? null : (WorldChunk) either.orElse(null);
         
     }
+
 
 }

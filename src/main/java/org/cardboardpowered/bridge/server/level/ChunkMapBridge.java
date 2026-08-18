@@ -7,4 +7,6 @@ public interface ChunkMapBridge {
 
     Long2ObjectLinkedOpenHashMap<ChunkHolder> getChunkHoldersBF();
 
+    Long2ObjectLinkedOpenHashMap<ChunkHolder> getUpdatingChunkHoldersBF();
+
 }

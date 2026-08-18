@@ -508,7 +508,15 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 
 	@Override
 	public Chunk getChunkAt(int x, int z) {
-		return ((LevelChunkBridge) world.getChunkSource().getChunk(x, z, true)).getBukkitChunk();
+		net.minecraft.world.level.chunk.LevelChunk chunk =
+				(net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(
+						x,
+						z,
+						ChunkStatus.FULL,
+						true
+				);
+
+		return ((LevelChunkBridge) chunk).getBukkitChunk();
 	}
 
 	@Override
@@ -1056,7 +1064,13 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 
 	@Override
 	public boolean isChunkLoaded(int x, int z) {
-		return (null != world.getChunkSource().getChunk(x, z, false));
+		ChunkHolder holder =
+				((ChunkMapBridge) (Object) world.getChunkSource().chunkMap)
+						.getUpdatingChunkHoldersBF()
+						.get(ChunkPos.pack(x, z));
+
+		return holder != null
+				&& ChunkHolderBridge.getFullChunkNow(holder) != null;
 	}
 
 	@Override
