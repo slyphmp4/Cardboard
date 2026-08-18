@@ -3268,11 +3268,30 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 		}
 	}
 
-	@Override
-	public void getChunksAtAsync(int minX, int minZ, int maxX, int maxZ, boolean urgent, @NotNull Runnable cb) {
-		// TODO Auto-generated method stub
-		// this.getHandle().loadChunks(minX, minZ, maxX, maxZ, urgent ? Priority.HIGHER : Priority.NORMAL, chunks -> cb.run());
-	}
+@Override
+public void getChunksAtAsync(int minX, int minZ, int maxX, int maxZ, boolean urgent, @NotNull Runnable cb) {
+Preconditions.checkNotNull(cb, "callback");
+Preconditions.checkArgument(minX <= maxX, "minX cannot be greater than maxX");
+Preconditions.checkArgument(minZ <= maxZ, "minZ cannot be greater than maxZ");
+
+List<CompletableFuture<Chunk>> futures = new ArrayList<>();
+
+for (int x = minX; x <= maxX; ++x) {
+for (int z = minZ; z <= maxZ; ++z) {
+futures.add(this.getChunkAtAsync(x, z, true, urgent));
+}
+}
+
+CompletableFuture
+.allOf(futures.toArray(new CompletableFuture<?>[0]))
+.thenRun(() -> {
+if (Bukkit.isPrimaryThread()) {
+cb.run();
+} else {
+this.world.getServer().execute(cb);
+}
+});
+}
 
 	@Override
 	public @Nullable RayTraceResult rayTrace(
