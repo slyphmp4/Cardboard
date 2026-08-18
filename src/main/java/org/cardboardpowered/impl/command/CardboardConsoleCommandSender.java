@@ -13,6 +13,7 @@ import org.bukkit.conversations.ConversationAbandonedEvent;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.permissions.PermissionAttachmentInfo;
+import org.bukkit.permissions.PermissibleBase;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.cardboardpowered.CardboardConfig;
@@ -23,6 +24,22 @@ import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 
 public class CardboardConsoleCommandSender implements ConsoleCommandSender, CommandSender {
+
+    private PermissibleBase perm;
+
+    private PermissibleBase permissions() {
+        if (this.perm == null) {
+            if (Bukkit.getServer() == null) {
+                throw new IllegalStateException(
+                        "Cannot initialize console permissions before Bukkit server is available"
+                );
+            }
+
+            this.perm = new PermissibleBase(this);
+        }
+
+        return this.perm;
+    }
 
     @Override
     public String getName() {
@@ -47,60 +64,73 @@ public class CardboardConsoleCommandSender implements ConsoleCommandSender, Comm
     public void sendMessage(String[] arg0) {
         for (String str : arg0) sendMessage(str);
     }
-
     @Override
-    public PermissionAttachment addAttachment(Plugin arg0) {
-        // TODO Auto-generated method stub
-        return null;
+    public PermissionAttachment addAttachment(Plugin plugin) {
+        return this.permissions().addAttachment(plugin);
     }
 
     @Override
-    public PermissionAttachment addAttachment(Plugin arg0, int arg1) {
-        // TODO Auto-generated method stub
-        return null;
+    public PermissionAttachment addAttachment(Plugin plugin, int ticks) {
+        return this.permissions().addAttachment(plugin, ticks);
     }
 
     @Override
-    public PermissionAttachment addAttachment(Plugin arg0, String arg1, boolean arg2) {
-        return null;
+    public PermissionAttachment addAttachment(
+            Plugin plugin,
+            String name,
+            boolean value
+    ) {
+        return this.permissions().addAttachment(plugin, name, value);
     }
 
     @Override
-    public PermissionAttachment addAttachment(Plugin arg0, String arg1, boolean arg2, int arg3) {
-        return null;
+    public PermissionAttachment addAttachment(
+            Plugin plugin,
+            String name,
+            boolean value,
+            int ticks
+    ) {
+        return this.permissions().addAttachment(
+                plugin,
+                name,
+                value,
+                ticks
+        );
     }
 
     @Override
     public Set<PermissionAttachmentInfo> getEffectivePermissions() {
-        return null;
+        return this.permissions().getEffectivePermissions();
     }
 
     @Override
-    public boolean hasPermission(String arg0) {
-        return true;
+    public boolean hasPermission(String name) {
+        return this.permissions().hasPermission(name);
     }
 
     @Override
-    public boolean hasPermission(Permission arg0) {
-        return true;
+    public boolean hasPermission(Permission permission) {
+        return this.permissions().hasPermission(permission);
     }
 
     @Override
-    public boolean isPermissionSet(String arg0) {
-        return true;
+    public boolean isPermissionSet(String name) {
+        return this.permissions().isPermissionSet(name);
     }
 
     @Override
-    public boolean isPermissionSet(Permission arg0) {
-        return true;
+    public boolean isPermissionSet(Permission permission) {
+        return this.permissions().isPermissionSet(permission);
     }
 
     @Override
     public void recalculatePermissions() {
+        this.permissions().recalculatePermissions();
     }
 
     @Override
-    public void removeAttachment(PermissionAttachment arg0) {
+    public void removeAttachment(PermissionAttachment attachment) {
+        this.permissions().removeAttachment(attachment);
     }
 
     @Override
