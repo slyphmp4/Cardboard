@@ -2571,8 +2571,10 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 			function.accept(itemEntity);
 		}
 
-		// this.nms.addFreshEntity(entity, SpawnReason.CUSTOM);
-		this.world.addEntity(entity);
+           this.addEntityToWorld(
+                   entity,
+                   SpawnReason.CUSTOM
+           );
 		return itemEntity;
 	}
 
@@ -3012,7 +3014,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 			java.util.function.@Nullable Consumer<? super T> function, @NotNull SpawnReason reason)
 			throws IllegalArgumentException {
 		// TODO Auto-generated method stub
-        return (T)((LivingEntity)this.spawn(location, clazz, function, reason));
+        return super.spawn(location, clazz, function, reason);
 	}
 
 	@Override
@@ -3096,14 +3098,82 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public void addEntityToWorld(net.minecraft.world.entity.Entity entity, SpawnReason reason) {
-		this.getHandle().addFreshEntity(entity);
-	}
+   public void addEntityToWorld(net.minecraft.world.entity.Entity entity, SpawnReason reason) {
+           if (!this.cardboard$callSpawnEvent(entity, reason)) {
+                   return;
+           }
 
-	@Override
-	public void addEntityWithPassengers(net.minecraft.world.entity.Entity entity, SpawnReason reason) {
-		this.getHandle().tryAddFreshEntityWithPassengers(entity);
-	}
+           this.getHandle().addFreshEntity(entity);
+   }
+
+   @Override
+   public void addEntityWithPassengers(net.minecraft.world.entity.Entity entity, SpawnReason reason) {
+           if (!this.cardboard$callSpawnEvent(entity, reason)) {
+                   return;
+           }
+
+           this.getHandle().tryAddFreshEntityWithPassengers(entity);
+   }
+
+   /**
+    * Paper-compatible Bukkit spawn-event bridge for entities
+    * created through CraftRegionAccessor / CraftWorld.
+    */
+   private boolean cardboard$callSpawnEvent(
+           net.minecraft.world.entity.Entity entity,
+           SpawnReason reason
+   ) {
+           if (entity == null) {
+                   return false;
+           }
+
+           if (entity instanceof net.minecraft.server.level.ServerPlayer) {
+                   return true;
+           }
+
+           final org.bukkit.event.entity.EntitySpawnEvent event;
+
+           if (
+                   entity instanceof
+                           net.minecraft.world.entity.LivingEntity living
+           ) {
+                   event =
+                           new org.bukkit.event.entity.CreatureSpawnEvent(
+                                   (org.bukkit.entity.LivingEntity)
+                                           ((EntityBridge) living)
+                                                   .getBukkitEntity(),
+                                   reason == null
+                                           ? SpawnReason.DEFAULT
+                                           : reason
+                           );
+           } else if (
+                   entity instanceof
+                           net.minecraft.world.entity.item.ItemEntity item
+           ) {
+                   event =
+                           new org.bukkit.event.entity.ItemSpawnEvent(
+                                   (org.bukkit.entity.Item)
+                                           ((EntityBridge) item)
+                                                   .getBukkitEntity()
+                           );
+           } else {
+                   final org.bukkit.entity.Entity bukkitEntity =
+                           ((EntityBridge) entity)
+                                   .getBukkitEntity();
+
+                   event =
+                           new org.bukkit.event.entity.EntitySpawnEvent(
+                                   bukkitEntity
+                           );
+           }
+
+           org.bukkit.Bukkit
+                   .getPluginManager()
+                   .callEvent(event);
+
+           return !event.isCancelled()
+                   && !entity.isRemoved();
+   }
 
 	@Override
     public <T extends Entity> T createEntity(Location location, Class<T> clazz) throws IllegalArgumentException {

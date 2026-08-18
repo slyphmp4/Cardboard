@@ -315,6 +315,33 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
             return false;
         }
 
+        /*
+         * Paper fires EntityTeleportEvent for Bukkit non-player
+         * teleports. Plugins may cancel the operation or redirect
+         * the destination with event#setTo.
+         */
+        final org.bukkit.event.entity.EntityTeleportEvent event =
+                new org.bukkit.event.entity.EntityTeleportEvent(
+                        this,
+                        this.getLocation(),
+                        location.clone()
+                );
+
+        this.server.getPluginManager().callEvent(event);
+
+        if (event.isCancelled() || event.getTo() == null) {
+            return false;
+        }
+
+        location = event.getTo().clone();
+
+        Preconditions.checkArgument(
+                location.getWorld() != null,
+                "Target world cannot be null"
+        );
+
+        location.checkFinite();
+
         final Set<net.minecraft.world.entity.Relative> relativeFlags = EnumSet.noneOf(net.minecraft.world.entity.Relative.class);
         for (final TeleportFlag flag : flags) {
             if (flag instanceof TeleportFlag.Relative relativeFlag) {
@@ -329,8 +356,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
                 location.getYaw(),
                 location.getPitch(),
                 relativeFlags,
-                TeleportTransition.DO_NOTHING//,
-                //cause // TODO
+                TeleportTransition.DO_NOTHING
         )) != null;
     }
 
@@ -474,8 +500,26 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public void remove() {
-        me.isaiah.common.cmixin.IMixinEntity common = (me.isaiah.common.cmixin.IMixinEntity)this.entity;
+        if (this.entity.isRemoved()) {
+            return;
+        }
+
+        me.isaiah.common.cmixin.IMixinEntity common =
+                (me.isaiah.common.cmixin.IMixinEntity) this.entity;
+
         common.Iremove(IRemoveReason.DISCARDED);
+
+        /*
+         * Bukkit Entity#remove() is a plugin removal on Paper.
+         * Cardboard currently has no NMS EntityRemoveEvent cause
+         * pipeline, so bridge the API operation here.
+         */
+        this.server.getPluginManager().callEvent(
+                new org.bukkit.event.entity.EntityRemoveEvent(
+                        this,
+                        org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN
+                )
+        );
     }
 
     @Override
@@ -530,14 +574,53 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
         Preconditions.checkArgument(passenger != null, "Entity passenger cannot be null");
         Preconditions.checkArgument(!this.equals(passenger), "Entity cannot ride itself.");
 
-        return ((CraftEntity) passenger).getHandle().startRiding(this.getHandle(), true, true);
+        if (!(passenger instanceof CraftEntity craftPassenger)) {
+            return false;
+        }
+
+        final org.bukkit.event.entity.EntityMountEvent event =
+                new org.bukkit.event.entity.EntityMountEvent(
+                        passenger,
+                        this
+                );
+
+        this.server.getPluginManager().callEvent(event);
+
+        if (event.isCancelled()) {
+            return false;
+        }
+
+        return craftPassenger.getHandle()
+                .startRiding(
+                        this.getHandle(),
+                        true,
+                        true
+                );
     }
 
     @Override
     public boolean removePassenger(org.bukkit.entity.Entity passenger) {
         Preconditions.checkArgument(passenger != null, "Entity passenger cannot be null");
 
-        ((CraftEntity) passenger).getHandle().stopRiding();
+        if (!(passenger instanceof CraftEntity craftPassenger)) {
+            return false;
+        }
+
+        if (craftPassenger.getHandle().getVehicle() == this.getHandle()) {
+            final org.bukkit.event.entity.EntityDismountEvent event =
+                    new org.bukkit.event.entity.EntityDismountEvent(
+                            passenger,
+                            this
+                    );
+
+            this.server.getPluginManager().callEvent(event);
+
+            if (event.isCancelled()) {
+                return false;
+            }
+        }
+
+        craftPassenger.getHandle().stopRiding();
         return true;
     }
 
