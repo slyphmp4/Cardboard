@@ -20,7 +20,8 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.javazilla.bukkitfabric.BukkitFabricMod"
+      "com.javazilla.bukkitfabric.BukkitFabricMod",
+      "org.cardboardpowered.event.ChunkLifecycleBridge"
     ]
   },
   "mixins": [
