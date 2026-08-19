@@ -39,7 +39,14 @@ public abstract class CardboardAbstractServer implements org.bukkit.Server {
     }
     
     public String getShortVersion() {
-        return shortVersion + " (MC: " + server.getServerVersion() + ")";
+        String mcVersion = server.getServerVersion();
+
+        // Compatibility for legacy plugins that only understand 1.x Minecraft versions.
+        if (mcVersion != null && mcVersion.matches("\\d{2}\\.\\d+(?:\\.\\d+)?")) {
+            return shortVersion + " (MC: " + mcVersion + "; Legacy MC: 1.21)";
+        }
+
+        return shortVersion + " (MC: " + mcVersion + ")";
     }
     
     public void loadIcon() {
