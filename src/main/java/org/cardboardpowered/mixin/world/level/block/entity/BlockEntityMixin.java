@@ -4,11 +4,19 @@ import java.util.HashSet;
 import java.util.Set;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer;
 import org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.cardboardpowered.bridge.world.level.block.entity.BlockEntityBridge;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentGetter;
@@ -25,6 +33,48 @@ public class BlockEntityMixin implements BlockEntityBridge {
 
     private static final CraftPersistentDataTypeRegistry DATA_TYPE_REGISTRY = new CraftPersistentDataTypeRegistry();
     public CraftPersistentDataContainer persistentDataContainer;
+
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void cardboard$initPersistentDataContainer(
+            BlockEntityType<?> type,
+            BlockPos pos,
+            BlockState state,
+            CallbackInfo ci
+    ) {
+        this.persistentDataContainer =
+                new CraftPersistentDataContainer(
+                        DATA_TYPE_REGISTRY
+                );
+    }
+
+    @Inject(method = "loadAdditional", at = @At("TAIL"))
+    private void cardboard$loadPersistentDataContainer(
+            ValueInput input,
+            CallbackInfo ci
+    ) {
+        this.persistentDataContainer.clear();
+
+        input.read(
+                "PublicBukkitValues",
+                CompoundTag.CODEC
+        ).ifPresent(
+                this.persistentDataContainer::putAll
+        );
+    }
+
+    @Inject(method = "saveAdditional", at = @At("TAIL"))
+    private void cardboard$savePersistentDataContainer(
+            ValueOutput output,
+            CallbackInfo ci
+    ) {
+        if (!this.persistentDataContainer.isEmpty()) {
+            output.store(
+                    "PublicBukkitValues",
+                    CompoundTag.CODEC,
+                    this.persistentDataContainer.toTagCompound()
+            );
+        }
+    }
 
     @Shadow
     private DataComponentMap components = DataComponentMap.EMPTY;

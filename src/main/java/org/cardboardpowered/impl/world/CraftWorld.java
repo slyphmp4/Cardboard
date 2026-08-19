@@ -886,7 +886,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public int getMaxHeight() {
-		return world.getHeight();
+		return this.world.getMaxY() + 1;
 	}
 
 	@Override
