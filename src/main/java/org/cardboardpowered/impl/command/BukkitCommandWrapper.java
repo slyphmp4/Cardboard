@@ -54,19 +54,13 @@ public class BukkitCommandWrapper implements com.mojang.brigadier.Command<Comman
             return 0;
         }
     }
-
     public CommandSender getSender(CommandSourceStack source) {
-        try {
-            ServerPlayer plr = source.getPlayer();
-            if (null != plr)
-                return ((CommandSourceBridge)plr).getBukkitSender(source);
-        } catch (Exception ignored) {
-            //ex.printStackTrace();
+        if (source.source instanceof net.minecraft.server.rcon.RconConsoleSource rconSource) {
+            return new CardboardRemoteConsoleCommandSender(rconSource);
         }
-        Entity e = source.getEntity();
-        return (null != e) ? ((CommandSourceBridge)e).getBukkitSender(source) : null;
-    }
 
+        return ((CommandSourceStackBridge) (Object) source).getBukkitSender();
+    }
     @Override
     public CompletableFuture<Suggestions> getSuggestions(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
         List<String> results = ((CraftServer)Bukkit.getServer()).tabComplete(((CommandSourceStackBridge) context.getSource()).getBukkitSender(), builder.getInput(), context.getSource().getLevel(), context.getSource().getPosition(), true);
