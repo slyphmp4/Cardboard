@@ -144,6 +144,17 @@ dependencies {
 	include(implementation("org.apache.maven.resolver:maven-resolver-spi:1.9.18"))
 	*/
 	include(implementation("org.apache.maven.resolver:maven-resolver-supplier:1.9.18"))
+    // Cardboard V10: Paper plugin library loader HTTP runtime
+    //
+    // Paper plugins may declare libraries: in plugin.yml.
+    // Paper's LibraryLoader uses Maven Resolver HTTP transport.
+    //
+    // Fabric Loom include() is non-transitive, therefore these
+    // runtime libraries must be nested explicitly.
+    include("org.apache.httpcomponents:httpclient:4.5.14")
+    include("org.apache.httpcomponents:httpcore:4.4.16")
+    include("commons-codec:commons-codec:1.16.0")
+    include("org.slf4j:jcl-over-slf4j:1.7.36")
 	/*
 	include(implementation("org.apache.maven.resolver:maven-resolver-named-locks:1.9.18"))
 	include(implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.9.18"))
