@@ -1,6 +1,10 @@
 [defaults]
 host = "127.0.0.1"
 port = 25565
+# STATUS state does not require the login protocol version to match; zero keeps
+# the runner independent from protocol-number tables while still exercising
+# the real Minecraft handshake and status packet parser.
+protocol_version = 0
 connect_timeout_seconds = 3
 sample_interval_seconds = 5
 
@@ -23,7 +27,7 @@ connect_rate_per_second = 5
 reconnect = true
 
 [limits]
-max_unexpected_disconnect_ratio = 0.10
 max_connect_failure_ratio = 0.05
+max_protocol_failure_ratio = 0.01
 max_process_rss_growth_mb = 1024
 max_error_lines = 0
