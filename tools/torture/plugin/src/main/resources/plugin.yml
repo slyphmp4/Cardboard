@@ -1,0 +1,13 @@
+name: CardboardTorture
+version: 1.0.0
+main: org.cardboardpowered.torture.CardboardTorturePlugin
+load: POSTWORLD
+commands:
+  cardboardtorture:
+    description: Run Cardboard post-release API torture workloads
+    usage: /cardboardtorture <start|stop|status> [seconds]
+    permission: cardboard.torture.admin
+permissions:
+  cardboard.torture.admin:
+    description: Allows Cardboard torture workload control
+    default: op
