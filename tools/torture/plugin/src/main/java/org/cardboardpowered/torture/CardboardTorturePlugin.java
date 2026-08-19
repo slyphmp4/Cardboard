@@ -7,7 +7,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -37,6 +36,9 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
     private final AtomicLong projectileLaunchEvents = new AtomicLong();
     private final AtomicLong chunkLoadEvents = new AtomicLong();
     private final AtomicLong chunkUnloadEvents = new AtomicLong();
+    private final AtomicLong chunkLoadAttempts = new AtomicLong();
+    private final AtomicLong chunkUnloadRequests = new AtomicLong();
+    private final AtomicLong chunkUnloadVerified = new AtomicLong();
     private final AtomicLong syncIterations = new AtomicLong();
     private final AtomicLong asyncIterations = new AtomicLong();
 
@@ -130,14 +132,11 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
         World world = worlds.get((int) (iteration % worlds.size()));
         Location spawn = world.getSpawnLocation();
 
-        int offsetX = (int) ((iteration % 17L) - 8L);
-        int offsetZ = (int) (((iteration / 17L) % 17L) - 8L);
-        int chunkX = (spawn.getBlockX() >> 4) + offsetX;
-        int chunkZ = (spawn.getBlockZ() >> 4) + offsetZ;
-
-        Chunk chunk = world.getChunkAt(chunkX, chunkZ);
-        if ((iteration & 3L) == 0L) {
-            world.unloadChunkRequest(chunk.getX(), chunk.getZ());
+        // Chunks near spawn are commonly kept loaded by spawn/player tickets, which
+        // makes them useless for a load/unload torture test. Every second we instead
+        // exercise a rotating pool of chunks at least 64 chunks away from spawn.
+        if (iteration % 20L == 1L) {
+            stressChunkLifecycle(world, spawn, iteration);
         }
 
         Location entityLocation = spawn.clone().add(
@@ -182,8 +181,42 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
                     + " projectileEvents=" + this.projectileLaunchEvents.get()
                     + " chunkLoad=" + this.chunkLoadEvents.get()
                     + " chunkUnload=" + this.chunkUnloadEvents.get()
+                    + " chunkLoadAttempts=" + this.chunkLoadAttempts.get()
+                    + " chunkUnloadRequests=" + this.chunkUnloadRequests.get()
+                    + " chunkUnloadVerified=" + this.chunkUnloadVerified.get()
             );
         }
+    }
+
+    private void stressChunkLifecycle(World world, Location spawn, long iteration) {
+        long sequence = iteration / 20L;
+        int slot = (int) (sequence % 64L);
+        int baseX = spawn.getBlockX() >> 4;
+        int baseZ = spawn.getBlockZ() >> 4;
+        int chunkX = baseX + 64 + (slot % 8) * 2;
+        int chunkZ = baseZ + 64 + (slot / 8) * 2;
+
+        this.chunkLoadAttempts.incrementAndGet();
+        world.loadChunk(chunkX, chunkZ, true);
+
+        if (!world.isChunkLoaded(chunkX, chunkZ)) {
+            getLogger().severe(
+                "TORTURE_CHUNK_LOAD_FAILURE world=" + world.getName()
+                    + " x=" + chunkX + " z=" + chunkZ
+            );
+            return;
+        }
+
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            this.chunkUnloadRequests.incrementAndGet();
+            world.unloadChunkRequest(chunkX, chunkZ);
+
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                    this.chunkUnloadVerified.incrementAndGet();
+                }
+            }, 10L);
+        }, 5L);
     }
 
     private void asyncIteration() {
@@ -251,6 +284,9 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
                     + " projectileEvents=" + this.projectileLaunchEvents.get()
                     + " chunkLoad=" + this.chunkLoadEvents.get()
                     + " chunkUnload=" + this.chunkUnloadEvents.get()
+                    + " chunkLoadAttempts=" + this.chunkLoadAttempts.get()
+                    + " chunkUnloadRequests=" + this.chunkUnloadRequests.get()
+                    + " chunkUnloadVerified=" + this.chunkUnloadVerified.get()
             );
         }
         this.startedAtMillis = 0L;
@@ -269,6 +305,9 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
         this.projectileLaunchEvents.set(0L);
         this.chunkLoadEvents.set(0L);
         this.chunkUnloadEvents.set(0L);
+        this.chunkLoadAttempts.set(0L);
+        this.chunkUnloadRequests.set(0L);
+        this.chunkUnloadVerified.set(0L);
         this.syncIterations.set(0L);
         this.asyncIterations.set(0L);
     }
@@ -287,6 +326,11 @@ public final class CardboardTorturePlugin extends JavaPlugin implements Listener
                 + " projectile=" + this.projectileLaunchEvents.get()
                 + " chunkLoad=" + this.chunkLoadEvents.get()
                 + " chunkUnload=" + this.chunkUnloadEvents.get()
+        );
+        sender.sendMessage(
+            "chunks attempts=" + this.chunkLoadAttempts.get()
+                + " unloadRequests=" + this.chunkUnloadRequests.get()
+                + " unloadVerified=" + this.chunkUnloadVerified.get()
         );
     }
 
