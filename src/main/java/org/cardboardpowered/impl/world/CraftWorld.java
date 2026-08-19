@@ -1452,7 +1452,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 		int px = x << 4;
 		int pz = z << 4;
 
-		int height = this.getMaxHeight() / 16;
+		int height = this.world.getHeight() / 16;
 		for(int idx = 0; idx < 64; idx++)
 			this.world.sendBlockUpdated(new BlockPos(px + (idx / height), ((idx % height) * 16), pz), Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState(), 3);
 		this.world.sendBlockUpdated(new BlockPos(px + 15, (height * 16) - 1, pz + 15), Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState(), 3);
@@ -2172,7 +2172,12 @@ cardboard$currentTicket
 );
 }
 
-world.addFreshEntity(entity); // TODO spawn reason
+if (!this.cardboard$callSpawnEvent(entity, reason)) {
+            return (T) ((EntityBridge) entity)
+                    .getBukkitEntity();
+        }
+
+        world.addFreshEntity(entity); // TODO spawn reason
 return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
@@ -2328,29 +2333,66 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	}
 
-	@Override
-	public LightningStrike strikeLightning(Location loc) {
-		LightningBolt lightning = net.minecraft.world.entity.EntityTypes.LIGHTNING_BOLT.create(world, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		lightning.snapTo(loc.getX(), loc.getY(), loc.getZ());
-		// nms.strikeLightning(lightning);
-		return (LightningStrike) ((EntityBridge) lightning).getBukkitEntity();
-	}
+    @Override
+    public LightningStrike strikeLightning(Location loc) {
+        return this.strikeLightning0(
+                loc,
+                false
+        );
+    }
 
-	@Override
-	public LightningStrike strikeLightningEffect(Location arg0) {
-		// TODO Auto-generated method stub
-		return strikeLightning0(arg0, true);
-	}
-	
-	private LightningStrike strikeLightning0(Location loc, boolean isVisual) {
-		Preconditions.checkArgument(loc != null, "Location cannot be null");
-		LightningBolt lightning = net.minecraft.world.entity.EntityTypes.LIGHTNING_BOLT.create(this.world, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		lightning.snapTo(loc.getX(), loc.getY(), loc.getZ());
-		// lightning.isEffect = isVisual;
-		// this.nms.strikeLightning(lightning);
-		return (LightningStrike) ((EntityBridge) lightning).getBukkitEntity();
-	}
+    @Override
+    public LightningStrike strikeLightningEffect(Location loc) {
+        return this.strikeLightning0(
+                loc,
+                true
+        );
+    }
 
+    private LightningStrike strikeLightning0(
+            Location loc,
+            boolean isVisual
+    ) {
+        Preconditions.checkArgument(
+                loc != null,
+                "Location cannot be null"
+        );
+
+        LightningBolt lightning =
+                net.minecraft.world.entity.EntityTypes
+                        .LIGHTNING_BOLT
+                        .create(
+                                this.world,
+                                net.minecraft.world.entity.EntitySpawnReason.COMMAND
+                        );
+
+        Preconditions.checkState(
+                lightning != null,
+                "Could not create lightning entity"
+        );
+
+        lightning.snapTo(
+                loc.getX(),
+                loc.getY(),
+                loc.getZ()
+        );
+
+        lightning.setVisualOnly(isVisual);
+
+        /*
+         * Bukkit World#strikeLightning / strikeLightningEffect
+         * are CUSTOM lightning causes even though the NMS entity
+         * itself is constructed with EntitySpawnReason.COMMAND.
+         */
+        this.addEntityToWorld(
+                lightning,
+                SpawnReason.CUSTOM
+        );
+
+        return (LightningStrike)
+                ((EntityBridge) lightning)
+                        .getBukkitEntity();
+    }
 	@Override
 	public boolean unloadChunk(int x, int z) {
 		return unloadChunk(x, z, true);
@@ -2365,36 +2407,70 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 		return unloadChunk0(chunk.getX(), chunk.getZ(), true);
 	}
 
-	private boolean unloadChunk0(int x, int z, boolean save) {
-	    // First check if the chunk is in use - critical safety check
-	    if (isChunkInUse(x, z)) {
-	        return false;
-	    }
-	
-	    net.minecraft.world.level.chunk.LevelChunk chunk = world.getChunk(x, z);
-	    if (chunk == null) {
-	        return true; // Already unloaded
-	    }
-	
-	    // Set save flag if needed
-	    // chunk.mustNotSave = !save;
-	    
-	    // Use the request system instead of direct manipulation
-	    unloadChunkRequest(x, z);
-	    
-	    // Wait for pending tasks to complete
-	    world.getChunkSource().pollTask();
-	    
-	    // Verify the chunk was actually unloaded
-	    return !isChunkLoaded(x, z);
-	}
+    private boolean unloadChunk0(
+            int x,
+            int z,
+            boolean save
+    ) {
+        if (!this.isChunkLoaded(x, z)) {
+            return true;
+        }
 
-	@Override
-	public boolean unloadChunkRequest(int arg0, int arg1) {
-		// TODO Auto-generated method stub
-		return false;
-	}
+        net.minecraft.world.level.chunk.LevelChunk chunk =
+                this.world.getChunk(
+                        x,
+                        z
+                );
 
+        if (!save) {
+            chunk.tryMarkSaved();
+        }
+
+        /*
+         * unloadChunkRequest removes the same ticket installed
+         * by loadChunk(). Actual unload may complete on a later
+         * chunk-system tick, so a false return here is legal.
+         */
+        this.unloadChunkRequest(
+                x,
+                z
+        );
+
+        this.world
+                .getChunkSource()
+                .pollTask();
+
+        return !this.isChunkLoaded(
+                x,
+                z
+        );
+    }
+
+    @Override
+    public boolean unloadChunkRequest(
+            int x,
+            int z
+    ) {
+        if (
+                this.isChunkLoaded(
+                        x,
+                        z
+                )
+        ) {
+            this.world
+                    .getChunkSource()
+                    .removeTicketWithRadius(
+                            ChunkTicketBridge.PLUGIN,
+                            new ChunkPos(
+                                    x,
+                                    z
+                            ),
+                            1
+                    );
+        }
+
+        return true;
+    }
 	public ServerLevel getHandle() {
 		return world;
 	}
@@ -3119,62 +3195,124 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
     * Paper-compatible Bukkit spawn-event bridge for entities
     * created through CraftRegionAccessor / CraftWorld.
     */
-   private boolean cardboard$callSpawnEvent(
-           net.minecraft.world.entity.Entity entity,
-           SpawnReason reason
-   ) {
-           if (entity == null) {
-                   return false;
-           }
+    private boolean cardboard$callSpawnEvent(
+            net.minecraft.world.entity.Entity entity,
+            SpawnReason reason
+    ) {
+        if (entity == null) {
+            return false;
+        }
 
-           if (entity instanceof net.minecraft.server.level.ServerPlayer) {
-                   return true;
-           }
+        if (
+                entity instanceof
+                        net.minecraft.server.level.ServerPlayer
+        ) {
+            return true;
+        }
 
-           final org.bukkit.event.entity.EntitySpawnEvent event;
+        final SpawnReason effectiveReason =
+                reason == null
+                        ? SpawnReason.DEFAULT
+                        : reason;
 
-           if (
-                   entity instanceof
-                           net.minecraft.world.entity.LivingEntity living
-           ) {
-                   event =
-                           new org.bukkit.event.entity.CreatureSpawnEvent(
-                                   (org.bukkit.entity.LivingEntity)
-                                           ((EntityBridge) living)
-                                                   .getBukkitEntity(),
-                                   reason == null
-                                           ? SpawnReason.DEFAULT
-                                           : reason
-                           );
-           } else if (
-                   entity instanceof
-                           net.minecraft.world.entity.item.ItemEntity item
-           ) {
-                   event =
-                           new org.bukkit.event.entity.ItemSpawnEvent(
-                                   (org.bukkit.entity.Item)
-                                           ((EntityBridge) item)
-                                                   .getBukkitEntity()
-                           );
-           } else {
-                   final org.bukkit.entity.Entity bukkitEntity =
-                           ((EntityBridge) entity)
-                                   .getBukkitEntity();
+        final org.bukkit.entity.Entity bukkitEntity =
+                ((EntityBridge) entity)
+                        .getBukkitEntity();
 
-                   event =
-                           new org.bukkit.event.entity.EntitySpawnEvent(
-                                   bukkitEntity
-                           );
-           }
+        final org.bukkit.event.Event event;
 
-           org.bukkit.Bukkit
-                   .getPluginManager()
-                   .callEvent(event);
+        if (
+                entity instanceof
+                        net.minecraft.world.entity.LivingEntity living
+        ) {
+            event =
+                    new org.bukkit.event.entity.CreatureSpawnEvent(
+                            (org.bukkit.entity.LivingEntity)
+                                    ((EntityBridge) living)
+                                            .getBukkitEntity(),
+                            effectiveReason
+                    );
+        } else if (
+                entity instanceof
+                        net.minecraft.world.entity.item.ItemEntity item
+        ) {
+            event =
+                    new org.bukkit.event.entity.ItemSpawnEvent(
+                            (org.bukkit.entity.Item)
+                                    ((EntityBridge) item)
+                                            .getBukkitEntity()
+                    );
+        } else if (
+                bukkitEntity instanceof
+                        org.bukkit.entity.Projectile projectile
+        ) {
+            event =
+                    new org.bukkit.event.entity.ProjectileLaunchEvent(
+                            projectile
+                    );
+        } else if (
+                bukkitEntity instanceof
+                        org.bukkit.entity.Vehicle vehicle
+        ) {
+            event =
+                    new org.bukkit.event.vehicle.VehicleCreateEvent(
+                            vehicle
+                    );
+        } else if (
+                bukkitEntity instanceof
+                        org.bukkit.entity.LightningStrike lightning
+        ) {
+            final org.bukkit.event.weather.LightningStrikeEvent.Cause cause =
+                    switch (effectiveReason) {
+                        case COMMAND ->
+                                org.bukkit.event.weather.LightningStrikeEvent.Cause.COMMAND;
 
-           return !event.isCancelled()
-                   && !entity.isRemoved();
-   }
+                        case CUSTOM ->
+                                org.bukkit.event.weather.LightningStrikeEvent.Cause.CUSTOM;
 
+                        case SPAWNER ->
+                                org.bukkit.event.weather.LightningStrikeEvent.Cause.SPAWNER;
+
+                        default ->
+                                org.bukkit.event.weather.LightningStrikeEvent.Cause.UNKNOWN;
+                    };
+
+            if (
+                    cause
+                            == org.bukkit.event.weather.LightningStrikeEvent.Cause.UNKNOWN
+                            && effectiveReason
+                            == SpawnReason.DEFAULT
+            ) {
+                return true;
+            }
+
+            event =
+                    new org.bukkit.event.weather.LightningStrikeEvent(
+                            this,
+                            lightning,
+                            cause
+                    );
+        } else {
+            event =
+                    new org.bukkit.event.entity.EntitySpawnEvent(
+                            bukkitEntity
+                    );
+        }
+
+        org.bukkit.Bukkit
+                .getPluginManager()
+                .callEvent(
+                        event
+                );
+
+        final boolean cancelled =
+                event instanceof
+                        org.bukkit.event.Cancellable cancellable
+                        && cancellable.isCancelled();
+
+        return !cancelled
+                && !entity.isRemoved();
+    }
 	@Override
     public <T extends Entity> T createEntity(Location location, Class<T> clazz) throws IllegalArgumentException {
         net.minecraft.world.entity.Entity entity = this.createEntity(location, clazz, true);
