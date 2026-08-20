@@ -65,6 +65,18 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                 printSummary(sender);
                 yield true;
             }
+            case "summary" -> {
+                printSummaryLine(sender);
+                yield true;
+            }
+            case "failures" -> {
+                printFailures(sender);
+                yield true;
+            }
+            case "wave2b" -> {
+                printWave2B(sender);
+                yield true;
+            }
             case "reset" -> {
                 if (running) {
                     sender.sendMessage("CardboardCompatProbe is currently running.");
@@ -172,11 +184,39 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                         );
                     }
 
-                    finishProbe(sender);
+                    startWave2B(sender);
                 });
             });
         } catch (Throwable throwable) {
             fail("scheduler.async", describe(throwable));
+            skip(
+                "scheduler.async-return",
+                "legacy async scheduler failed before the return callback"
+            );
+            startWave2B(sender);
+        }
+    }
+
+    private void startWave2B(CommandSender sender) {
+        try {
+            Wave2BCompatChecks.start(
+                this,
+                this::pass,
+                this::fail,
+                this::skip,
+                () -> {
+                    if (Bukkit.isPrimaryThread()) {
+                        finishProbe(sender);
+                    } else {
+                        Bukkit.getScheduler().runTask(
+                            this,
+                            () -> finishProbe(sender)
+                        );
+                    }
+                }
+            );
+        } catch (Throwable throwable) {
+            fail("wave2b.bootstrap", describe(throwable));
             finishProbe(sender);
         }
     }
@@ -389,31 +429,83 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
         printSummary(sender);
     }
 
-    private void printSummary(CommandSender sender) {
+    private String summaryLine() {
         EnumMap<Status, Integer> counts = new EnumMap<>(Status.class);
+
         for (Status status : Status.values()) {
             counts.put(status, 0);
         }
+
         for (ProbeResult result : results.values()) {
-            counts.compute(result.status(), (ignored, count) -> count == null ? 1 : count + 1);
-        }
-
-        sender.sendMessage(
-            "CardboardCompatProbe running=" + running
-                + " total=" + results.size()
-                + " pass=" + counts.get(Status.PASS)
-                + " fail=" + counts.get(Status.FAIL)
-                + " skip=" + counts.get(Status.SKIP)
-                + " unsupported=" + counts.get(Status.UNSUPPORTED)
-                + " paperDifference=" + counts.get(Status.PAPER_DIFFERENCE)
-        );
-
-        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
-            ProbeResult result = entry.getValue();
-            sender.sendMessage(
-                "[" + result.status() + "] " + entry.getKey() + " - " + result.detail()
+            counts.compute(
+                result.status(),
+                (ignored, count) -> count == null ? 1 : count + 1
             );
         }
+
+        return "CardboardCompatProbe running=" + running
+            + " total=" + results.size()
+            + " pass=" + counts.get(Status.PASS)
+            + " fail=" + counts.get(Status.FAIL)
+            + " skip=" + counts.get(Status.SKIP)
+            + " unsupported=" + counts.get(Status.UNSUPPORTED)
+            + " paperDifference=" + counts.get(Status.PAPER_DIFFERENCE);
+    }
+
+    private void printSummaryLine(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+    }
+
+    private void printSummary(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+
+        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
+            sender.sendMessage(formatResult(entry));
+        }
+    }
+
+    private void printFailures(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+
+        boolean found = false;
+
+        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
+            if (entry.getValue().status() != Status.PASS) {
+                sender.sendMessage(formatResult(entry));
+                found = true;
+            }
+        }
+
+        if (!found) {
+            sender.sendMessage("No non-PASS results.");
+        }
+    }
+
+    private void printWave2B(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+
+        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
+            String id = entry.getKey();
+
+            if (
+                id.startsWith("paper.scheduler.")
+                    || id.startsWith("chunk.")
+                    || id.startsWith("wave2b.")
+            ) {
+                sender.sendMessage(formatResult(entry));
+            }
+        }
+    }
+
+    private static String formatResult(
+        Map.Entry<String, ProbeResult> entry
+    ) {
+        ProbeResult result = entry.getValue();
+
+        return "[" + result.status() + "] "
+            + entry.getKey()
+            + " - "
+            + result.detail();
     }
 
     @EventHandler
