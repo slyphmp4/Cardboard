@@ -1,0 +1,54 @@
+Cardboard Point 4 — Wave 2B compatibility baseline
+
+Date:
+Fri Aug 21 01:03:41 MSK 2026
+
+Git branch:
+agent/paper-compat-matrix
+
+Git HEAD:
+a276305a351506323bbbad5f429ccc9664bc36f0
+
+Cardboard runtime binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Compatibility probe binary:
+04154c362be9ed4dd6eedb1cffe27c1f447dd3475433ebc21a59ce81ea7f920c  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Plugins:
+Plugins (5): [32mPlaceholderAPI[37m, [32mCardboardCompatProbe[37m, [32mUltraPermissions[37m, [32mCardboardTorture[37m, [32mCoreProtect
+[0m
+
+Summary:
+CardboardCompatProbe running=false total=57 pass=57 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Non-PASS:
+CardboardCompatProbe running=false total=57 pass=57 fail=0 skip=0 unsupported=0 paperDifference=0
+[0mNo non-PASS results.
+[0m
+
+Wave 2B:
+CardboardCompatProbe running=false total=57 pass=57 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] paper.scheduler.global - GlobalRegionScheduler executed on the primary thread
+[0m[PASS] paper.scheduler.region - RegionScheduler executed through the server region scheduler
+[0m[PASS] paper.scheduler.async - Paper AsyncScheduler executed off the primary thread
+[0m[PASS] chunk.test-target - мир 64,64
+[0m[PASS] chunk.load-api - loadChunk returned true and chunk became Bukkit-visible
+[0m[PASS] chunk.load-event - ChunkLoadEvent observed for target chunk
+[0m[PASS] chunk.load-event-primary - ChunkLoadEvent ran on primary thread
+[0m[PASS] chunk.load-event-visible - target chunk was Bukkit-visible inside ChunkLoadEvent
+[0m[PASS] chunk.unload-request - unloadChunkRequest accepted target chunk
+[0m[PASS] chunk.unload-event - ChunkUnloadEvent observed for target chunk
+[0m[PASS] chunk.unload-event-primary - ChunkUnloadEvent ran on primary thread
+[0m[PASS] chunk.unload-event-visible - target chunk remained Bukkit-visible inside ChunkUnloadEvent
+[0m[PASS] chunk.unloaded-state - target chunk became unloaded after lifecycle callback
+[0m[PASS] chunk.reload-api - previously unloaded chunk loaded again
+[0m[PASS] chunk.reload-event - second ChunkLoadEvent observed after reload
+[0m[PASS] chunk.reload-not-new - reloaded chunk was not reported as newly generated
+[0m[PASS] chunk.event-order - LOAD -> UNLOAD -> LOAD
+[0m
+
+TPS:
+The game is running normallyTarget tick rate: 20.0 per second.
+[0mAverage time per tick: 0.2ms (Target: 50.0ms)Percentiles: P50: 0.2ms P95: 0.3ms P99: 0.4ms. Sample: 100
