@@ -1,0 +1,71 @@
+Cardboard Point 4 — Wave 2A compatibility baseline
+
+Date:
+Fri Aug 21 00:51:18 MSK 2026
+
+Git branch:
+agent/paper-compat-matrix
+
+Git HEAD:
+f8ceb1e97ea33ede8b530505e827565ce1fbf767
+
+Cardboard runtime binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Compatibility probe binary:
+5283860fd33641ccfcc7d2942f1775cd0681c2111adbe081fb8bba413987fe5a  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Active Cardboard JARs:
+Cardboard-26.2.jar
+
+Plugins:
+Plugins (5): [32mPlaceholderAPI[37m, [32mCardboardCompatProbe[37m, [32mUltraPermissions[37m, [32mCardboardTorture[37m, [32mCoreProtect
+[0m
+
+Compatibility results:
+CardboardCompatProbe running=false total=40 pass=40 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] server.bukkit-instance - Bukkit.getServer() is available
+[0m[PASS] server.primary-thread - probe callback executed on the primary thread
+[0m[PASS] server.version - git-e360081 (MC: 26.2; Legacy MC: 1.21)
+[0m[PASS] plugin.manager - PluginManager resolves CardboardCompatProbe
+[0m[PASS] services.manager - ServicesManager is available
+[0m[PASS] command.sender.rcon - org.cardboardpowered.impl.command.CardboardRemoteConsoleCommandSender
+[0m[PASS] permissions.admin-node - command sender has cardboard.compat.admin
+[0m[PASS] real-plugin.placeholderapi - PlaceholderAPI 2.12.3
+[0m[PASS] real-plugin.ultrapermissions - UltraPermissions 5.6.8
+[0m[PASS] real-plugin.coreprotect - CoreProtect 24.0
+[0m[PASS] command.plugin-command - Bukkit resolves the probe PluginCommand
+[0m[PASS] command.dispatch-status - Bukkit.dispatchCommand executed the probe status command
+[0m[PASS] command.dispatch-unknown - unknown command returned false
+[0m[PASS] permissions.dynamic-register - cardboard.compat.wave2.dynamic.1613861405d648dba65ce7c44bba6795
+[0m[PASS] permissions.attachment - temporary PermissionAttachment became effective
+[0m[PASS] services.register-load - service provider round-trip succeeded
+[0m[PASS] services.unregister - provider disappeared after unregister
+[0m[PASS] namespaced-key.roundtrip - NamespacedKey string round-trip succeeded
+[0m[PASS] itemstack.serialize - ItemStack serialize/deserialize round-trip succeeded
+[0m[PASS] config.yaml-roundtrip - YamlConfiguration save/load string round-trip succeeded
+[0m[PASS] plugin-messaging.outgoing-register - cardboard:wave2
+[0m[PASS] plugin-messaging.incoming-register - cardboard:wave2
+[0m[PASS] scoreboard.create - created isolated scoreboard
+[0m[PASS] scoreboard.objective - objective registration and score round-trip succeeded
+[0m[PASS] scoreboard.team - team registration and entry round-trip succeeded
+[0m[PASS] bossbar.basic - boss bar state round-trip succeeded
+[0m[PASS] recipe.add-lookup-remove - recipe add/lookup/remove lifecycle succeeded
+[0m[PASS] adventure.component-sender - CommandSender accepted an Adventure Component
+[0m[PASS] world.registry - мир
+[0m[PASS] world.block-read - read block at world spawn
+[0m[PASS] world.chunk-access - spawn chunk is accessible and loaded
+[0m[PASS] inventory.basic - create/set/get inventory item
+[0m[PASS] itemmeta.pdc - ItemMeta PersistentDataContainer round-trip
+[0m[PASS] plugin.config-save-reload - plugin-owned config survives saveConfig/reloadConfig
+[0m[PASS] entity.spawn-remove - spawned temporary ARMOR_STAND
+[0m[PASS] event.entity-spawn - EntitySpawnEvent observed synchronously
+[0m[PASS] event.creature-spawn - CreatureSpawnEvent observed synchronously
+[0m[PASS] event.projectile-launch - ProjectileLaunchEvent observed synchronously
+[0m[PASS] scheduler.async - async callback executed off the primary thread
+[0m[PASS] scheduler.async-return - async result returned to the primary thread
+[0m
+
+TPS:
+The game is running normallyTarget tick rate: 20.0 per second.
+[0mAverage time per tick: 0.2ms (Target: 50.0ms)Percentiles: P50: 0.2ms P95: 0.3ms P99: 1.1ms. Sample: 100
