@@ -102,6 +102,10 @@ dependencies {
 
 	// Paper-API libs
 	implementation(PAPER_API_VER)
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	
 	implementation("net.md-5:bungeecord-chat:1.21-R0.2")
 	implementation("net.kyori:adventure-api:5.2.0")
@@ -180,6 +184,10 @@ dependencies {
 
     configurations.api.extendsFrom( (configurations.extraLibs) )
 	
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 configurations.implementation {

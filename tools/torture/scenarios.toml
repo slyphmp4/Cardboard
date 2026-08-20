@@ -29,5 +29,5 @@ reconnect = true
 [limits]
 max_connect_failure_ratio = 0.05
 max_protocol_failure_ratio = 0.01
-max_process_rss_growth_mb = 1024
+max_heap_after_full_gc_growth_mb = 512
 max_error_lines = 0

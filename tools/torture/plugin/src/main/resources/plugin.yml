@@ -4,8 +4,11 @@ main: org.cardboardpowered.torture.CardboardTorturePlugin
 load: POSTWORLD
 commands:
   cardboardtorture:
-    description: Run Cardboard post-release API torture workloads
-    usage: /cardboardtorture <start|stop|status> [seconds]
+    description: Run isolated Cardboard post-release torture workloads
+    usage: |-
+      /cardboardtorture start [seconds] [stability|scheduler|api|entity|chunks|saturation]
+      /cardboardtorture prepare <chunks|entity>
+      /cardboardtorture <status|stop|profiles>
     permission: cardboard.torture.admin
 permissions:
   cardboard.torture.admin:

@@ -14,6 +14,7 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RedStoneWireBlock;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -49,6 +50,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
 import org.cardboardpowered.bridge.world.level.block.state.BlockStateBridge;
+import org.cardboardpowered.event.ChunkLifecycleBridge;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.cardboardpowered.impl.world.CraftWorld;
 
@@ -66,11 +68,30 @@ public class CraftBlock implements Block {
     }
 
     public net.minecraft.world.level.block.state.BlockState getNMS() {
+        LevelChunk lifecycleChunk = this.getLifecycleChunk();
+        if (lifecycleChunk != null) {
+            return lifecycleChunk.getBlockState(this.position);
+        }
         return this.world.getBlockState(this.position);
     }
 
     public net.minecraft.world.level.material.FluidState getNMSFluid() {
+        LevelChunk lifecycleChunk = this.getLifecycleChunk();
+        if (lifecycleChunk != null) {
+            return lifecycleChunk.getFluidState(this.position);
+        }
         return this.world.getFluidState(this.position);
+    }
+
+    private LevelChunk getLifecycleChunk() {
+        if (!(this.world instanceof ServerLevel level)) {
+            return null;
+        }
+        return ChunkLifecycleBridge.getBukkitChunkVisibleOwner(
+            level,
+            this.position.getX() >> 4,
+            this.position.getZ() >> 4
+        );
     }
 
     public BlockPos getPosition() {
@@ -151,7 +172,7 @@ public class CraftBlock implements Block {
 
     @Override
     public byte getData() {
-        net.minecraft.world.level.block.state.BlockState state = this.world.getBlockState(this.position);
+        net.minecraft.world.level.block.state.BlockState state = this.getNMS();
         return CraftMagicNumbers.toLegacyData(state);
     }
 
@@ -218,7 +239,7 @@ public class CraftBlock implements Block {
 
     @Override
     public Material getType() {
-        return ((BlockStateBridge)this.world.getBlockState(this.position)).cardboard$getBukkitMaterial(); // Paper - optimise getType calls
+        return ((BlockStateBridge)this.getNMS()).cardboard$getBukkitMaterial(); // Paper - optimise getType calls
     }
 
     @Override

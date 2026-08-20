@@ -40,6 +40,7 @@ import org.bukkit.generator.structure.Structure;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.plugin.Plugin;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
+import org.cardboardpowered.event.ChunkLifecycleBridge;
 import org.cardboardpowered.impl.world.CraftWorld;
 
 public class CraftChunk implements Chunk {
@@ -74,6 +75,14 @@ public class CraftChunk implements Chunk {
     }
 
     public ChunkAccess getHandle(ChunkStatus chunkStatus) {
+        LevelChunk direct = this.weakChunk == null ? null : this.weakChunk.get();
+        if (direct != null && ChunkLifecycleBridge.getBukkitChunkVisibleOwner(
+            this.level,
+            this.x,
+            this.z
+        ) == direct) {
+            return direct;
+        }
         /*// Paper start - chunk system
         net.minecraft.world.level.chunk.LevelChunk full = this.level.getChunkIfLoaded(this.x, this.z);
         if (full != null) {
@@ -398,6 +407,22 @@ public class CraftChunk implements Chunk {
 
     @Override
     public Chunk.LoadLevel getLoadLevel() {
+        if (ChunkLifecycleBridge.isBukkitChunkUnloadDispatching(
+            this.level,
+            this.getX(),
+            this.getZ()
+        )) {
+            // Paper exposes the chunk as BORDER until ChunkUnloadEvent returns.
+            return Chunk.LoadLevel.BORDER;
+        }
+        LevelChunk lifecycleOwner = ChunkLifecycleBridge.getBukkitChunkVisibleOwner(
+            this.level,
+            this.getX(),
+            this.getZ()
+        );
+        if (lifecycleOwner != null) {
+            return Chunk.LoadLevel.values()[lifecycleOwner.getFullStatus().ordinal()];
+        }
         if (!this.level.hasChunk(this.getX(), this.getZ())) {
             return Chunk.LoadLevel.UNLOADED;
         }

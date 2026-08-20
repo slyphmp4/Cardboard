@@ -96,6 +96,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.StructureSearchResult;
 import org.bukkit.util.Vector;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
+import org.cardboardpowered.event.ChunkLifecycleBridge;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.util.CraftRayTraceResult;
 import org.cardboardpowered.bridge.server.level.ServerLevelBridge;
@@ -545,6 +546,14 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public Chunk getChunkAt(int x, int z) {
+		LevelChunk lifecycleOwner = ChunkLifecycleBridge.getBukkitChunkVisibleOwner(
+				this.world,
+				x,
+				z
+		);
+		if (lifecycleOwner != null) {
+			return ((LevelChunkBridge) lifecycleOwner).getBukkitChunk();
+		}
 		net.minecraft.world.level.chunk.LevelChunk chunk =
 				(net.minecraft.world.level.chunk.LevelChunk) this.world.getChunk(
 						x,
@@ -1131,6 +1140,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean isChunkLoaded(int x, int z) {
+		if (ChunkLifecycleBridge.isBukkitChunkVisible(this.world, x, z)) {
+			return true;
+		}
 		ChunkHolder holder =
 				((ChunkMapBridge) (Object) world.getChunkSource().chunkMap)
 						.getUpdatingChunkHoldersBF()
