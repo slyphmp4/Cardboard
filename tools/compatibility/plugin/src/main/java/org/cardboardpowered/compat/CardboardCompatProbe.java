@@ -77,6 +77,14 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                 printWave2B(sender);
                 yield true;
             }
+            case "wave2c" -> {
+                startWave2C(sender);
+                yield true;
+            }
+            case "wave2cstatus" -> {
+                printWave2C(sender);
+                yield true;
+            }
             case "reset" -> {
                 if (running) {
                     sender.sendMessage("CardboardCompatProbe is currently running.");
@@ -219,6 +227,41 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
             fail("wave2b.bootstrap", describe(throwable));
             finishProbe(sender);
         }
+    }
+
+    private void startWave2C(CommandSender sender) {
+        if (running) {
+            sender.sendMessage("CardboardCompatProbe is currently running.");
+            return;
+        }
+
+        running = true;
+        results.clear();
+        sender.sendMessage("CardboardCompatProbe Wave 2C started.");
+
+        Bukkit.getScheduler().runTask(this, () -> {
+            try {
+                Wave2CCompatChecks.start(
+                    this,
+                    this::pass,
+                    this::fail,
+                    this::skip,
+                    () -> {
+                        if (Bukkit.isPrimaryThread()) {
+                            finishProbe(sender);
+                        } else {
+                            Bukkit.getScheduler().runTask(
+                                this,
+                                () -> finishProbe(sender)
+                            );
+                        }
+                    }
+                );
+            } catch (Throwable throwable) {
+                fail("wave2c.bootstrap", describe(throwable));
+                finishProbe(sender);
+            }
+        });
     }
 
     private void runWorldChecks() {
@@ -491,6 +534,21 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                 id.startsWith("paper.scheduler.")
                     || id.startsWith("chunk.")
                     || id.startsWith("wave2b.")
+            ) {
+                sender.sendMessage(formatResult(entry));
+            }
+        }
+    }
+
+    private void printWave2C(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+
+        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
+            String id = entry.getKey();
+
+            if (
+                id.startsWith("chunk.save-policy.")
+                    || id.startsWith("wave2c.")
             ) {
                 sender.sendMessage(formatResult(entry));
             }
