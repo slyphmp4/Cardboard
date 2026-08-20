@@ -398,6 +398,37 @@ class CliCompatibilityTests(unittest.TestCase):
         self.assertEqual(45.0, args.jcmd_timeout)
 
 
+class RepositoryScenarioConfigTests(unittest.TestCase):
+    def test_checked_in_scenarios_are_complete_and_valid(self) -> None:
+        scenario_path = RUN_PATH.with_name("scenarios.toml")
+        expected_profiles = {
+            "smoke": (180, 10, 2),
+            "burst": (900, 100, 20),
+            "soak": (21600, 50, 5),
+        }
+
+        for scenario, expected in expected_profiles.items():
+            with self.subTest(scenario=scenario):
+                config, limits = HARNESS.load_config(scenario_path, scenario)
+
+                self.assertEqual("127.0.0.1", config["host"])
+                self.assertEqual(25565, config["port"])
+                self.assertEqual(0, config["protocol_version"])
+                self.assertGreater(config["connect_timeout_seconds"], 0)
+                self.assertGreater(config["sample_interval_seconds"], 0)
+                self.assertEqual(expected[0], config["duration_seconds"])
+                self.assertEqual(expected[1], config["connections"])
+                self.assertEqual(expected[2], config["connect_rate_per_second"])
+                self.assertIs(config["reconnect"], True)
+
+                self.assertGreaterEqual(limits["max_connect_failure_ratio"], 0)
+                self.assertLessEqual(limits["max_connect_failure_ratio"], 1)
+                self.assertGreaterEqual(limits["max_protocol_failure_ratio"], 0)
+                self.assertLessEqual(limits["max_protocol_failure_ratio"], 1)
+                self.assertGreater(limits[HARNESS.HEAP_LIMIT_KEY], 0)
+                self.assertEqual(0, limits["max_error_lines"])
+
+
 class RunFailClosedTests(unittest.IsolatedAsyncioTestCase):
     def make_args(self, root: Path, *extra: str):
         config = root / "scenarios.toml"
@@ -531,7 +562,7 @@ max_error_lines = 0
             root = Path(directory)
             args = self.make_args(root, "--pid", "123")
             identity = HARNESS.ProcessIdentity(123, 10)
-            rss_values = iter([5637.3, 5637.3, 6881.7])
+            rss_values = iter([5637.3, 6881.7])
 
             with (
                 mock.patch.object(HARNESS, "read_process_identity", return_value=identity),

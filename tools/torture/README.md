@@ -1,9 +1,10 @@
 # Cardboard post-release torture harness
 
-This directory is Point 1 of the Cardboard 26.2 hardening roadmap: post-release
-torture testing and long-term stability. It is intentionally isolated from the
-production sources. Do not move on to CI (Point 2), and do not start another
-six-hour soak, until the refactored harness has passed its short acceptance run.
+This directory contains Point 1 of the Cardboard 26.2 hardening roadmap:
+post-release torture testing and long-term stability. Point 1 is complete, and
+the harness remains intentionally isolated from the production sources. Normal
+CI protects its build, unit tests, Python imports, and checked-in scenario
+configuration without starting a Minecraft server or repeating a long soak.
 
 Run the harness only against a disposable world. For empty-server testing,
 `pause-when-empty-seconds=0` is mandatory. The Bukkit scheduler is not considered
@@ -426,7 +427,13 @@ a new run series while retaining the failing report that motivated the fix.
 Before deploying harness changes, run both regression suites:
 
 ```bash
-./gradlew -p tools/torture/plugin clean build --stacktrace
-python3 -m unittest discover -s tools/torture/tests -v
+./gradlew -p tools/torture/plugin clean build --no-daemon --stacktrace
 python3 -m py_compile tools/torture/run.py tools/torture/tests/test_run.py
+python3 -m unittest discover -s tools/torture/tests -p 'test_*.py' -v
 ```
+
+These are the same hermetic checks used by GitHub Actions. The checked-in
+`scenarios.toml` profiles and limits are parsed and validated by the Python
+suite. Live STATUS traffic, RCON commands, JVM memory probes, helper counters,
+and server-log acceptance remain manual because they require an isolated
+Minecraft deployment; CI never connects to the production VPS.
