@@ -289,7 +289,10 @@ final class Wave2CompatChecks {
         try {
             Objective objective = board.registerNewObjective("cbwave2", "dummy", "Cardboard Wave 2");
             objective.getScore("probe").setScore(7);
-            if (board.getObjective("cbwave2") == objective && objective.getScore("probe").getScore() == 7) {
+            Objective lookedUpObjective = board.getObjective("cbwave2");
+            if (lookedUpObjective != null
+                && "cbwave2".equals(lookedUpObjective.getName())
+                && lookedUpObjective.getScore("probe").getScore() == 7) {
                 pass.accept("scoreboard.objective", "objective registration and score round-trip succeeded");
             } else {
                 fail.accept("scoreboard.objective", "objective state did not round-trip");
@@ -302,7 +305,10 @@ final class Wave2CompatChecks {
         try {
             Team team = board.registerNewTeam("cbwave2team");
             team.addEntry("probe");
-            if (team.hasEntry("probe") && board.getTeam("cbwave2team") == team) {
+            Team lookedUpTeam = board.getTeam("cbwave2team");
+            if (lookedUpTeam != null
+                && "cbwave2team".equals(lookedUpTeam.getName())
+                && lookedUpTeam.hasEntry("probe")) {
                 pass.accept("scoreboard.team", "team registration and entry round-trip succeeded");
             } else {
                 fail.accept("scoreboard.team", "team state did not round-trip");
