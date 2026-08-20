@@ -679,6 +679,13 @@ async def run(args: argparse.Namespace) -> int:
     launcher_task = asyncio.create_task(launcher())
 
     try:
+        # Give the launcher and its first scheduled worker one event-loop turn
+        # each before enforcing the duration. This guarantees that every
+        # positive-duration run can start useful work even when setup or a
+        # heavily loaded event loop consumes most of a very short test duration.
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
         while not stop.is_set():
             elapsed = time.monotonic() - started
             if elapsed >= duration:
