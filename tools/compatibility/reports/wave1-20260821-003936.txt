@@ -1,0 +1,50 @@
+Cardboard Point 4 — Wave 1 baseline
+
+Date:
+Fri Aug 21 00:39:36 MSK 2026
+
+Git branch:
+agent/paper-compat-matrix
+
+Git HEAD:
+e6f111b21a5c8ccded42ba53585ce4923590dea9
+
+Cardboard binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Active Cardboard JARs:
+Cardboard-26.2.jar
+
+Plugins:
+Plugins (5): [32mPlaceholderAPI[37m, [32mCardboardCompatProbe[37m, [32mUltraPermissions[37m, [32mCardboardTorture[37m, [32mCoreProtect
+[0m
+
+Compatibility:
+CardboardCompatProbe running=false total=22 pass=22 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] server.bukkit-instance - Bukkit.getServer() is available
+[0m[PASS] server.primary-thread - probe callback executed on the primary thread
+[0m[PASS] server.version - git-e360081 (MC: 26.2; Legacy MC: 1.21)
+[0m[PASS] plugin.manager - PluginManager resolves CardboardCompatProbe
+[0m[PASS] services.manager - ServicesManager is available
+[0m[PASS] command.sender.rcon - org.cardboardpowered.impl.command.CardboardRemoteConsoleCommandSender
+[0m[PASS] permissions.admin-node - command sender has cardboard.compat.admin
+[0m[PASS] real-plugin.placeholderapi - PlaceholderAPI 2.12.3
+[0m[PASS] real-plugin.ultrapermissions - UltraPermissions 5.6.8
+[0m[PASS] real-plugin.coreprotect - CoreProtect 24.0
+[0m[PASS] world.registry - мир
+[0m[PASS] world.block-read - read block at world spawn
+[0m[PASS] world.chunk-access - spawn chunk is accessible and loaded
+[0m[PASS] inventory.basic - create/set/get inventory item
+[0m[PASS] itemmeta.pdc - ItemMeta PersistentDataContainer round-trip
+[0m[PASS] plugin.config-save-reload - plugin-owned config survives saveConfig/reloadConfig
+[0m[PASS] entity.spawn-remove - spawned temporary ARMOR_STAND
+[0m[PASS] event.entity-spawn - EntitySpawnEvent observed synchronously
+[0m[PASS] event.creature-spawn - CreatureSpawnEvent observed synchronously
+[0m[PASS] event.projectile-launch - ProjectileLaunchEvent observed synchronously
+[0m[PASS] scheduler.async - async callback executed off the primary thread
+[0m[PASS] scheduler.async-return - async result returned to the primary thread
+[0m
+
+TPS:
+The game is running normallyTarget tick rate: 20.0 per second.
+[0mAverage time per tick: 0.2ms (Target: 50.0ms)Percentiles: P50: 0.1ms P95: 0.2ms P99: 0.5ms. Sample: 100
