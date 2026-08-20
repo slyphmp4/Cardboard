@@ -137,6 +137,8 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
         checkRealPlugin("UltraPermissions");
         checkRealPlugin("CoreProtect");
 
+        Wave2CompatChecks.run(this, sender, this::pass, this::fail, this::skip);
+
         runWorldChecks();
         runItemAndInventoryChecks();
         runPersistenceCheck();
