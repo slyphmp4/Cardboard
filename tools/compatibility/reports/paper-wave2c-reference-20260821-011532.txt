@@ -1,0 +1,39 @@
+Point 4 Wave 2C — Paper reference baseline
+
+Date:
+Fri Aug 21 01:15:32 MSK 2026
+
+Probe SHA-256:
+cc750058b8c20db2b80224742efc630055f06356ffc2e5e62064f5f779f44d30  tools/compatibility/plugin/build/libs/cardboard-compat-probe-0.1.0.jar
+
+Paper version:
+[37mThis server is running Paper version 26.2-110-main@1cd6d57 (2026-08-07T14:37:42Z) (Implementing API version 26.2.build.110-stable)[0m
+[0m[33mYou are 2 version(s) behind
+[0mDownload the new version at: [33mhttps://papermc.io/downloads/paper
+[0m
+
+Paper summary:
+CardboardCompatProbe running=false total=13 pass=12 fail=1 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Paper Wave 2C:
+CardboardCompatProbe running=false total=13 pass=12 fail=1 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] chunk.save-policy.target - world 80,80
+[0m[PASS] chunk.save-policy.marker - 1284,68,1284 original=AIR
+[0m[PASS] chunk.save-policy.baseline-write - temporary GOLD_BLOCK baseline written
+[0m[PASS] chunk.save-policy.baseline-save - baseline world save flushed
+[0m[PASS] chunk.save-policy.baseline-unload - baseline chunk fully unloaded
+[0m[PASS] chunk.save-policy.baseline-persisted - flushed GOLD_BLOCK baseline survived unload/reload
+[0m[PASS] chunk.save-policy.mutation-write - unsaved DIAMOND_BLOCK mutation written
+[0m[PASS] chunk.save-policy.event - ChunkUnloadEvent observed for save=false probe
+[0m[PASS] chunk.save-policy.flag-false - ChunkUnloadEvent reported saveChunk=false after listener update
+[0m[PASS] chunk.save-policy.unloaded - chunk fully unloaded after save=false event
+[0m[PASS] chunk.save-policy.reload-api - chunk reloaded after save=false unload
+[0m[FAIL] chunk.save-policy.disk-state - DIAMOND_BLOCK mutation persisted despite setSaveChunk(false)
+[0m[PASS] chunk.save-policy.cleanup - original block data restored and flushed
+[0m
+
+Paper non-PASS:
+CardboardCompatProbe running=false total=13 pass=12 fail=1 skip=0 unsupported=0 paperDifference=0
+[0m[FAIL] chunk.save-policy.disk-state - DIAMOND_BLOCK mutation persisted despite setSaveChunk(false)
+[0m

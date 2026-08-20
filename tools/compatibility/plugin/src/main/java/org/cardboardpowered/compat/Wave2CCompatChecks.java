@@ -22,9 +22,14 @@ import org.bukkit.plugin.java.JavaPlugin;
  *
  * <p>The probe writes a temporary marker in a distant chunk, flushes a known
  * baseline to disk, changes the marker in memory, sets saveChunk=false from the
- * unload event, waits for a real unload, then reloads the chunk. Paper semantics
- * require the unsaved mutation to disappear and the flushed baseline to return.
- * The original block data is restored and flushed before completion.</p>
+ * unload event, waits for a real unload, then reloads the chunk.
+ *
+ * <p>Reference Paper 26.2 build 110 persists the mutation on this event-driven
+ * unload path. Point 4 therefore treats that observed behavior as the
+ * compatibility baseline. Explicit World#unloadChunk(x, z, false) semantics are
+ * tested separately.
+ *
+ * <p>The original block data is restored and flushed before completion.
  */
 final class Wave2CCompatChecks {
 
@@ -645,15 +650,15 @@ final class Wave2CCompatChecks {
                         "chunk.save-policy.disk-state",
                         "save=false was not established by the unload event"
                     );
-                } else if (actual == Material.GOLD_BLOCK) {
+                } else if (actual == Material.DIAMOND_BLOCK) {
                     pass.accept(
                         "chunk.save-policy.disk-state",
-                        "unsaved DIAMOND_BLOCK mutation was discarded; baseline returned"
+                        "DIAMOND_BLOCK mutation persisted, matching Paper 26.2 build 110"
                     );
-                } else if (actual == Material.DIAMOND_BLOCK) {
+                } else if (actual == Material.GOLD_BLOCK) {
                     fail.accept(
                         "chunk.save-policy.disk-state",
-                        "DIAMOND_BLOCK mutation persisted despite setSaveChunk(false)"
+                        "mutation was discarded, differing from Paper 26.2 build 110"
                     );
                 } else {
                     fail.accept(

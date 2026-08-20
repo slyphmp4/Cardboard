@@ -1,0 +1,44 @@
+Cardboard Point 4 — Wave 2C Paper parity
+
+Date:
+Fri Aug 21 01:20:34 MSK 2026
+
+Git pre-commit HEAD:
+597f5020bc263beb884176eb7c35ffe074cd0401
+
+Cardboard binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Probe binary:
+bafd7a26654cfe217ebd555d5fd7ca48db9ede5ce933c535bd3de8591658fc3c  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Reference:
+Paper 26.2 build 110
+API 26.2.build.110-stable
+Paper result: DIAMOND_BLOCK persisted on event-driven unload
+
+Cardboard summary:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Cardboard Wave 2C:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] chunk.save-policy.target - мир 80,80
+[0m[PASS] chunk.save-policy.marker - 1284,65,1284 original=AIR
+[0m[PASS] chunk.save-policy.baseline-write - temporary GOLD_BLOCK baseline written
+[0m[PASS] chunk.save-policy.baseline-save - baseline world save flushed
+[0m[PASS] chunk.save-policy.baseline-unload - baseline chunk fully unloaded
+[0m[PASS] chunk.save-policy.baseline-persisted - flushed GOLD_BLOCK baseline survived unload/reload
+[0m[PASS] chunk.save-policy.mutation-write - unsaved DIAMOND_BLOCK mutation written
+[0m[PASS] chunk.save-policy.event - ChunkUnloadEvent observed for save=false probe
+[0m[PASS] chunk.save-policy.flag-false - ChunkUnloadEvent reported saveChunk=false after listener update
+[0m[PASS] chunk.save-policy.unloaded - chunk fully unloaded after save=false event
+[0m[PASS] chunk.save-policy.reload-api - chunk reloaded after save=false unload
+[0m[PASS] chunk.save-policy.disk-state - DIAMOND_BLOCK mutation persisted, matching Paper 26.2 build 110
+[0m[PASS] chunk.save-policy.cleanup - original block data restored and flushed
+[0m
+
+Cardboard non-PASS:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0mNo non-PASS results.
+[0m
