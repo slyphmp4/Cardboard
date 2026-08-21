@@ -79,6 +79,7 @@
     "server.players.CachedUserNameToIdResolverGameProfileInfoAccessor",
     "server.players.NameAndIdMixin",
     "server.players.PlayerListMixin",
+    "server.players.PlayerListRespawnMixin",
     "server.players.PlayerListMixin_ChatEvent",
     "stats.ServerStatsCounterMixin",
     "stats.StatsCounterMixin",
