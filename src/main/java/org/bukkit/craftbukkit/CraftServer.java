@@ -1454,7 +1454,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
                 if (BuiltInRegistries.BLOCK.get(blockTagKey).isPresent()) {
                 	return (Tag<T>) new CraftBlockTag((Registry<Block>)BuiltInRegistries.BLOCK, blockTagKey);
                 }
-                System.out.println("NULL BLOCKS! " + tag.toString());;
                 break;
             }
             case "items": {
@@ -1893,7 +1892,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         String token = event.getLastToken();
         for (Player p : getOnlinePlayers())
             if (player.canSee(p) && StringUtil.startsWithIgnoreCase(p.getName(), token))
-                completions.add(p.getName());
+                completions.add(p.getName()); // Partial match
 
         pluginManager.callEvent(event);
 
