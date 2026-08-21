@@ -7,9 +7,16 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 public class TransformAccessProcessor implements MixinProcessor {
 
     private static final String TYPE = Type.getDescriptor(TransformAccess.class);
+    private final PaperPlayerInfoUpdatePacketProcessor paperPlayerInfoUpdatePacketProcessor =
+            new PaperPlayerInfoUpdatePacketProcessor();
 
     @Override
     public void accept(String className, ClassNode classNode, IMixinInfo mixinInfo) {
+        // Cardboard's mixin plugin already invokes this processor for both preApply
+        // and postApply. The compatibility processor is idempotent, so routing it
+        // through the same hook keeps target-class bytecode changes centralized.
+        paperPlayerInfoUpdatePacketProcessor.accept(className, classNode, mixinInfo);
+
         field:
         for (var field : classNode.fields) {
             if (field.invisibleAnnotations != null) {
