@@ -1,7 +1,6 @@
 package org.cardboardpowered.asm;
 
 import java.util.List;
-import java.util.Set;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
