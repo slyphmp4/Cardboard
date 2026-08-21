@@ -56,7 +56,7 @@ public class CardboardMixinPlugin implements IMixinConfigPlugin, IEnvironmentTok
         Libraries.loadLibs();
         JarReader.readEvents();
         if (pl.exists()) {
-    		try {
+        	try {
                 JarReader.readPlugins(pl);
                 read_plugins = true;
             } catch (Exception e) {
@@ -123,7 +123,7 @@ public class CardboardMixinPlugin implements IMixinConfigPlugin, IEnvironmentTok
         if (not_has_event(mixin, "DyeItem", "SheepDyeWoolEvent")) return false;
         if (not_has_event(mixin, "FrostWalkerEnchantment", "BlockFormEvent")) return false;
         if (not_has_event(mixin, "ExperienceOrbEntity", "PlayerItemMendEvent") || not_has_event(mixin, "ExperienceOrbEntity", "PlayerExpChangeEvent")) return false;
-        if (not_has_event(mixin, "Explosion", "EntityExplodeEvent") && not_has_event(mixin, "BlockExplodeEvent")) return false;
+        if (not_has_event(mixin, "Explosion", "EntityExplodeEvent") && not_has_event(mixin, "Explosion", "BlockExplodeEvent")) return false;
         if (not_has_event(mixin, "LeavesBlock", "LeavesDecayEvent")) return false;
         if (not_has_event(mixin, "PlayerAdvancementTracker", "PlayerAdvancementDoneEvent")) return false;
 */
@@ -200,7 +200,7 @@ public class CardboardMixinPlugin implements IMixinConfigPlugin, IEnvironmentTok
         String[] bad_mods = {"architectury", "dynmap"};
 
         for (String s : bad_mods) {
-            if (loader.isModLoaded(s))
+            if (loader.getModContainer(s).isPresent())
                 return true;
         }
         return false;
