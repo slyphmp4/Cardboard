@@ -493,7 +493,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @SuppressWarnings("unchecked")
     private void syncCommands() {
         // Clear existing commands
-        Commands dispatcher = ((MinecraftServerBridge) server).setCommandManager(new Commands(Commands.CommandSelection.ALL, CommandBuildContext.simple(console.registryAccess(), FeatureFlagSet.of())));
+        Commands dispatcher = ((MinecraftServerBridge) server).setCommandManager(new Commands(Commands.CommandSelection.ALL, CommandBuildContext.simple(console.registryAccess(), console.getWorldData().enabledFeatures())));
 
         // Register all commands, vanilla ones will be using the old dispatcher references
         for (Map.Entry<String, Command> entry : commandMap.getKnownCommands().entrySet()) {
