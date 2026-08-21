@@ -93,6 +93,14 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                 printWave2D(sender);
                 yield true;
             }
+            case "wave3" -> {
+                startWave3(sender);
+                yield true;
+            }
+            case "wave3status" -> {
+                printWave3(sender);
+                yield true;
+            }
             case "reset" -> {
                 if (running) {
                     sender.sendMessage("CardboardCompatProbe is currently running.");
@@ -302,6 +310,41 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
                 );
             } catch (Throwable throwable) {
                 fail("wave2d.bootstrap", describe(throwable));
+                finishProbe(sender);
+            }
+        });
+    }
+
+    private void startWave3(CommandSender sender) {
+        if (running) {
+            sender.sendMessage("CardboardCompatProbe is currently running.");
+            return;
+        }
+
+        running = true;
+        results.clear();
+        sender.sendMessage("CardboardCompatProbe Wave 3 started.");
+
+        Bukkit.getScheduler().runTask(this, () -> {
+            try {
+                Wave3RealPluginChecks.start(
+                    this,
+                    this::pass,
+                    this::fail,
+                    this::skip,
+                    () -> {
+                        if (Bukkit.isPrimaryThread()) {
+                            finishProbe(sender);
+                        } else {
+                            Bukkit.getScheduler().runTask(
+                                this,
+                                () -> finishProbe(sender)
+                            );
+                        }
+                    }
+                );
+            } catch (Throwable throwable) {
+                fail("wave3.bootstrap", describe(throwable));
                 finishProbe(sender);
             }
         });
@@ -607,6 +650,23 @@ public final class CardboardCompatProbe extends JavaPlugin implements Listener {
             if (
                 id.startsWith("chunk.explicit-save-false.")
                     || id.startsWith("wave2d.")
+            ) {
+                sender.sendMessage(formatResult(entry));
+            }
+        }
+    }
+
+    private void printWave3(CommandSender sender) {
+        sender.sendMessage(summaryLine());
+
+        for (Map.Entry<String, ProbeResult> entry : results.entrySet()) {
+            String id = entry.getKey();
+
+            if (
+                id.startsWith("coreprotect.")
+                    || id.startsWith("placeholderapi.")
+                    || id.startsWith("ultrapermissions.")
+                    || id.startsWith("wave3.")
             ) {
                 sender.sendMessage(formatResult(entry));
             }

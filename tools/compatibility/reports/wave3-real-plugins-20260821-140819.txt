@@ -1,0 +1,67 @@
+Cardboard Point 4 — Wave 3 real plugin functionality
+
+Date:
+Fri Aug 21 14:08:19 MSK 2026
+
+Git pre-commit HEAD:
+d4fcbc393907e69e63fa6d648cf5a82403e18eb5
+
+Cardboard binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Probe binary:
+68b93bab52fa574c48634310d59437fdebc00872ad0b278584d0a07bfc10d827  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Installed plugin binaries:
+5d49b964ba453ed2df6d8fbc46a5895f044d08d1719bfb2fa3273b04e832e6e6  /opt/minecraft/server/plugins/CoreProtect.jar
+fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437  /opt/minecraft/server/plugins/PlaceholderAPI-2.12.3 (1).jar
+8b5291309ba03d887f41363a4aca7b1f87c52ac53ee13d696ce5dd65874427ac  /opt/minecraft/server/plugins/UltraPermissions-5.6.8.jar
+
+Summary:
+CardboardCompatProbe running=false total=14 pass=14 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Wave 3:
+CardboardCompatProbe running=false total=14 pass=14 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] placeholderapi.plugin - PlaceholderAPI 2.12.3
+[0m[PASS] placeholderapi.registry - uperms expansion is registered
+[0m[PASS] placeholderapi.detect - PlaceholderAPI detected uperms placeholder syntax
+[0m[PASS] placeholderapi.uperms-substitution - uperms hook performed actual placeholder substitution
+[0m[PASS] ultrapermissions.plugin - UltraPermissions 5.6.8
+[0m[PASS] ultrapermissions.api - me.TechsCode.UltraPermissions.UltraPermissions
+[0m[PASS] ultrapermissions.collections - groups=2 users=1 permissions=138
+[0m[PASS] ultrapermissions.default-group-option - FIRST_JOIN
+[0m[PASS] coreprotect.plugin - CoreProtect 24.0
+[0m[PASS] coreprotect.api - net.coreprotect.CoreProtectAPI
+[0m[PASS] coreprotect.api-version - API=13 enabled=true
+[0m[PASS] coreprotect.log-placement - synthetic placement audit row accepted
+[0m[PASS] coreprotect.lookup-placement - synthetic actor was found through CoreProtect lookup
+[0m[PASS] coreprotect.no-world-mutation - CoreProtect API test did not modify the world block
+[0m
+
+Non-PASS:
+CardboardCompatProbe running=false total=14 pass=14 fail=0 skip=0 unsupported=0 paperDifference=0
+[0mNo non-PASS results.
+[0m
+
+Command health:
+--- CoreProtect ---
+/co [<args>]
+
+--- PlaceholderAPI ---
+[32m[1mPlaceholderAPI [37m([37m2.12.3[37m)
+[0m[37mAuthor: [37m[HelpChat]
+[0m[37mPAPI Commands: [32m/papi [37mhelp
+[0m[37meCloud Commands[30m: [32m/papi [37mecloud
+[0m
+[37mA total of [37m1[37m placeholder hook(s) are active: [32m
+[0muperms
+[0m
+
+--- UltraPermissions ---
+/uperms [<args>]
+/upc [<args>]
+
+TPS:
+The game is running normallyTarget tick rate: 20.0 per second.
+[0mAverage time per tick: 0.8ms (Target: 50.0ms)Percentiles: P50: 0.8ms P95: 1.1ms P99: 1.5ms. Sample: 100
