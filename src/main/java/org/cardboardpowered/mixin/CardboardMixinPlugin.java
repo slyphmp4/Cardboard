@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.cardboardpowered.CardboardConfig;
 import org.cardboardpowered.asm.MixinProcessor;
+import org.cardboardpowered.asm.PaperPlayerInfoUpdatePacketProcessor;
 import org.cardboardpowered.asm.TransformAccessProcessor;
 import org.cardboardpowered.library.Libraries;
 import org.cardboardpowered.library.Library;
@@ -224,7 +225,8 @@ public class CardboardMixinPlugin implements IMixinConfigPlugin, IEnvironmentTok
     }
 
     private final List<MixinProcessor> postProcessors = List.of(
-            new TransformAccessProcessor()
+            new TransformAccessProcessor(),
+            new PaperPlayerInfoUpdatePacketProcessor()
     );
 
     
