@@ -6,7 +6,7 @@ load: POSTWORLD
 commands:
   cardboardcompat:
     description: Run deterministic Cardboard Paper/Bukkit compatibility probes
-    usage: /cardboardcompat <run|summary|failures|wave2b|wave2c|wave2cstatus|status|reset>
+    usage: /cardboardcompat <run|summary|failures|wave2b|wave2c|wave2cstatus|wave2d|wave2dstatus|status|reset>
     permission: cardboard.compat.admin
 permissions:
   cardboard.compat.admin:

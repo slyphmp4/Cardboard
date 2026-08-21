@@ -1,0 +1,54 @@
+Point 4 Wave 2D — Paper reference baseline
+
+Date:
+Fri Aug 21 13:56:15 MSK 2026
+
+Probe binary used for A/B comparison:
+a04518d4abd96a1e6cbf5def4f0be440c7ef3cd12af54b6b7dfde4df02e92efd  tools/compatibility/plugin/build/libs/cardboard-compat-probe-0.1.0.jar
+
+Paper version:
+[37m[3mChecking version, please wait...
+[0m
+
+Paper summary:
+CardboardCompatProbe running=false total=13 pass=11 fail=2 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Paper Wave 2D:
+CardboardCompatProbe running=false total=13 pass=11 fail=2 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] chunk.explicit-save-false.target - world 89,86
+[0m[PASS] chunk.explicit-save-false.marker - 1428,64,1380 original=AIR
+[0m[PASS] chunk.explicit-save-false.baseline-write - temporary GOLD_BLOCK baseline written
+[0m[PASS] chunk.explicit-save-false.baseline-save - baseline world save flushed
+[0m[PASS] chunk.explicit-save-false.baseline-unload - baseline chunk fully unloaded
+[0m[PASS] chunk.explicit-save-false.baseline-persisted - flushed GOLD_BLOCK baseline survived unload/reload
+[0m[PASS] chunk.explicit-save-false.mutation-write - unsaved DIAMOND_BLOCK mutation written
+[0m[FAIL] chunk.explicit-save-false.return - unloadChunk(x,z,false) returned false
+[0m[PASS] chunk.explicit-save-false.event - ChunkUnloadEvent observed during explicit save=false unload
+[0m[PASS] chunk.explicit-save-false.unloaded - chunk fully unloaded after unloadChunk(x,z,false)
+[0m[PASS] chunk.explicit-save-false.reload-api - chunk reloaded after explicit save=false unload
+[0m[FAIL] chunk.explicit-save-false.disk-state - DIAMOND_BLOCK mutation persisted despite unloadChunk(x,z,false)
+[0m[PASS] chunk.explicit-save-false.cleanup - original block data restored and flushed
+[0m
+
+Paper non-PASS:
+CardboardCompatProbe running=false total=13 pass=11 fail=2 skip=0 unsupported=0 paperDifference=0
+[0m[FAIL] chunk.explicit-save-false.return - unloadChunk(x,z,false) returned false
+[0m[FAIL] chunk.explicit-save-false.disk-state - DIAMOND_BLOCK mutation persisted despite unloadChunk(x,z,false)
+[0m
+
+Observed Paper compatibility baseline:
+- unloadChunk(x,z,false) returned false
+- ChunkUnloadEvent was observed
+- chunk subsequently fully unloaded
+- DIAMOND_BLOCK mutation persisted after reload
+
+Confirmed reference runtime:
+Paper 26.2 build 110 / API 26.2.build.110-stable
+Paper commit: 1cd6d57
+
+A/B result:
+- unloadChunk(x,z,false) returned false
+- ChunkUnloadEvent was observed
+- chunk subsequently completed physical unload
+- DIAMOND_BLOCK mutation persisted after reload

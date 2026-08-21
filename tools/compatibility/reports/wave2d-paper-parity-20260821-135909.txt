@@ -1,0 +1,53 @@
+Cardboard Point 4 — Wave 2D Paper parity
+
+Date:
+Fri Aug 21 13:59:09 MSK 2026
+
+Git pre-commit HEAD:
+03dd65c417ed128f71d2f381fbd58dc7721d0f46
+
+Cardboard binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Probe binary:
+89486b063709c397349a4aef07de4d21dcf1aa980dac20156887679e2385a2b1  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Reference:
+Paper 26.2 build 110 / API 26.2.build.110-stable
+Paper commit: 1cd6d57
+
+Observed Paper behavior:
+- unloadChunk(x,z,false) returned false
+- ChunkUnloadEvent fired
+- chunk subsequently unloaded
+- DIAMOND_BLOCK persisted after reload
+
+Cardboard summary:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Cardboard Wave 2D:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m[PASS] chunk.explicit-save-false.target - мир 88,88
+[0m[PASS] chunk.explicit-save-false.marker - 1412,96,1412 original=AIR
+[0m[PASS] chunk.explicit-save-false.baseline-write - temporary GOLD_BLOCK baseline written
+[0m[PASS] chunk.explicit-save-false.baseline-save - baseline world save flushed
+[0m[PASS] chunk.explicit-save-false.baseline-unload - baseline chunk fully unloaded
+[0m[PASS] chunk.explicit-save-false.baseline-persisted - flushed GOLD_BLOCK baseline survived unload/reload
+[0m[PASS] chunk.explicit-save-false.mutation-write - unsaved DIAMOND_BLOCK mutation written
+[0m[PASS] chunk.explicit-save-false.return - unloadChunk(x,z,false) returned false, matching Paper 26.2 build 110
+[0m[PASS] chunk.explicit-save-false.event - ChunkUnloadEvent observed during explicit save=false unload
+[0m[PASS] chunk.explicit-save-false.unloaded - chunk fully unloaded after unloadChunk(x,z,false)
+[0m[PASS] chunk.explicit-save-false.reload-api - chunk reloaded after explicit save=false unload
+[0m[PASS] chunk.explicit-save-false.disk-state - DIAMOND_BLOCK mutation persisted, matching Paper 26.2 build 110
+[0m[PASS] chunk.explicit-save-false.cleanup - original block data restored and flushed
+[0m
+
+Cardboard non-PASS:
+CardboardCompatProbe running=false total=13 pass=13 fail=0 skip=0 unsupported=0 paperDifference=0
+[0mNo non-PASS results.
+[0m
+
+TPS:
+The game is running normallyTarget tick rate: 20.0 per second.
+[0mAverage time per tick: 0.8ms (Target: 50.0ms)Percentiles: P50: 0.8ms P95: 1.2ms P99: 3.0ms. Sample: 100

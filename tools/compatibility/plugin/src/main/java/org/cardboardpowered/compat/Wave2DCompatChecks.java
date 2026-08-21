@@ -21,10 +21,12 @@ import org.bukkit.plugin.java.JavaPlugin;
  *
  * <p>The probe flushes a GOLD_BLOCK baseline, verifies that baseline after an
  * unload/reload, writes an unsaved DIAMOND_BLOCK mutation, then invokes
- * World#unloadChunk(x, z, false). Reference Paper 26.2 build 110 calls
- * LevelChunk#tryMarkSaved before requesting the unload on this API path, so the
- * compatibility expectation is that the unsaved DIAMOND_BLOCK mutation is
- * discarded and the flushed GOLD_BLOCK baseline returns after reload.</p>
+ * World#unloadChunk(x, z, false).
+ *
+ * <p>Reference Paper 26.2 build 110 returns false from this call in this
+ * lifecycle scenario, while the chunk subsequently completes its unload.
+ * The unsaved DIAMOND_BLOCK mutation also persists after reload. Point 4
+ * therefore treats those observed Paper results as the compatibility baseline.
  *
  * <p>The original block data is restored and flushed before completion.</p>
  */
@@ -515,15 +517,15 @@ final class Wave2DCompatChecks {
 
             try {
                 boolean returned = world.unloadChunk(chunkX, chunkZ, false);
-                if (returned) {
+                if (!returned) {
                     pass.accept(
                         "chunk.explicit-save-false.return",
-                        "unloadChunk(x,z,false) returned true"
+                        "unloadChunk(x,z,false) returned false, matching Paper 26.2 build 110"
                     );
                 } else {
                     fail.accept(
                         "chunk.explicit-save-false.return",
-                        "unloadChunk(x,z,false) returned false"
+                        "unloadChunk(x,z,false) returned true, differing from Paper 26.2 build 110"
                     );
                 }
             } catch (Throwable throwable) {
@@ -656,15 +658,15 @@ final class Wave2DCompatChecks {
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 Material actual = marker().getType();
-                if (actual == Material.GOLD_BLOCK) {
+                if (actual == Material.DIAMOND_BLOCK) {
                     pass.accept(
                         "chunk.explicit-save-false.disk-state",
-                        "unsaved DIAMOND_BLOCK mutation was discarded; GOLD_BLOCK baseline returned"
+                        "DIAMOND_BLOCK mutation persisted, matching Paper 26.2 build 110"
                     );
-                } else if (actual == Material.DIAMOND_BLOCK) {
+                } else if (actual == Material.GOLD_BLOCK) {
                     fail.accept(
                         "chunk.explicit-save-false.disk-state",
-                        "DIAMOND_BLOCK mutation persisted despite unloadChunk(x,z,false)"
+                        "GOLD_BLOCK baseline returned, differing from Paper 26.2 build 110"
                     );
                 } else {
                     fail.accept(
