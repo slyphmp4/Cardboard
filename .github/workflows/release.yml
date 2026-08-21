@@ -1,0 +1,119 @@
+name: Cardboard Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v26.2.1
+        required: true
+        type: string
+      title:
+        description: Optional release title
+        required: false
+        type: string
+  push:
+    branches:
+      - ver/26.2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cardboard-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[release:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_TITLE: ${{ inputs.title }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$INPUT_TAG"
+            title="${INPUT_TITLE:-Cardboard ${tag#v}}"
+          else
+            first_line="${COMMIT_MESSAGE%%$'\n'*}"
+            if [[ ! "$first_line" =~ ^\[release:([^]]+)\] ]]; then
+              echo "::error::Release commits must start with [release:vX.Y.Z]"
+              exit 1
+            fi
+            tag="${BASH_REMATCH[1]}"
+            title="Cardboard ${tag#v}"
+          fi
+
+          if [[ -z "$tag" || "$tag" != v* ]]; then
+            echo "::error::Release tag must start with v"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-provider: basic
+
+      - name: Refuse an existing tag
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "$TAG^{commit}" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+      - name: Build Cardboard
+        run: ./gradlew clean build --no-daemon --stacktrace
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          TITLE: ${{ steps.release.outputs.title }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          assets=(build/libs/Cardboard-*.jar)
+          if (( ${#assets[@]} == 0 )); then
+            echo "::error::No Cardboard JARs were produced"
+            exit 1
+          fi
+
+          sha256sum "${assets[@]}" > build/libs/SHA256SUMS.txt
+
+          gh release create "$TAG" \
+            "${assets[@]}" \
+            build/libs/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "$TITLE" \
+            --generate-notes
