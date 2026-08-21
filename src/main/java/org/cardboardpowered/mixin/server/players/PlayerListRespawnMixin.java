@@ -17,13 +17,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Restores the Paper respawn lifecycle when Cardboard reuses a player connection.
+ * Restores the Paper-style respawn lifecycle needed by Cardboard's internal
+ * teleport path.
  *
- * Vanilla creates a new ServerPlayer during respawn, while Paper currently reuses
- * the existing instance. Cardboard already ports the Paper internal-teleport path,
- * but its reuse/reset hooks in PlayerListMixin are commented out. That leaves the
- * connection pointing at the removed player and causes internalTeleport to reject
- * the respawn with "Attempt to teleport removed player ... restricted".
+ * Cardboard's existing respawn mixin routes the final respawn teleport through
+ * internalTeleport(), which intentionally refuses to teleport a removed player.
+ * The reuse hooks in PlayerListMixin are currently commented out, so the old
+ * ServerPlayer can still be marked removed when that teleport is attempted.
  */
 @Mixin(PlayerList.class)
 public abstract class PlayerListRespawnMixin {
@@ -44,7 +44,7 @@ public abstract class PlayerListRespawnMixin {
             @Local(argsOnly = true) ServerPlayer originalPlayer
     ) {
         // A freshly constructed ServerPlayer would already belong to the respawn
-        // level. Keep that invariant while preserving Paper's player-instance reuse.
+        // level. Keep that invariant while preserving the existing player instance.
         ((ServerPlayerBridge) originalPlayer).spawnIn(level);
         return originalPlayer;
     }
@@ -61,8 +61,7 @@ public abstract class PlayerListRespawnMixin {
             ServerPlayer source,
             Operation<Void> original
     ) {
-        // The local respawn player and the original player are now the same object.
-        // Paper skips this copy while it reuses the ServerPlayer instance.
+        // The respawn player and source are the same object when reusing the player.
     }
 
     @Inject(
@@ -79,10 +78,12 @@ public abstract class PlayerListRespawnMixin {
             Entity.RemovalReason removalReason,
             CallbackInfoReturnable<ServerPlayer> cir
     ) {
-        // Paper: the reused entity must be live again before internalTeleport runs.
-        if (!keepInventory) {
-            ((ServerPlayerBridge) player).reset();
-        }
+        /*
+         * ServerPlayerBridge#reset() is declared by Cardboard but has no concrete
+         * implementation on 26.2, so invoking it currently throws
+         * AbstractMethodError. Do not call it here. The immediate lifecycle bug is
+         * that internalTeleport() sees the reused entity as removed.
+         */
         player.unsetRemoved();
         player.setShiftKeyDown(false);
     }
