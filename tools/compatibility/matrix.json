@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "minecraft": "26.2",
+  "subject": "Cardboard",
+  "overallStatus": "PASS",
+  "paperReference": {
+    "version": "26.2-110",
+    "api": "26.2.build.110-stable",
+    "commit": "1cd6d57"
+  },
+  "cardboardRuntime": {
+    "binarySha256": "5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b",
+    "releaseBaseCommit": "e360081cd45f01fae5f9b61d9d0052a6f3445781"
+  },
+  "confirmedPaperDifferences": 0,
+  "suites": [
+    {
+      "id": "wave1",
+      "name": "Bukkit/Paper baseline",
+      "status": "PASS",
+      "total": 22,
+      "pass": 22,
+      "fail": 0,
+      "report": "reports/wave1-20260821-003936.txt"
+    },
+    {
+      "id": "wave2a",
+      "name": "Extended API baseline",
+      "status": "PASS",
+      "total": 40,
+      "pass": 40,
+      "fail": 0,
+      "report": "reports/wave2a-20260821-005118.txt"
+    },
+    {
+      "id": "wave2b",
+      "name": "Scheduler and chunk lifecycle",
+      "status": "PASS",
+      "total": 57,
+      "pass": 57,
+      "fail": 0,
+      "report": "reports/wave2b-20260821-010341.txt"
+    },
+    {
+      "id": "wave2c",
+      "name": "ChunkUnloadEvent save policy parity",
+      "status": "PASS",
+      "total": 13,
+      "pass": 13,
+      "fail": 0,
+      "paperCompared": true,
+      "paperDifference": false,
+      "paperReport": "reports/paper-wave2c-reference-20260821-011532.txt",
+      "report": "reports/wave2c-paper-parity-20260821-012034.txt"
+    },
+    {
+      "id": "wave2d",
+      "name": "Explicit unloadChunk save=false parity",
+      "status": "PASS",
+      "total": 13,
+      "pass": 13,
+      "fail": 0,
+      "paperCompared": true,
+      "paperDifference": false,
+      "paperReport": "reports/paper-wave2d-reference-20260821-135615.txt",
+      "report": "reports/wave2d-paper-parity-20260821-135909.txt"
+    },
+    {
+      "id": "wave3",
+      "name": "Real plugin functionality",
+      "status": "PASS",
+      "total": 14,
+      "pass": 14,
+      "fail": 0,
+      "report": "reports/wave3-real-plugins-20260821-140819.txt",
+      "plugins": [
+        {
+          "name": "CoreProtect",
+          "version": "24.0",
+          "coverage": [
+            "plugin enable",
+            "public API",
+            "API version",
+            "synthetic placement logging",
+            "lookup",
+            "world non-mutation"
+          ]
+        },
+        {
+          "name": "PlaceholderAPI",
+          "version": "2.12.3",
+          "coverage": [
+            "plugin enable",
+            "uperms expansion registry",
+            "placeholder detection",
+            "actual substitution"
+          ]
+        },
+        {
+          "name": "UltraPermissions",
+          "version": "5.6.8",
+          "coverage": [
+            "plugin enable",
+            "public API",
+            "storage collections",
+            "default group option"
+          ]
+        }
+      ]
+    }
+  ],
+  "paperParityInvestigations": [
+    {
+      "id": "wave2c",
+      "initialObservation": "DIAMOND_BLOCK persisted after ChunkUnloadEvent#setSaveChunk(false)",
+      "referenceResult": "Paper 26.2 build 110 behaved identically",
+      "classification": "test expectation corrected; not a Cardboard incompatibility"
+    },
+    {
+      "id": "wave2d",
+      "initialObservation": "unloadChunk(x,z,false) returned false and DIAMOND_BLOCK persisted",
+      "referenceResult": "Paper 26.2 build 110 behaved identically",
+      "classification": "test expectation corrected; not a Cardboard incompatibility"
+    }
+  ]
+}

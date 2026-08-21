@@ -38,4 +38,20 @@ For every `FAIL`:
 3. If Paper behaves the same, fix the test expectation instead of Cardboard.
 4. If Paper differs, record `PAPER_DIFFERENCE`, implement the Cardboard fix, and add a regression test before changing the matrix to `PASS`.
 
-Known compatibility work to revisit during Point 4 includes complete Paper save-policy semantics for `ChunkUnloadEvent#setSaveChunk(false)`; event delivery itself was addressed earlier.
+## Point 4 baseline result
+
+Point 4 is complete for the primary Cardboard 26.2 compatibility scope.
+
+- Wave 1: 22/22 PASS.
+- Wave 2A: 40/40 PASS.
+- Wave 2B: 57/57 PASS.
+- Wave 2C: 13/13 PASS after comparison with exact Paper 26.2 build 110.
+- Wave 2D: 13/13 PASS after comparison with exact Paper 26.2 build 110.
+- Wave 3: 14/14 PASS against CoreProtect 24.0, PlaceholderAPI 2.12.3, and UltraPermissions 5.6.8.
+- Confirmed Cardboard/Paper behaviour differences in the tested scope: 0.
+
+The initial Wave 2C and Wave 2D save-policy failures were reproduced
+identically on Paper 26.2 build 110 and were therefore classified as probe
+expectation errors rather than Cardboard incompatibilities.
+
+The machine-readable summary is stored in `tools/compatibility/matrix.json`.

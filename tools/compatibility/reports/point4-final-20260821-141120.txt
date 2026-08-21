@@ -1,0 +1,39 @@
+Cardboard Point 4 — Final compatibility status
+
+Date:
+Fri Aug 21 14:11:20 MSK 2026
+
+Compatibility branch HEAD:
+eaffb4d60f864e3c9678b06ffc8e7de91df7c0f3
+
+Cardboard tested runtime binary:
+5f5acf96fabdcb90b0e13b723ca029ab25a0861134268c7cda17b3c09dca086b  /opt/minecraft/server/mods/Cardboard-26.2.jar
+
+Compatibility probe:
+68b93bab52fa574c48634310d59437fdebc00872ad0b278584d0a07bfc10d827  /opt/minecraft/server/plugins/CardboardCompatProbe.jar
+
+Runtime:
+This server is running [33mCardboard[0m version 26.2[3m (Implementing API version 26.2)
+[0mUnknown version, custom build?
+[0m
+
+Plugins:
+Plugins (5): [32mPlaceholderAPI[37m, [32mUltraPermissions[37m, [32mCoreProtect[37m, [32mCardboardCompatProbe[37m, [32mCardboardTorture
+[0m
+
+Final completed suite:
+CardboardCompatProbe running=false total=14 pass=14 fail=0 skip=0 unsupported=0 paperDifference=0
+[0m
+
+Point 4 suite status:
+Wave 1  : 22/22 PASS
+Wave 2A : 40/40 PASS
+Wave 2B : 57/57 PASS
+Wave 2C : 13/13 PASS — Paper parity verified
+Wave 2D : 13/13 PASS — Paper parity verified
+Wave 3  : 14/14 PASS — real plugin functionality
+
+Confirmed Cardboard/Paper differences: 0
+
+Matrix:
+2c557f6e838bed472d229f939edd175fd33f8be3a37f3d35f9c8294ef561dcc7  tools/compatibility/matrix.json
