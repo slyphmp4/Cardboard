@@ -53,11 +53,8 @@ public abstract class SimpleContainerMixin implements Container, ContainerBridge
 
     @Override
     public InventoryHolder getOwner() {
-        // TODO Auto-generated method stub
-        
         InventoryHolder hold = (transaction.size() >= 1) ? transaction.get(0) : null;
-        if (null == hold) {
-            System.out.println("NULL HOLD!");
+        if (hold == null) {
             return this.bukkitOwner;
         }
         return hold;
