@@ -10,7 +10,9 @@ import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.component.PatchedDataComponentMap;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -102,15 +104,17 @@ public class BlockEntityMixin implements BlockEntityBridge {
         try {
             state = block.getState(useSnapshot); // Paper
         } catch (IllegalStateException ex) {
-            // Cardboard compatibility: modded block entities do not necessarily have a
-            // CraftBukkit BlockState factory. Paper assumes every block entity belongs
-            // to a vanilla block type and throws "Unexpected BlockState" otherwise.
-            // Inventory integrations such as CoreProtect only need a nullable holder,
-            // so treat an unknown modded owner as absent instead of failing the event.
-            org.bukkit.Material material = org.bukkit.craftbukkit.block.CraftBlockType.minecraftToBukkit(
+            // Cardboard compatibility: arbitrary modded block entities do not always
+            // have a CraftBukkit BlockState factory. Detect the owning block directly
+            // from Minecraft's registry instead of Bukkit Material#getKey(), because
+            // dynamically injected Material values may report a vanilla namespace.
+            Identifier key = BuiltInRegistries.BLOCK.getKey(
                     ((BlockEntity) (Object) this).getBlockState().getBlock()
             );
-            if (material != null && !"minecraft".equals(material.getKey().getNamespace())) {
+            if (key != null
+                    && !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())
+                    && ex.getMessage() != null
+                    && ex.getMessage().startsWith("Unexpected BlockState")) {
                 return null;
             }
             throw ex;
