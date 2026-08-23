@@ -96,6 +96,31 @@ public class BlockEntityMixin implements BlockEntityBridge {
         return cardboard$getOwner(true);
     }
 
+    private boolean cardboard$isModdedBlockEntity() {
+        Identifier key = BuiltInRegistries.BLOCK.getKey(
+                ((BlockEntity) (Object) this).getBlockState().getBlock()
+        );
+        return key != null && !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace());
+    }
+
+    private org.bukkit.inventory.@Nullable InventoryHolder cardboard$createGenericContainerHolder(org.bukkit.block.Block block) {
+        if (!cardboard$isModdedBlockEntity() || !((Object) this instanceof Container container)) {
+            return null;
+        }
+
+        return new org.bukkit.inventory.BlockInventoryHolder() {
+            @Override
+            public org.bukkit.block.Block getBlock() {
+                return block;
+            }
+
+            @Override
+            public org.bukkit.inventory.Inventory getInventory() {
+                return new org.bukkit.craftbukkit.inventory.CraftInventory(container);
+            }
+        };
+    }
+
     @Override
     public org.bukkit.inventory.@Nullable InventoryHolder cardboard$getOwner(boolean useSnapshot) {
         if (this.level == null) return null;
@@ -105,41 +130,32 @@ public class BlockEntityMixin implements BlockEntityBridge {
         try {
             state = block.getState(useSnapshot); // Paper
         } catch (IllegalStateException ex) {
-            // Cardboard compatibility: arbitrary modded block entities do not always
-            // have a CraftBukkit BlockState factory. Detect the owning block directly
-            // from Minecraft's registry instead of Bukkit Material#getKey(), because
-            // dynamically injected Material values may report a vanilla namespace.
-            Identifier key = BuiltInRegistries.BLOCK.getKey(
-                    ((BlockEntity) (Object) this).getBlockState().getBlock()
-            );
-            if (key != null
-                    && !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())
-                    && ex.getMessage() != null
-                    && ex.getMessage().startsWith("Unexpected BlockState")) {
-                // A nullable holder prevents crashes, but plugins such as CoreProtect
-                // deliberately ignore ownerless inventories. If this BlockEntity is a
-                // Container, expose the generic Paper BlockInventoryHolder contract so
-                // plugins can recognize it as a real block-backed inventory without
-                // pretending it is a vanilla Chest/Barrel BlockState.
-                if ((Object) this instanceof Container container) {
-                    return new org.bukkit.inventory.BlockInventoryHolder() {
-                        @Override
-                        public org.bukkit.block.Block getBlock() {
-                            return block;
-                        }
-
-                        @Override
-                        public org.bukkit.inventory.Inventory getInventory() {
-                            return new org.bukkit.craftbukkit.inventory.CraftInventory(container);
-                        }
-                    };
+            // Compatibility for older/strict block-state paths: if an arbitrary
+            // modded block entity has no dedicated CraftBukkit state factory, still
+            // expose a block-backed holder for Container implementations.
+            if (ex.getMessage() != null && ex.getMessage().startsWith("Unexpected BlockState")) {
+                org.bukkit.inventory.InventoryHolder genericHolder = cardboard$createGenericContainerHolder(block);
+                if (genericHolder != null) {
+                    return genericHolder;
                 }
-                return null;
+                if (cardboard$isModdedBlockEntity()) {
+                    return null;
+                }
             }
             throw ex;
         }
 
-        return state instanceof final org.bukkit.inventory.InventoryHolder inventoryHolder ? inventoryHolder : null;
+        if (state instanceof final org.bukkit.inventory.InventoryHolder inventoryHolder) {
+            return inventoryHolder;
+        }
+
+        // Since Cardboard 26.2.6, unknown modded block entities intentionally expose
+        // a generic CraftBlockState instead of throwing. That means the exception
+        // fallback above is no longer reached for containers such as Storage Delight
+        // cabinets. Preserve the Paper BlockInventoryHolder contract explicitly so
+        // Inventory#getHolder() remains non-null and plugins such as CoreProtect do
+        // not silently discard the InventoryClickEvent.
+        return cardboard$createGenericContainerHolder(block);
     }
     // CraftBukkit end
 
