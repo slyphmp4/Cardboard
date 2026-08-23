@@ -10,9 +10,7 @@ import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.component.PatchedDataComponentMap;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -109,8 +107,10 @@ public class BlockEntityMixin implements BlockEntityBridge {
             // to a vanilla block type and throws "Unexpected BlockState" otherwise.
             // Inventory integrations such as CoreProtect only need a nullable holder,
             // so treat an unknown modded owner as absent instead of failing the event.
-            ResourceLocation key = BuiltInRegistries.BLOCK.getKey(((BlockEntity) (Object) this).getBlockState().getBlock());
-            if (key != null && !ResourceLocation.DEFAULT_NAMESPACE.equals(key.getNamespace())) {
+            org.bukkit.Material material = org.bukkit.craftbukkit.block.CraftBlockType.minecraftToBukkit(
+                    ((BlockEntity) (Object) this).getBlockState().getBlock()
+            );
+            if (material != null && !"minecraft".equals(material.getKey().getNamespace())) {
                 return null;
             }
             throw ex;
