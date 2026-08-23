@@ -12,7 +12,7 @@ final class GitVersionTest {
     void exposesStableSourceRevisionMetadata() {
         assertEquals("org.cardboardpowered", GitVersion.MAVEN_GROUP);
         assertEquals("cardboard", GitVersion.MAVEN_NAME);
-        assertEquals("26.2.7", GitVersion.VERSION);
+        assertEquals("26.2.8", GitVersion.VERSION);
         assertEquals("ver/26.2", GitVersion.GIT_BRANCH);
 
         assertTrue(GitVersion.GIT_REVISION > 0);
