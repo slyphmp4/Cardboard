@@ -7,7 +7,9 @@ import java.util.function.BiFunction;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -73,8 +75,17 @@ public final class CraftBlockStates {
     private static final BlockStateFactory<?> DEFAULT_FACTORY = new BlockStateFactory<>(CraftBlockState.class) {
         @Override
         public CraftBlockState createBlockState(World world, BlockPos pos, net.minecraft.world.level.block.state.BlockState state, BlockEntity blockEntity) {
-            // Paper - revert upstream's revert of the block state changes. Block entities that have already had the block type set to AIR are still valid, upstream decided to ignore them
-            Preconditions.checkState(blockEntity == null, "Unexpected BlockState for %s", CraftBlockType.minecraftToBukkit(state.getBlock()));
+            // Paper - revert upstream's revert of the block state changes. Block entities that have already had the block type set to AIR are still valid, upstream decided to ignore them.
+            // Cardboard compatibility: Fabric mods can register arbitrary BlockEntity
+            // implementations that naturally have no dedicated CraftBukkit state
+            // wrapper. Expose those as a generic CraftBlockState instead of failing
+            // every Block#getState() call. Keep the original strict invariant for
+            // minecraft:* blocks so genuine vanilla factory regressions remain loud.
+            if (blockEntity != null) {
+                Identifier key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+                boolean moddedBlock = key != null && !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace());
+                Preconditions.checkState(moddedBlock, "Unexpected BlockState for %s", CraftBlockType.minecraftToBukkit(state.getBlock()));
+            }
             return new CraftBlockState(world, pos, state);
         }
     };
