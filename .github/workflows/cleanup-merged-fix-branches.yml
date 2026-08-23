@@ -1,0 +1,25 @@
+name: Cleanup merged fix branches
+
+on:
+  push:
+    branches:
+      - ver/26.2
+    paths:
+      - .github/workflows/cleanup-merged-fix-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X DELETE "repos/$REPO/git/refs/heads/fix/remove-null-hold-debug"
+          gh api -X DELETE "repos/$REPO/git/refs/heads/fix/inventory-click-player-null-packet"
