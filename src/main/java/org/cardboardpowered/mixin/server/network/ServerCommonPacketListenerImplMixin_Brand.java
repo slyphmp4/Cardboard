@@ -1,5 +1,6 @@
 package org.cardboardpowered.mixin.server.network;
 
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.custom.BrandPayload;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
@@ -22,6 +23,17 @@ public class ServerCommonPacketListenerImplMixin_Brand implements ClientBrandBri
     private void cardboard$captureBrand(ServerboundCustomPayloadPacket packet, CallbackInfo ci) {
         if (packet.payload() instanceof BrandPayload brandPayload) {
             this.cardboard$clientBrand = brandPayload.brand();
+        }
+    }
+
+    // Some modded BlockEntity implementations legitimately do not provide a
+    // client update packet. CraftBukkit compatibility paths may still attempt
+    // to forward BlockEntity#getUpdatePacket(), so guard the connection boundary
+    // instead of letting ServerCommonPacketListenerImpl dereference null.
+    @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;)V", at = @At("HEAD"), cancellable = true)
+    private void cardboard$ignoreNullPacket(Packet<?> packet, CallbackInfo ci) {
+        if (packet == null) {
+            ci.cancel();
         }
     }
 
