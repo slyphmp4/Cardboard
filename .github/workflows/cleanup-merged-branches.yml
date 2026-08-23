@@ -1,0 +1,38 @@
+name: Cleanup merged working branches
+
+on:
+  push:
+    branches:
+      - ver/26.2
+    paths:
+      - .github/workflows/cleanup-merged-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete merged working branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            'release/26.2.3'
+            'fix/modded-holder-after-generic-state'
+            'fix/modded-container-holder-logging'
+            'fix/modded-container-contents-blockstate'
+            'fix/modded-blockentity-state-fallback'
+            'fix/modded-blockentity-nms-identifier'
+          )
+
+          for branch in "${branches[@]}"; do
+            echo "Deleting $branch"
+            git push origin --delete "$branch"
+          done
