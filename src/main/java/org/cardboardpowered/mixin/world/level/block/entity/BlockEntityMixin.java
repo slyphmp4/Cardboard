@@ -14,6 +14,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -115,6 +116,24 @@ public class BlockEntityMixin implements BlockEntityBridge {
                     && !Identifier.DEFAULT_NAMESPACE.equals(key.getNamespace())
                     && ex.getMessage() != null
                     && ex.getMessage().startsWith("Unexpected BlockState")) {
+                // A nullable holder prevents crashes, but plugins such as CoreProtect
+                // deliberately ignore ownerless inventories. If this BlockEntity is a
+                // Container, expose the generic Paper BlockInventoryHolder contract so
+                // plugins can recognize it as a real block-backed inventory without
+                // pretending it is a vanilla Chest/Barrel BlockState.
+                if ((Object) this instanceof Container container) {
+                    return new org.bukkit.inventory.BlockInventoryHolder() {
+                        @Override
+                        public org.bukkit.block.Block getBlock() {
+                            return block;
+                        }
+
+                        @Override
+                        public org.bukkit.inventory.Inventory getInventory() {
+                            return new org.bukkit.craftbukkit.inventory.CraftInventory(container);
+                        }
+                    };
+                }
                 return null;
             }
             throw ex;
