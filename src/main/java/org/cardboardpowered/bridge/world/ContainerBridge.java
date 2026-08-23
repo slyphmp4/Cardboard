@@ -18,7 +18,17 @@ import org.cardboardpowered.bridge.world.level.block.entity.BlockEntityBridge;
 public interface ContainerBridge {
 
     default java.util.List<ItemStack> getContents() {
-    	return null;
+        // MixinContainer grafts this bridge onto every Minecraft Container. Vanilla
+        // containers with dedicated mixins may override this method, while arbitrary
+        // modded containers still need a usable Bukkit Inventory#getContents() path.
+        if ((Object) this instanceof net.minecraft.world.Container container) {
+            java.util.List<ItemStack> contents = new java.util.ArrayList<>(container.getContainerSize());
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                contents.add(container.getItem(slot));
+            }
+            return contents;
+        }
+        return java.util.Collections.emptyList();
     }
 
     default void onOpen(CraftHumanEntity who) {
