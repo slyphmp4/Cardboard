@@ -25,7 +25,8 @@
     ]
   },
   "mixins": [
-    "bukkitfabric.mixins.json"
+    "bukkitfabric.mixins.json",
+    "cardboard-adventure-fix.mixins.json"
   ],
 
   "depends": {
