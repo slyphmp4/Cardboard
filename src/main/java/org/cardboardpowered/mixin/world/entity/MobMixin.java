@@ -23,17 +23,14 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
     @Nullable
     public LivingEntity target;
 
-    @Shadow
-    public abstract @Nullable LivingEntity getTarget();
-
     protected MobMixin(EntityType<? extends LivingEntity> entityType, Level level) {
         super(entityType, level);
     }
 
     @Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
-    public void setTargetCraftBukkit(LivingEntity livingEntity, CallbackInfo ci) {
-        // CraftBukkit start - fire event
-        boolean set = this.cardboard$setTarget(target, EntityTargetEvent.TargetReason.UNKNOWN);
+    public void setTargetCraftBukkit(@Nullable LivingEntity livingEntity, CallbackInfo ci) {
+        // CraftBukkit start - fire event for the target Minecraft is actually trying to set.
+        boolean set = this.cardboard$setTarget(livingEntity, EntityTargetEvent.TargetReason.UNKNOWN);
         if (set) { // Let the other mods call their @Inject if set is false.
             ci.cancel();
         }
@@ -44,36 +41,46 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
             new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Override
-    public boolean cardboard$setTarget(@Nullable LivingEntity target, EntityTargetEvent.@Nullable TargetReason reason) {
-        if (this.getTarget() == target) {
+    public boolean cardboard$setTarget(@Nullable LivingEntity newTarget, EntityTargetEvent.@Nullable TargetReason reason) {
+        // Use the raw target field here. In 26.2 Mob#getTarget() can apply validity checks,
+        // while Bukkit needs to compare against the actual target currently stored by Minecraft.
+        LivingEntity oldTarget = this.target;
+        if (oldTarget == newTarget) {
             return false;
         }
+
         if (reason != null) {
-            if (reason == EntityTargetEvent.TargetReason.UNKNOWN && this.getTarget() != null && target == null) {
-                reason = this.getTarget().isAlive() ? EntityTargetEvent.TargetReason.FORGOT_TARGET : EntityTargetEvent.TargetReason.TARGET_DIED;
+            if (reason == EntityTargetEvent.TargetReason.UNKNOWN && oldTarget != null && newTarget == null) {
+                reason = oldTarget.isAlive()
+                        ? EntityTargetEvent.TargetReason.FORGOT_TARGET
+                        : EntityTargetEvent.TargetReason.TARGET_DIED;
             }
             if (reason == EntityTargetEvent.TargetReason.UNKNOWN && cardboard$warnedUnknownTarget.compareAndSet(false, true)) {
-                // Fires on every generic setTarget call, i.e. constantly once mobs are active.
-                // Report it once per run so the signal survives without flooding the log.
-                ((ServerLevelBridge)this.level()).getCraftServer().getLogger().log(java.util.logging.Level.WARNING,
+                // Some generic target acquisitions still do not expose a Bukkit reason.
+                // Report only the first occurrence so useful diagnostics remain without log spam.
+                ((ServerLevelBridge) this.level()).getCraftServer().getLogger().log(java.util.logging.Level.WARNING,
                         "Unknown target reason, please report on the issue tracker (further occurrences suppressed)", new Exception());
             }
-            CraftLivingEntity ctarget = null;
-            if (target != null) {
-                ctarget = (CraftLivingEntity) target.getBukkitEntity();
+
+            CraftLivingEntity craftTarget = null;
+            if (newTarget != null) {
+                craftTarget = (CraftLivingEntity) newTarget.getBukkitEntity();
             }
-            org.bukkit.event.entity.EntityTargetLivingEntityEvent event = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(this.getBukkitEntity(), ctarget, reason);
+
+            org.bukkit.event.entity.EntityTargetLivingEntityEvent event =
+                    new org.bukkit.event.entity.EntityTargetLivingEntityEvent(this.getBukkitEntity(), craftTarget, reason);
             if (!event.callEvent()) {
                 return false;
             }
 
             if (event.getTarget() != null) {
-                target = ((CraftLivingEntity) event.getTarget()).getHandle();
+                newTarget = ((CraftLivingEntity) event.getTarget()).getHandle();
             } else {
-                target = null;
+                newTarget = null;
             }
         }
-        this.target = target;
+
+        this.target = newTarget;
         return true;
         // CraftBukkit end
     }
