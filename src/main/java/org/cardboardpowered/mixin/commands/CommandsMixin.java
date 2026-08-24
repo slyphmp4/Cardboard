@@ -20,6 +20,7 @@ import com.mojang.brigadier.tree.RootCommandNode;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.protocol.game.ClientboundCommandsPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.PermissionProviderCheck;
 
@@ -30,6 +31,7 @@ import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.cardboardpowered.bridge.commands.PermissionProviderCheckBridge;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
 
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -45,6 +47,10 @@ public class CommandsMixin {
 
     @Shadow
     public com.mojang.brigadier.CommandDispatcher<CommandSourceStack> dispatcher;
+
+    @Shadow
+    @Final
+    private static ClientboundCommandsPacket.NodeInspector<CommandSourceStack> COMMAND_NODE_INSPECTOR;
 
     @Shadow
     private static <S> void fillUsableCommands(
@@ -81,58 +87,58 @@ public class CommandsMixin {
         }
     }
 
+    /**
+     * Build the command tree for this specific player, expose its top-level
+     * labels through Bukkit's PlayerCommandSendEvent, then actually apply any
+     * removals plugins made to the event before the Brigadier tree is sent to
+     * the client.
+     *
+     * Cardboard previously fired PlayerCommandSendEvent but ignored changes to
+     * event.getCommands(), which made command-hiding plugins unable to remove
+     * commands from client-side slash/TAB suggestions.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    @Inject(at = @At("HEAD"), method = "sendCommands")
-    public void bukkitize(
+    @Inject(at = @At("HEAD"), method = "sendCommands", cancellable = true)
+    private void cardboard$filterAndSendCommands(
             ServerPlayer entityplayer,
             CallbackInfo ci
     ) {
         Map<CommandNode<CommandSourceStack>, CommandNode<CommandSourceStack>> map =
                 Maps.newIdentityHashMap();
 
-        RootCommandNode vanillaRoot = new RootCommandNode();
-
-        RootCommandNode<CommandSourceStack> vanilla =
-                entityplayer.level()
-                        .getServer()
-                        .getCommands()
-                        .getDispatcher()
-                        .getRoot();
-
-        map.put(vanilla, vanillaRoot);
-
-        fillUsableCommands(
-                vanilla,
-                vanillaRoot,
-                entityplayer.createCommandSourceStack(),
-                (Map) map
-        );
-
-        RootCommandNode<CommandSourceStack> rootcommandnode =
+        RootCommandNode<CommandSourceStack> rootCommandNode =
                 new RootCommandNode<>();
 
-        map.put(this.dispatcher.getRoot(), rootcommandnode);
+        map.put(this.dispatcher.getRoot(), rootCommandNode);
 
         fillUsableCommands(
                 this.dispatcher.getRoot(),
-                rootcommandnode,
+                rootCommandNode,
                 entityplayer.createCommandSourceStack(),
                 (Map) map
         );
 
-        Collection<String> bukkit = new LinkedHashSet<>();
-
-        for (CommandNode node : rootcommandnode.getChildren()) {
-            bukkit.add(node.getName());
+        Collection<String> originalCommands = new LinkedHashSet<>();
+        for (CommandNode<CommandSourceStack> node : rootCommandNode.getChildren()) {
+            originalCommands.add(node.getName());
         }
 
-        PlayerCommandSendEvent event =
-                new PlayerCommandSendEvent(
-                        (Player) ((ServerPlayerBridge) entityplayer)
-                                .getBukkitEntity(),
-                        new LinkedHashSet<>(bukkit)
-                );
-
+        PlayerCommandSendEvent event = new PlayerCommandSendEvent(
+                (Player) ((ServerPlayerBridge) entityplayer).getBukkitEntity(),
+                new LinkedHashSet<>(originalCommands)
+        );
         CraftEventFactory.callEvent(event);
+
+        for (String command : originalCommands) {
+            if (!event.getCommands().contains(command)) {
+                rootCommandNode.removeCommand(command);
+            }
+        }
+
+        entityplayer.connection.send(
+                new ClientboundCommandsPacket(rootCommandNode, COMMAND_NODE_INSPECTOR)
+        );
+
+        ci.cancel();
     }
 }
