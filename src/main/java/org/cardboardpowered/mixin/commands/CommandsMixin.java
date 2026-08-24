@@ -89,9 +89,8 @@ public class CommandsMixin {
 
     /**
      * Build the command tree for this specific player, expose its top-level
-     * labels through Bukkit's PlayerCommandSendEvent, then actually apply any
-     * removals plugins made to the event before the Brigadier tree is sent to
-     * the client.
+     * labels through Bukkit's PlayerCommandSendEvent, then send a root that
+     * contains only labels retained by plugins.
      *
      * Cardboard previously fired PlayerCommandSendEvent but ignored changes to
      * event.getCommands(), which made command-hiding plugins unable to remove
@@ -129,14 +128,15 @@ public class CommandsMixin {
         );
         CraftEventFactory.callEvent(event);
 
-        for (String command : originalCommands) {
-            if (!event.getCommands().contains(command)) {
-                rootCommandNode.removeCommand(command);
+        RootCommandNode<CommandSourceStack> filteredRoot = new RootCommandNode<>();
+        for (CommandNode<CommandSourceStack> node : rootCommandNode.getChildren()) {
+            if (event.getCommands().contains(node.getName())) {
+                filteredRoot.addChild(node);
             }
         }
 
         entityplayer.connection.send(
-                new ClientboundCommandsPacket(rootCommandNode, COMMAND_NODE_INSPECTOR)
+                new ClientboundCommandsPacket(filteredRoot, COMMAND_NODE_INSPECTOR)
         );
 
         ci.cancel();
