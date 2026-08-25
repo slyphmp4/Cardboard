@@ -169,7 +169,7 @@
     "world.item.EnderpearlItemMixin",
     "world.item.FireChargeItemMixin",
     "world.item.FishingRodItemMixin",
-    "world.item.FlintAndSteelMixin",
+    "world.item.FlintAndSteelItemMixin",
     "world.item.HangingEntityItemMixin",
     "world.item.ItemStackMixin",
     "world.item.LeadItemMixin",
