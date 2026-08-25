@@ -13,6 +13,7 @@
     "bukkit.MixinPluginClassLoader",
     "bukkit.configuration.file.BukkitYamlConfigurationMixin",
     "bukkit.entity.BukkitEntityTypeMixin",
+    "bukkit.inventory.CraftInventoryMixin",
     "bukkit.plugin.BukkitRegisteredListenerMixin",
     "bukkit.plugin.BukkitSimplePluginManagerMixin",
     "commands.CommandsMixin",
