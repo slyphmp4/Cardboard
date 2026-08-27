@@ -114,7 +114,7 @@ public final class CardboardCommands implements Commands {
                     // ClientboundCommandsPacket inspects Brigadier nodes. That synthetic
                     // source has no Bukkit CommandSender, so calling source.getSender()
                     // would throw AbstractMethodError and crash sendCommands() on login.
-                    if (vanillaSource.source == net.minecraft.commands.CommandSource.NULL) {
+                    if (!shouldResolveBukkitSender(vanillaSource.source)) {
                         return false;
                     }
 
@@ -133,6 +133,10 @@ public final class CardboardCommands implements Commands {
                 }));
 
         return builder.build();
+    }
+
+    static boolean shouldResolveBukkitSender(net.minecraft.commands.CommandSource source) {
+        return source != net.minecraft.commands.CommandSource.NULL;
     }
 
     private static CompletableFuture<Suggestions> suggest(BasicCommand basicCommand, CommandContext<CommandSourceStack> context,
