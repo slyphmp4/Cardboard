@@ -106,7 +106,20 @@ public final class CardboardCommands implements Commands {
 
     private static LiteralCommandNode<CommandSourceStack> toNode(String label, BasicCommand basicCommand) {
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal(label)
-                .requires(source -> basicCommand.canUse(source.getSender()))
+                .requires(source -> {
+                    net.minecraft.commands.CommandSourceStack vanillaSource =
+                            (net.minecraft.commands.CommandSourceStack) (Object) source;
+
+                    // Minecraft 26.2 uses CommandSource.NULL with NO_PERMISSIONS while
+                    // ClientboundCommandsPacket inspects Brigadier nodes. That synthetic
+                    // source has no Bukkit CommandSender, so calling source.getSender()
+                    // would throw AbstractMethodError and crash sendCommands() on login.
+                    if (!shouldResolveBukkitSender(vanillaSource.source)) {
+                        return false;
+                    }
+
+                    return basicCommand.canUse(source.getSender());
+                })
                 .executes(context -> {
                     basicCommand.execute(context.getSource(), new String[0]);
                     return com.mojang.brigadier.Command.SINGLE_SUCCESS;
@@ -120,6 +133,10 @@ public final class CardboardCommands implements Commands {
                 }));
 
         return builder.build();
+    }
+
+    static boolean shouldResolveBukkitSender(net.minecraft.commands.CommandSource source) {
+        return source != net.minecraft.commands.CommandSource.NULL;
     }
 
     private static CompletableFuture<Suggestions> suggest(BasicCommand basicCommand, CommandContext<CommandSourceStack> context,
