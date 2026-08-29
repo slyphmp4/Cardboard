@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
 
     private static final long PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS = 60_000L;
-    private static final Map<UUID, CompletableFuture<ProfileResult>> IN_FLIGHT_PROFILE_LOOKUPS = new ConcurrentHashMap<>();
+    private static final Map<UUID, CompletableFuture<GameProfile>> IN_FLIGHT_PROFILE_LOOKUPS = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> PROFILE_LOOKUP_FAILURES = new ConcurrentHashMap<>();
 
 	private boolean emptyName;
@@ -314,9 +314,9 @@ public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
            MinecraftServer server = CraftServer.server;// MinecraftServer.getServer();
            boolean isCompleteFromCache = this.completeFromCache(true, onlineMode);
            if (onlineMode && (!isCompleteFromCache || textures && !this.hasTextures())) {
-              ProfileResult result = fetchProfileSingleFlight(server, this.profile.id());
-              if (result != null && result.profile() != null) {
-                 copyProfileProperties(result.profile(), this.profile, true);
+              GameProfile result = fetchProfileSingleFlight(server, this.profile.id());
+              if (result != null) {
+                 copyProfileProperties(result, this.profile, true);
               }
            }
 
@@ -326,9 +326,14 @@ public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
         }
      }
 
-    private static ProfileResult fetchProfileSingleFlight(MinecraftServer server, UUID profileId) {
+    private static GameProfile fetchProfileSingleFlight(MinecraftServer server, UUID profileId) {
         if (profileId == null) {
             return null;
+        }
+
+        GameProfile cachedProfile = CraftServer.INSTANCE.getPaperFilledProfileCache().getIfCached(profileId);
+        if (cachedProfile != null) {
+            return cachedProfile;
         }
 
         long now = System.currentTimeMillis();
@@ -340,25 +345,44 @@ public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
             PROFILE_LOOKUP_FAILURES.remove(profileId, retryAfter);
         }
 
-        CompletableFuture<ProfileResult> lookup = new CompletableFuture<>();
-        CompletableFuture<ProfileResult> existingLookup = IN_FLIGHT_PROFILE_LOOKUPS.putIfAbsent(profileId, lookup);
+        CompletableFuture<GameProfile> lookup = new CompletableFuture<>();
+        CompletableFuture<GameProfile> existingLookup = IN_FLIGHT_PROFILE_LOOKUPS.putIfAbsent(profileId, lookup);
         if (existingLookup != null) {
             return existingLookup.join();
         }
 
         try {
+            // The cache/cooldown may have changed while this thread was racing to become
+            // the owner of the lookup, so re-check both before touching Mojang.
+            cachedProfile = CraftServer.INSTANCE.getPaperFilledProfileCache().getIfCached(profileId);
+            if (cachedProfile != null) {
+                lookup.complete(cachedProfile);
+                return cachedProfile;
+            }
+
+            now = System.currentTimeMillis();
+            retryAfter = PROFILE_LOOKUP_FAILURES.get(profileId);
+            if (retryAfter != null && retryAfter > now) {
+                lookup.complete(null);
+                return null;
+            }
+            if (retryAfter != null) {
+                PROFILE_LOOKUP_FAILURES.remove(profileId, retryAfter);
+            }
+
             ProfileResult result = server.services().sessionService().fetchProfile(profileId, true);
             if (result == null || result.profile() == null) {
                 PROFILE_LOOKUP_FAILURES.put(profileId, System.currentTimeMillis() + PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS);
-            } else {
-                PROFILE_LOOKUP_FAILURES.remove(profileId);
-                GameProfile fetched = result.profile();
-                GameProfile cachedCopy = new GameProfile(fetched.id(), fetched.name(), new PropertyMap(fetched.properties()));
-                CraftServer.INSTANCE.getPaperFilledProfileCache().add(cachedCopy);
+                lookup.complete(null);
+                return null;
             }
 
-            lookup.complete(result);
-            return result;
+            PROFILE_LOOKUP_FAILURES.remove(profileId);
+            GameProfile fetched = result.profile();
+            GameProfile cachedCopy = new GameProfile(fetched.id(), fetched.name(), new PropertyMap(fetched.properties()));
+            CraftServer.INSTANCE.getPaperFilledProfileCache().add(cachedCopy);
+            lookup.complete(cachedCopy);
+            return cachedCopy;
         } catch (RuntimeException | Error throwable) {
             PROFILE_LOOKUP_FAILURES.put(profileId, System.currentTimeMillis() + PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS);
             // Waiting callers should observe a single failed lookup as a cache miss instead of
