@@ -105,7 +105,7 @@ class CraftMetaSkullProfileTest {
         assertTrue(serializedProfile.hasProperty("textures"));
         assertFalse(serializedProfile.getTextures().isEmpty());
         assertEquals(BASE64_TEXTURE_URL, serializedProfile.getTextures().getSkin());
-        assertFalse((java.util.List<?>) serializedProfile.serialize().get("properties")).isEmpty();
+        assertFalse(((java.util.List<?>) serializedProfile.serialize().get("properties")).isEmpty());
 
         CraftMetaSkull restored = new CraftMetaSkull(serialized);
         assertTrue(restored.hasOwner());
