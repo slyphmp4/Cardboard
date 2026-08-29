@@ -81,9 +81,21 @@ public abstract class PlayerListRespawnMixin {
         /*
          * ServerPlayerBridge#reset() is declared by Cardboard but has no concrete
          * implementation on 26.2, so invoking it currently throws
-         * AbstractMethodError. Do not call it here. The immediate lifecycle bug is
-         * that internalTeleport() sees the reused entity as removed.
+         * AbstractMethodError. Do not call it here.
+         *
+         * Unlike vanilla's freshly-created respawn player, this object still holds
+         * the dead player's XP fields. Clear them on an ordinary death respawn so
+         * the XP already dropped into the world cannot also survive on the player.
+         * keepInventory is the vanilla respawn flag; when it is true, vanilla keeps
+         * the player's XP as well.
          */
+        if (removalReason == Entity.RemovalReason.KILLED && !keepInventory) {
+            player.experienceLevel = 0;
+            player.totalExperience = 0;
+            player.experienceProgress = 0.0F;
+            player.lastSentExp = -1;
+        }
+
         player.unsetRemoved();
         player.setShiftKeyDown(false);
     }
