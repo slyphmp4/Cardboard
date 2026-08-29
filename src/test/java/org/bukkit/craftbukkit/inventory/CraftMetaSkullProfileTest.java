@@ -4,8 +4,8 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.google.common.collect.ImmutableMap;
 import java.net.URI;
 import java.net.URL;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.component.DataComponentPatch;
@@ -40,13 +40,13 @@ class CraftMetaSkullProfileTest {
     }
 
     private static CraftMetaSkull newMeta() {
-        return new CraftMetaSkull(DataComponentPatch.builder().build(), Set.of());
+        return new CraftMetaSkull(DataComponentPatch.builder().build(), new HashSet<>());
     }
 
     private static CraftMetaSkull roundTrip(CraftMetaSkull meta) {
         CraftMetaItem.Applicator applicator = new CraftMetaItem.Applicator() {};
         assertDoesNotThrow(() -> meta.applyToItem(applicator));
-        return new CraftMetaSkull(applicator.build(), Set.of());
+        return new CraftMetaSkull(applicator.build(), new HashSet<>());
     }
 
     @Test
