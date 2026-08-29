@@ -278,9 +278,7 @@ class CraftMetaSkull extends CraftMetaItem implements SkullMeta {
         super.serialize(builder);
 
         if (this.hasOwner()) {
-            // Use the Bukkit profile implementation here because its ConfigurationSerializable
-            // representation includes authlib properties such as custom "textures" values.
-            builder.put(CraftMetaSkull.SKULL_OWNER.BUKKIT, new CraftPlayerProfile(this.profile));
+            builder.put(CraftMetaSkull.SKULL_OWNER.BUKKIT, new com.destroystokyo.paper.profile.CraftPlayerProfile(this.profile));
         }
 
         NamespacedKey noteBlockSound = this.getNoteBlockSound();
