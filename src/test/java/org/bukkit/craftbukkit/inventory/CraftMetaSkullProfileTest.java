@@ -96,12 +96,14 @@ class CraftMetaSkullProfileTest {
 
         Map<String, Object> serialized = meta.serialize(ImmutableMap.builder()).build();
         Object serializedOwner = serialized.get(CraftMetaSkull.SKULL_OWNER.BUKKIT);
-        org.bukkit.craftbukkit.profile.CraftPlayerProfile serializedProfile = assertInstanceOf(
-            org.bukkit.craftbukkit.profile.CraftPlayerProfile.class,
+        com.destroystokyo.paper.profile.CraftPlayerProfile serializedProfile = assertInstanceOf(
+            com.destroystokyo.paper.profile.CraftPlayerProfile.class,
             serializedOwner
         );
+        assertTrue(serializedProfile.hasProperty("textures"));
         assertFalse(serializedProfile.getTextures().isEmpty());
         assertEquals(TEXTURE_URL, serializedProfile.getTextures().getSkin());
+        assertFalse((java.util.List<?>) serializedProfile.serialize().get("properties")).isEmpty();
 
         CraftMetaSkull restored = new CraftMetaSkull(serialized);
         assertTrue(restored.hasOwner());
