@@ -26,11 +26,18 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @NullMarked
 @SerializableAs("PlayerProfile")
 public final class CraftPlayerProfile implements PlayerProfile, com.destroystokyo.paper.profile.SharedPlayerProfile, com.destroystokyo.paper.profile.PlayerProfile { // Paper
+
+    private static final long PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS = 60_000L;
+    private static final Map<UUID, CompletableFuture<Optional<GameProfile>>> IN_FLIGHT_PROFILE_LOOKUPS = new ConcurrentHashMap<>();
+    private static final ReentrantLock PROFILE_LOOKUP_LOCK = new ReentrantLock();
+    private static volatile long profileLookupRetryAfter;
 
     public static GameProfile validateSkullProfile(GameProfile gameProfile) {
         // The GameProfile needs to contain either both a uuid and textures, or a name.
@@ -165,15 +172,77 @@ public final class CraftPlayerProfile implements PlayerProfile, com.destroystoky
                 .orElse(profile);
         }
 
-        // Look up properties such as the textures:
+        // Look up properties such as the textures. Cardboard guards this path because profile-heavy
+        // plugin GUIs can otherwise launch dozens of simultaneous requests against Mojang's session server.
         if (!profile.id().equals(Util.NIL_UUID)) {
-            ProfileResult newProfile = server.services().sessionService().fetchProfile(profile.id(), true);
-            if (newProfile != null) {
-                profile = newProfile.profile();
+            GameProfile updatedProfile = fetchProfileGuarded(server, profile.id());
+            if (updatedProfile != null) {
+                profile = updatedProfile;
             }
         }
 
         return new CraftPlayerProfile(profile);
+    }
+
+    private static @Nullable GameProfile fetchProfileGuarded(DedicatedServer server, UUID profileId) {
+        CraftServer craftServer = (CraftServer) Bukkit.getServer();
+
+        GameProfile cachedProfile = craftServer.getPaperFilledProfileCache().getIfCached(profileId);
+        if (cachedProfile != null) {
+            return cachedProfile;
+        }
+
+        long now = System.currentTimeMillis();
+        if (profileLookupRetryAfter > now) {
+            return null;
+        }
+
+        CompletableFuture<Optional<GameProfile>> lookup = new CompletableFuture<>();
+        CompletableFuture<Optional<GameProfile>> existingLookup = IN_FLIGHT_PROFILE_LOOKUPS.putIfAbsent(profileId, lookup);
+        if (existingLookup != null) {
+            return existingLookup.join().orElse(null);
+        }
+
+        try {
+            PROFILE_LOOKUP_LOCK.lock();
+            try {
+                // Another lookup may have populated the cache while this request waited for the global lock.
+                cachedProfile = craftServer.getPaperFilledProfileCache().getIfCached(profileId);
+                if (cachedProfile != null) {
+                    lookup.complete(Optional.of(cachedProfile));
+                    return cachedProfile;
+                }
+
+                now = System.currentTimeMillis();
+                if (profileLookupRetryAfter > now) {
+                    lookup.complete(Optional.empty());
+                    return null;
+                }
+
+                ProfileResult result = server.services().sessionService().fetchProfile(profileId, true);
+                if (result == null || result.profile() == null) {
+                    // Authlib logs HTTP 429/timeouts itself and reports a null result. Once one remote
+                    // lookup fails, stop the rest of the queued burst instead of hammering Mojang again.
+                    profileLookupRetryAfter = System.currentTimeMillis() + PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS;
+                    lookup.complete(Optional.empty());
+                    return null;
+                }
+
+                GameProfile fetched = result.profile();
+                GameProfile cachedCopy = new GameProfile(fetched.id(), fetched.name(), new PropertyMap(fetched.properties()));
+                craftServer.getPaperFilledProfileCache().add(cachedCopy);
+                lookup.complete(Optional.of(cachedCopy));
+                return cachedCopy;
+            } finally {
+                PROFILE_LOOKUP_LOCK.unlock();
+            }
+        } catch (RuntimeException | Error throwable) {
+            profileLookupRetryAfter = System.currentTimeMillis() + PROFILE_LOOKUP_FAILURE_COOLDOWN_MILLIS;
+            lookup.complete(Optional.empty());
+            throw throwable;
+        } finally {
+            IN_FLIGHT_PROFILE_LOOKUPS.remove(profileId, lookup);
+        }
     }
 
     // This always returns a new GameProfile instance to ensure that property changes to the original or previously
