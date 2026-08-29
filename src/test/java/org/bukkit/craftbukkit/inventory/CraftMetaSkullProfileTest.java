@@ -1,8 +1,10 @@
 package org.bukkit.craftbukkit.inventory;
 
 import com.destroystokyo.paper.profile.ProfileProperty;
+import com.google.common.collect.ImmutableMap;
 import java.net.URI;
 import java.net.URL;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.component.DataComponentPatch;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -81,5 +84,28 @@ class CraftMetaSkullProfileTest {
         org.bukkit.profile.PlayerProfile restoredProfile = restored.getOwnerProfile();
         assertNotNull(restoredProfile);
         assertEquals(TEXTURE_URL, restoredProfile.getTextures().getSkin());
+    }
+
+    @Test
+    void customTextureSurvivesBukkitMetaSerialization() {
+        CraftMetaSkull meta = newMeta();
+        com.destroystokyo.paper.profile.CraftPlayerProfile profile =
+            new com.destroystokyo.paper.profile.CraftPlayerProfile(UUID.randomUUID(), "TestHead");
+        profile.setProperty(new ProfileProperty("textures", TEXTURE_VALUE));
+        meta.setPlayerProfile(profile);
+
+        Map<String, Object> serialized = meta.serialize(ImmutableMap.builder()).build();
+        Object serializedOwner = serialized.get(CraftMetaSkull.SKULL_OWNER.BUKKIT);
+        org.bukkit.craftbukkit.profile.CraftPlayerProfile serializedProfile = assertInstanceOf(
+            org.bukkit.craftbukkit.profile.CraftPlayerProfile.class,
+            serializedOwner
+        );
+        assertFalse(serializedProfile.getTextures().isEmpty());
+        assertEquals(TEXTURE_URL, serializedProfile.getTextures().getSkin());
+
+        CraftMetaSkull restored = new CraftMetaSkull(serialized);
+        assertTrue(restored.hasOwner());
+        assertNotNull(restored.getOwnerProfile());
+        assertEquals(TEXTURE_URL, restored.getOwnerProfile().getTextures().getSkin());
     }
 }
