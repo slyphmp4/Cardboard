@@ -21,6 +21,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.profile.CraftPlayerTextures;
+import org.bukkit.craftbukkit.profile.CraftProfileProperty;
 import org.bukkit.profile.PlayerTextures;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
@@ -457,7 +458,7 @@ public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
         if (!this.properties.isEmpty()) {
             List<Object> propertiesData = new ArrayList<>();
             for (ProfileProperty property : properties) {
-                // propertiesData.add(CraftProfileProperty.serialize(new Property(property.getName(), property.getValue(), property.getSignature())));
+                propertiesData.add(CraftProfileProperty.serialize(new Property(property.getName(), property.getValue(), property.getSignature())));
             }
             map.put("properties", propertiesData);
         }
@@ -481,9 +482,7 @@ public class CraftPlayerProfile implements PlayerProfile, SharedPlayerProfile {
 	}
 
     public GameProfile buildGameProfile() {
-        GameProfile profile = new GameProfile(this.profile.id(), this.profile.name());
-        profile.properties().putAll((Multimap)this.profile.properties());
-        return profile;
+        return new GameProfile(this.profile.id(), this.profile.name(), new MutablePropertyMap(this.profile.properties()));
     }
 
     static final String PROPERTY_NAME = "textures";

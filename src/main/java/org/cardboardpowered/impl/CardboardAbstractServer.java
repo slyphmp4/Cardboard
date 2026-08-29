@@ -1,8 +1,11 @@
 package org.cardboardpowered.impl;
 
 import java.io.File;
+import java.util.UUID;
 import java.util.logging.Level;
 
+import org.bukkit.craftbukkit.profile.CraftPlayerProfile;
+import org.bukkit.profile.PlayerProfile;
 import org.cardboardpowered.impl.command.VersionCommand;
 import org.cardboardpowered.impl.util.CardboardCachedServerIcon;
 
@@ -36,6 +39,21 @@ public abstract class CardboardAbstractServer implements org.bukkit.Server {
     @Override
     public String getName() {
         return serverName;
+    }
+
+    @Override
+    public PlayerProfile createPlayerProfile(UUID uniqueId, String name) {
+        return new CraftPlayerProfile(uniqueId, name);
+    }
+
+    @Override
+    public PlayerProfile createPlayerProfile(UUID uniqueId) {
+        return new CraftPlayerProfile(uniqueId, null);
+    }
+
+    @Override
+    public PlayerProfile createPlayerProfile(String name) {
+        return new CraftPlayerProfile(null, name);
     }
     
     public String getShortVersion() {
