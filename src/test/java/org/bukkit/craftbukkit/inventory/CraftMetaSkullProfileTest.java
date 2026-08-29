@@ -21,10 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CraftMetaSkullProfileTest {
 
     private static final String TEXTURE_VALUE = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzk5YWQ3YTA0MzE2OTI5OTRiNmM0MTJjN2VhZmI5ZTBmYzQ5OTc1MjQwYjczYTI3ZDI0ZWQ3OTcwMzVmYjg5NCJ9fX0=";
+    private static final URL BASE64_TEXTURE_URL;
     private static final URL TEXTURE_URL;
 
     static {
         try {
+            BASE64_TEXTURE_URL = URI.create("http://textures.minecraft.net/texture/399ad7a0431692994b6c412c7eafb9e0fc49975240b73a27d24ed797035fb894").toURL();
             TEXTURE_URL = URI.create("https://textures.minecraft.net/texture/399ad7a0431692994b6c412c7eafb9e0fc49975240b73a27d24ed797035fb894").toURL();
         } catch (Exception ex) {
             throw new ExceptionInInitializerError(ex);
@@ -102,12 +104,12 @@ class CraftMetaSkullProfileTest {
         );
         assertTrue(serializedProfile.hasProperty("textures"));
         assertFalse(serializedProfile.getTextures().isEmpty());
-        assertEquals(TEXTURE_URL, serializedProfile.getTextures().getSkin());
+        assertEquals(BASE64_TEXTURE_URL, serializedProfile.getTextures().getSkin());
         assertFalse((java.util.List<?>) serializedProfile.serialize().get("properties")).isEmpty();
 
         CraftMetaSkull restored = new CraftMetaSkull(serialized);
         assertTrue(restored.hasOwner());
         assertNotNull(restored.getOwnerProfile());
-        assertEquals(TEXTURE_URL, restored.getOwnerProfile().getTextures().getSkin());
+        assertEquals(BASE64_TEXTURE_URL, restored.getOwnerProfile().getTextures().getSkin());
     }
 }
