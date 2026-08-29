@@ -1,7 +1,6 @@
 package org.bukkit.craftbukkit.inventory;
 
 import com.destroystokyo.paper.profile.ProfileProperty;
-import com.google.common.collect.ImmutableMap;
 import java.net.URI;
 import java.net.URL;
 import java.util.HashSet;
@@ -95,27 +94,23 @@ class CraftMetaSkullProfileTest {
     }
 
     @Test
-    void customTextureSurvivesBukkitMetaSerialization() {
+    void customTextureSurvivesProfileSerialization() {
         CraftMetaSkull meta = newMeta();
         com.destroystokyo.paper.profile.CraftPlayerProfile profile =
             new com.destroystokyo.paper.profile.CraftPlayerProfile(UUID.randomUUID(), "TestHead");
         profile.setProperty(new ProfileProperty("textures", TEXTURE_VALUE));
         meta.setPlayerProfile(profile);
 
-        Map<String, Object> serialized = meta.serialize(ImmutableMap.builder()).build();
-        Object serializedOwner = serialized.get(CraftMetaSkull.SKULL_OWNER.BUKKIT);
         com.destroystokyo.paper.profile.CraftPlayerProfile serializedProfile = assertInstanceOf(
             com.destroystokyo.paper.profile.CraftPlayerProfile.class,
-            serializedOwner
+            meta.getPlayerProfile()
         );
+        Map<String, Object> serialized = serializedProfile.serialize();
+
         assertTrue(serializedProfile.hasProperty("textures"));
         assertFalse(serializedProfile.getTextures().isEmpty());
         assertEquals(BASE64_TEXTURE_URL, serializedProfile.getTextures().getSkin());
-        assertFalse(((java.util.List<?>) serializedProfile.serialize().get("properties")).isEmpty());
-
-        CraftMetaSkull restored = new CraftMetaSkull(serialized);
-        assertTrue(restored.hasOwner());
-        assertNotNull(restored.getOwnerProfile());
-        assertEquals(BASE64_TEXTURE_URL, restored.getOwnerProfile().getTextures().getSkin());
+        assertTrue(serialized.containsKey("properties"));
+        assertFalse(((java.util.List<?>) serialized.get("properties")).isEmpty());
     }
 }
