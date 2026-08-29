@@ -7,7 +7,9 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.server.Bootstrap;
 import org.bukkit.profile.PlayerTextures;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +27,10 @@ class CraftMetaSkullProfileTest {
     private static final URL TEXTURE_URL;
 
     static {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        Bootstrap.validate();
+
         try {
             BASE64_TEXTURE_URL = URI.create("http://textures.minecraft.net/texture/399ad7a0431692994b6c412c7eafb9e0fc49975240b73a27d24ed797035fb894").toURL();
             TEXTURE_URL = URI.create("https://textures.minecraft.net/texture/399ad7a0431692994b6c412c7eafb9e0fc49975240b73a27d24ed797035fb894").toURL();
