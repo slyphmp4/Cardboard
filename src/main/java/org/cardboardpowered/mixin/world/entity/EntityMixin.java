@@ -183,12 +183,41 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
             // Paper start - Folia schedulers
             synchronized (this) {
                 if (this.bukkitEntity == null) {
-                    return this.bukkitEntity = org.bukkit.craftbukkit.entity.CraftEntity.getEntity(CraftServer.INSTANCE, (Entity) (Object) this);
+                    Entity entity = (Entity) (Object) this;
+                    try {
+                        return this.bukkitEntity = org.bukkit.craftbukkit.entity.CraftEntity.getEntity(CraftServer.INSTANCE, entity);
+                    } catch (AssertionError error) {
+                        if (!cardboard$isUnknownEntityAssertion(error)) {
+                            throw error;
+                        }
+                        return this.bukkitEntity = cardboard$createModdedBukkitEntity(entity);
+                    }
                 }
             }
             // Paper end - Folia schedulers
         }
         return this.bukkitEntity;
+    }
+
+    private static boolean cardboard$isUnknownEntityAssertion(AssertionError error) {
+        String message = error.getMessage();
+        return message != null && message.startsWith("Unknown entity");
+    }
+
+    private static CraftEntity cardboard$createModdedBukkitEntity(Entity entity) {
+        if (entity instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile throwableProjectile) {
+            return new CraftModdedEntity.ModdedThrowableProjectile(CraftServer.INSTANCE, throwableProjectile);
+        }
+        if (entity instanceof net.minecraft.world.entity.projectile.Projectile projectile) {
+            return new CraftModdedEntity.ModdedProjectile(CraftServer.INSTANCE, projectile);
+        }
+        if (entity instanceof net.minecraft.world.entity.Mob mob) {
+            return new CraftModdedEntity.ModdedMob(CraftServer.INSTANCE, mob);
+        }
+        if (entity instanceof LivingEntity livingEntity) {
+            return new CraftLivingEntity(CraftServer.INSTANCE, livingEntity);
+        }
+        return new CraftModdedEntity(CraftServer.INSTANCE, entity);
     }
 
     @Inject(at = @At("HEAD"), method = "restoreFrom(Lnet/minecraft/world/entity/Entity;)V")
