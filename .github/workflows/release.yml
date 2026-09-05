@@ -68,6 +68,28 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "title=$title" >> "$GITHUB_OUTPUT"
 
+      - name: Validate project version
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          expected="${TAG#v}"
+          project_version="$(sed -nE 's/^[[:space:]]*mod_version[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\1/p' gradle.properties | head -n 1)"
+
+          if [[ -z "$project_version" ]]; then
+            echo "::error::Could not read mod_version from gradle.properties"
+            exit 1
+          fi
+
+          if [[ "$project_version" != "$expected" ]]; then
+            echo "::error::Release tag $TAG does not match mod_version=$project_version"
+            exit 1
+          fi
+
+          echo "Release version validated: $project_version"
+
       - name: Set up Temurin JDK 25
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -109,6 +131,15 @@ jobs:
             exit 1
           fi
 
+          expected_jar="build/libs/Cardboard-${TAG#v}.jar"
+          if [[ ! -f "$expected_jar" ]]; then
+            echo "::error::Expected release artifact $expected_jar was not produced"
+            printf 'Produced artifacts:\n'
+            printf '  %s\n' "${assets[@]}"
+            exit 1
+          fi
+
+          assets=("$expected_jar")
           sha256sum "${assets[@]}" > build/libs/SHA256SUMS.txt
 
           gh release create "$TAG" \
