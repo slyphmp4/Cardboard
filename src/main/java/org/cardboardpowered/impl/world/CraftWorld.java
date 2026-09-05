@@ -1807,7 +1807,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	public <T extends Entity> T spawn(Location location, Class<T> clazz, Consumer<T> function, SpawnReason reason) throws IllegalArgumentException {
-		net.minecraft.world.entity.Entity entity = createEntity_Old(location, clazz);
+		net.minecraft.world.entity.Entity entity = Display.class.isAssignableFrom(clazz)
+				? super.createEntity(location, clazz, true)
+				: createEntity_Old(location, clazz);
 
 		return addEntity(entity, reason, function);
 	}
