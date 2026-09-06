@@ -9,6 +9,9 @@ on:
       - src/main/java/org/cardboardpowered/RegistryUtil.java
       - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityType.java
       - src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+      - src/main/java/org/cardboardpowered/mixin/bukkit/entity/CraftEntityMixin.java
+      - src/main/resources/cardboard-modded-entity-fix.mixins.json
+      - src/main/resources/fabric.mod.json
       - src/test/java/org/cardboardpowered/RegistryUtilTest.java
 
 permissions:
