@@ -26,7 +26,8 @@
   },
   "mixins": [
     "bukkitfabric.mixins.json",
-    "cardboard-adventure-fix.mixins.json"
+    "cardboard-adventure-fix.mixins.json",
+    "cardboard-modded-entity-fix.mixins.json"
   ],
 
   "depends": {
