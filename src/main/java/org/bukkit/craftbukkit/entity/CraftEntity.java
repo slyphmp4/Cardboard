@@ -140,14 +140,6 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
             return (CraftEntity) entityTypeData.convertFunction().apply(server, entity);
         }
 
-        // Cardboard: modded entity types use dynamically-added Bukkit EntityType values,
-        // so they cannot be present in Paper's static CraftEntityTypes table. Preserve
-        // subtype semantics for custom PrimedTnt implementations (for example DirTNT)
-        // instead of crashing when Bukkit needs a wrapper during tracking/removal.
-        if (entity instanceof net.minecraft.world.entity.item.PrimedTnt primedTnt) {
-            return new CraftTNTPrimed(server, primedTnt);
-        }
-
         throw new AssertionError("Unknown entity " + (entity == null ? null : entity.getClass()));
     }
 
@@ -278,25 +270,23 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
         return ((LevelBridge)this.entity.level()).cardboard$getWorld();
     }
 
+    // 26.2: Paper added an Angle-based overload supporting relative rotation
     @Override
-    public void setRotation(float yaw, float pitch) {
-        pitch = Math.max(pitch, -90);
-        pitch = Math.min(pitch, 90);
-        yaw = normalizeYaw(yaw);
-
-        this.entity.setYRot(yaw);
-        this.entity.setXRot(pitch);
-        this.entity.setYHeadRot(yaw);
+    public void setRotation(io.papermc.paper.math.Angle yaw, io.papermc.paper.math.Angle pitch) {
+        float y = yaw.relative() ? this.getHandle().getYRot() + yaw.degrees() : yaw.degrees();
+        float p = pitch.relative() ? this.getHandle().getXRot() + pitch.degrees() : pitch.degrees();
+        this.setRotation(y, p);
     }
 
-    private static float normalizeYaw(float yaw) {
-        yaw %= 360.0f;
-        if (yaw >= 180.0f) {
-            yaw -= 360.0f;
-        } else if (yaw < -180.0f) {
-            yaw += 360.0f;
-        }
-        return yaw;
+    @Override
+    public void setRotation(float yaw, float pitch) {
+        NumberConversions.checkFinite(pitch, "pitch not finite");
+        NumberConversions.checkFinite(yaw, "yaw not finite");
+
+        yaw = Location.normalizeYaw(yaw);
+        pitch = Location.normalizePitch(pitch);
+
+        this.getHandle().forceSetRotation(yaw, false, pitch, false);
     }
 
     @Override
@@ -306,52 +296,87 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public boolean teleport(Location location, TeleportCause cause) {
-        Preconditions.checkArgument(location != null, "location");
+        return teleport(location, cause, new TeleportFlag[0]);
+    }
+
+    @Override
+    public boolean teleport(Location location, TeleportCause cause, TeleportFlag... flags) {
+        Preconditions.checkArgument(location != null, "location cannot be null");
+        Preconditions.checkArgument(location.getWorld() != null, "Target world cannot be null");
+        //Preconditions.checkState(!this.entity.generation, "Cannot teleport entity to an other world during world generation"); // TODO
         location.checkFinite();
-        // Paper start - Teleport passenger API
-        if (this.entity.isRemoved()) {
-            return false;
-        }
-        if (this.entity instanceof net.minecraft.world.entity.LivingEntity && ((net.minecraft.world.entity.LivingEntity) this.entity).isSleeping()) {
-            return false;
-        }
-        if (this.entity.isVehicle() || this.entity.isPassenger()) {
-            return false;
-        }
-        // Paper end
 
-        // If this entity is riding another entity, we must dismount before teleporting.
-        this.entity.stopRiding();
+        return this.teleport0(location, cause, flags);
+    }
 
-        // If this entity has an entity riding it, we must eject the rider before teleporting.
-        this.eject();
-
-        // Paper start - fix mounted entity teleportation; work around issue where teleporting a vehicle in a networked world could result in desync
-        if (this.entity.isVehicle()) {
-            this.entity.ejectPassengers();
-        }
-        // Paper end
-
-        ServerLevel serverLevel = ((CraftWorld) location.getWorld()).getHandle();
-        Vec3 position = CraftLocation.toVec3(location);
-        // CraftBukkit start
-        // TeleportTransition.PostTeleportTransition teleportTransition;
-        // if (this.entity instanceof Mob mob) {
-        //     teleportTransition = TeleportTransition.DO_NOTHING; // TODO
-        // } else {
-        //     teleportTransition = TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET);
-        // }
-        // CraftBukkit end
-        TeleportTransition teleportTarget = new TeleportTransition(serverLevel, position, Vec3.ZERO, location.getYaw(), location.getPitch(), TeleportTransition.DO_NOTHING);
-        Entity teleported = this.entity.teleport(teleportTarget);
-
-        if (teleported == null) {
+    protected boolean teleport0(Location location, TeleportCause cause, TeleportFlag... flags) {
+        Entity entity = this.getHandle();
+        if (!entity.isAlive() || !((EntityBridge)entity).isValidBF()) {
             return false;
         }
 
-        this.entity = teleported;
+        /*
+         * Paper fires EntityTeleportEvent for Bukkit non-player
+         * teleports. Plugins may cancel the operation or redirect
+         * the destination with event#setTo.
+         */
+        final org.bukkit.event.entity.EntityTeleportEvent event =
+                new org.bukkit.event.entity.EntityTeleportEvent(
+                        this,
+                        this.getLocation(),
+                        location.clone()
+                );
 
-        return true;
+        this.server.getPluginManager().callEvent(event);
+
+        if (event.isCancelled() || event.getTo() == null) {
+            return false;
+        }
+
+        location = event.getTo().clone();
+
+        Preconditions.checkArgument(
+                location.getWorld() != null,
+                "Target world cannot be null"
+        );
+
+        location.checkFinite();
+
+        final Set<net.minecraft.world.entity.Relative> relativeFlags = EnumSet.noneOf(net.minecraft.world.entity.Relative.class);
+        for (final TeleportFlag flag : flags) {
+            if (flag instanceof TeleportFlag.Relative relativeFlag) {
+                relativeFlags.add(deltaRelativeToNMS(relativeFlag));
+            }
+        }
+
+        return this.entity.teleport(new TeleportTransition(
+                ((CraftWorld) location.getWorld()).getHandle(),
+                CraftLocation.toVec3(location),
+                Vec3.ZERO,
+                location.getYaw(),
+                location.getPitch(),
+                relativeFlags,
+                TeleportTransition.DO_NOTHING
+        )) != null;
+    }
+
+    public static net.minecraft.world.entity.Relative deltaRelativeToNMS(TeleportFlag.Relative apiFlag) {
+        return switch (apiFlag) {
+            case VELOCITY_X -> net.minecraft.world.entity.Relative.DELTA_X;
+            case VELOCITY_Y -> net.minecraft.world.entity.Relative.DELTA_Y;
+            case VELOCITY_Z -> net.minecraft.world.entity.Relative.DELTA_Z;
+            case VELOCITY_ROTATION -> net.minecraft.world.entity.Relative.ROTATE_DELTA;
+        };
+    }
+
+    public static TeleportFlag.@Nullable Relative deltaRelativeToAPI(net.minecraft.world.entity.Relative nmsFlag) {
+        return switch (nmsFlag) {
+            case DELTA_X -> TeleportFlag.Relative.VELOCITY_X;
+            case DELTA_Y -> TeleportFlag.Relative.VELOCITY_Y;
+            case DELTA_Z -> TeleportFlag.Relative.VELOCITY_Z;
+            case ROTATE_DELTA -> TeleportFlag.Relative.VELOCITY_ROTATION;
+            case X, Y, Z, Y_ROT, X_ROT -> null;
+        };
     }
 
     @Override
@@ -365,132 +390,136 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
     }
 
     @Override
-    public List<org.bukkit.entity.Entity> getNearbyEntities(double x, double y, double z) {
-        Preconditions.checkArgument(x >= 0.0D, "x must be >= 0");
-        Preconditions.checkArgument(y >= 0.0D, "y must be >= 0");
-        Preconditions.checkArgument(z >= 0.0D, "z must be >= 0");
+    public void lookAt(double x, double y, double z, LookAnchor entityAnchor) {
+        this.getHandle().lookAt(toNmsAnchor(entityAnchor), new net.minecraft.world.phys.Vec3(x, y, z));
+    }
 
-        AABB bb = this.getHandle().getBoundingBox().inflate(x, y, z);
-        List<Entity> notchEntityList = this.getHandle().level().getEntities(this.getHandle(), bb, Predicates.alwaysTrue());
-        List<org.bukkit.entity.Entity> bukkitEntityList = new java.util.ArrayList<org.bukkit.entity.Entity>(notchEntityList.size());
-        for (Entity entity : notchEntityList) {
-            bukkitEntityList.add(((EntityBridge)entity).getBukkitEntity());
+    public static net.minecraft.commands.arguments.EntityAnchorArgument.Anchor toNmsAnchor(LookAnchor nmsAnchor) {
+        return switch (nmsAnchor) {
+            case EYES -> net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES;
+            case FEET -> net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.FEET;
+        };
+    }
+
+    public static LookAnchor toApiAnchor(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor playerAnchor) {
+        return switch (playerAnchor) {
+            case EYES -> LookAnchor.EYES;
+            case FEET -> LookAnchor.FEET;
+        };
+    }
+
+    @Override
+    public List<org.bukkit.entity.Entity> getNearbyEntities(double x, double y, double z) {
+        //Preconditions.checkState(!this.entity.generation, "Cannot get nearby entities during world generation"); // TODO
+        org.spigotmc.AsyncCatcher.catchOp("getNearbyEntities"); // Spigot
+
+        List<Entity> entities = this.getHandle().level().getEntities(this.entity, this.entity.getBoundingBox().inflate(x, y, z), Predicates.alwaysTrue());
+        List<org.bukkit.entity.Entity> result = new java.util.ArrayList<>(entities.size());
+
+        for (Entity entity : entities) {
+            result.add(entity.getBukkitEntity());
         }
-        return bukkitEntityList;
+        return result;
     }
 
     @Override
     public int getEntityId() {
-        return this.entity.getId();
+        return this.getHandle().getId();
     }
 
     @Override
     public int getFireTicks() {
-        return this.entity.getRemainingFireTicks();
+        return this.getHandle().getRemainingFireTicks();
     }
 
     @Override
     public int getMaxFireTicks() {
-        return this.entity.getFireImmuneTicks();
+        return this.getHandle().getFireImmuneTicks();
     }
 
     @Override
     public void setFireTicks(int ticks) {
-        this.entity.setRemainingFireTicks(ticks);
+        this.getHandle().setRemainingFireTicks(ticks);
     }
 
     @Override
+    @Deprecated
     public void setVisualFire(boolean fire) {
-        this.entity.setSharedFlagOnFire(fire);
+        setVisualFire(fire ? TriState.TRUE : TriState.NOT_SET);
+    }
+
+    @Override
+    public void setVisualFire(final TriState fire) {
+        Preconditions.checkArgument(fire != null, "TriState cannot be null");
+        //this.getHandle().visualFire = fire; // TODO
     }
 
     @Override
     public boolean isVisualFire() {
-        return this.entity.isCurrentlyGlowing();
+        return getVisualFire().toBooleanOrElse(false);
+    }
+
+    @Override
+    public TriState getVisualFire() {
+        //return this.getHandle().visualFire; // TODO
+        return TriState.FALSE;
     }
 
     @Override
     public int getFreezeTicks() {
-        return this.entity.getTicksFrozen();
+        return this.getHandle().getTicksFrozen();
     }
 
     @Override
     public int getMaxFreezeTicks() {
-        return this.entity.getTicksRequiredToFreeze();
+        return this.getHandle().getTicksRequiredToFreeze();
     }
 
     @Override
     public void setFreezeTicks(int ticks) {
-        Preconditions.checkArgument(ticks >= 0, "ticks must be >= 0");
-        Preconditions.checkArgument(ticks <= this.getMaxFreezeTicks(), "ticks must be <= %s", this.getMaxFreezeTicks());
-        this.entity.setTicksFrozen(ticks);
+        Preconditions.checkArgument(0 <= ticks, "Ticks (%s) cannot be less than 0", ticks);
+
+        this.getHandle().setTicksFrozen(ticks);
     }
 
     @Override
     public boolean isFrozen() {
-        return this.entity.isFullyFrozen();
+        return this.getHandle().isFullyFrozen();
     }
 
     @Override
-    public void setPersistent(boolean persistent) {
-        this.entity.persist = persistent;
-    }
-
-    @Override
-    public boolean isPersistent() {
-        return this.entity.persist;
-    }
-
-    @Override
-    public void setCustomNameVisible(boolean flag) {
-        this.entity.setCustomNameVisible(flag);
-    }
-
-    @Override
-    public boolean isCustomNameVisible() {
-        return this.entity.isCustomNameVisible();
-    }
-
-    @Override
-    public void setVisibleByDefault(boolean visible) {
-        this.entity.visibleByDefault = visible;
-    }
-
-    @Override
-    public boolean isVisibleByDefault() {
-        return this.entity.visibleByDefault;
-    }
-
-    @Override
-    public Set<Player> getTrackedPlayers() {
-        if (this.entity.level() instanceof ServerLevel serverLevel) {
-            ChunkMap.TrackedEntity trackedEntity = serverLevel.getChunkSource().chunkMap.entityMap.get(this.entity.getId());
-            if (trackedEntity != null) {
-                return trackedEntity.seenBy.stream()
-                        .map(ServerPlayerConnection::getPlayer)
-                        .map(EntityBridge::getBukkitEntity)
-                        .map(Player.class::cast)
-                        .collect(java.util.stream.Collectors.toUnmodifiableSet());
-            }
-        }
-        return java.util.Collections.emptySet();
-    }
-
-    @Override
-    public boolean spawnAt(Location location) {
-        Preconditions.checkArgument(location != null, "location");
-        location.checkFinite();
-
-        if (this.entity.level() instanceof ServerLevel serverLevel) {
-            this.entity.snapTo(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
-            return serverLevel.addFreshEntity(this.entity, CreatureSpawnEvent.SpawnReason.CUSTOM);
-        }
+    public boolean isFreezeTickingLocked() {
+        //return this.entity.freezeLocked; // TODO
         return false;
     }
 
     @Override
-    public boolean isValid() {
-        return this.entity.isAlive() && !this.entity.isRemoved();
+    public void lockFreezeTicks(boolean locked) {
+        //this.entity.freezeLocked = locked; // TODO
+    }
+
+    @Override
+    public void remove() {
+        if (this.entity.isRemoved()) {
+            return;
+        }
+
+        me.isaiah.common.cmixin.IMixinEntity common =
+                (me.isaiah.common.cmixin.IMixinEntity) this.entity;
+
+        common.Iremove(IRemoveReason.DISCARDED);
+
+        /*
+         * Bukkit Entity#remove() is a plugin removal on Paper.
+         * Cardboard currently has no NMS EntityRemoveEvent cause
+         * pipeline, so bridge the API operation here.
+         */
+        this.server.getPluginManager().callEvent(
+                new org.bukkit.event.entity.EntityRemoveEvent(
+                        this,
+                        org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN
+                )
+        );
     }
 
     @Override
@@ -499,27 +528,131 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
     }
 
     @Override
-    public boolean isEmpty() {
-        return this.entity.getPassengers().isEmpty();
+    public boolean isValid() {
+        return this.entity.isAlive() && ((EntityBridge)this.entity).isValidBF();
     }
 
     @Override
-    public boolean eject() {
-        if (!this.entity.isVehicle()) {
+    public Server getServer() {
+        return this.server;
+    }
+
+    @Override
+    public boolean isPersistent() {
+        //return this.entity.persist; // TODO
+        return false;
+    }
+
+    @Override
+    public void setPersistent(boolean persistent) {
+        //this.entity.persist = persistent; // TODO
+    }
+
+    @Override
+    public org.bukkit.entity.Entity getPassenger() {
+        return this.isEmpty() ? null : this.getHandle().getPassengers().getFirst().getBukkitEntity();
+    }
+
+    @Override
+    public boolean setPassenger(org.bukkit.entity.Entity passenger) {
+        Preconditions.checkArgument(!this.equals(passenger), "Entity cannot ride itself.");
+        if (passenger instanceof CraftEntity) {
+            this.eject();
+            return ((CraftEntity) passenger).getHandle().startRiding(this.getHandle());
+        } else {
             return false;
         }
-        this.entity.ejectPassengers();
+    }
+
+    @Override
+    public List<org.bukkit.entity.Entity> getPassengers() {
+        return Lists.newArrayList(Lists.transform(this.getHandle().getPassengers(), (Function<Entity, org.bukkit.entity.Entity>) Entity::getBukkitEntity));
+    }
+
+    @Override
+    public boolean addPassenger(org.bukkit.entity.Entity passenger) {
+        Preconditions.checkArgument(passenger != null, "Entity passenger cannot be null");
+        Preconditions.checkArgument(!this.equals(passenger), "Entity cannot ride itself.");
+
+        if (!(passenger instanceof CraftEntity craftPassenger)) {
+            return false;
+        }
+
+        final org.bukkit.event.entity.EntityMountEvent event =
+                new org.bukkit.event.entity.EntityMountEvent(
+                        passenger,
+                        this
+                );
+
+        this.server.getPluginManager().callEvent(event);
+
+        if (event.isCancelled()) {
+            return false;
+        }
+
+        return craftPassenger.getHandle()
+                .startRiding(
+                        this.getHandle(),
+                        true,
+                        true
+                );
+    }
+
+    @Override
+    public boolean removePassenger(org.bukkit.entity.Entity passenger) {
+        Preconditions.checkArgument(passenger != null, "Entity passenger cannot be null");
+
+        if (!(passenger instanceof CraftEntity craftPassenger)) {
+            return false;
+        }
+
+        if (craftPassenger.getHandle().getVehicle() == this.getHandle()) {
+            final org.bukkit.event.entity.EntityDismountEvent event =
+                    new org.bukkit.event.entity.EntityDismountEvent(
+                            passenger,
+                            this
+                    );
+
+            this.server.getPluginManager().callEvent(event);
+
+            if (event.isCancelled()) {
+                return false;
+            }
+        }
+
+        craftPassenger.getHandle().stopRiding();
         return true;
     }
 
     @Override
+    public boolean isEmpty() {
+        return !this.getHandle().isVehicle();
+    }
+
+    @Override
+    public boolean eject() {
+        if (this.isEmpty()) {
+            return false;
+        }
+
+        this.getHandle().ejectPassengers();
+        return true;
+    }
+
+    @Override
+    public ItemStack getPickItemStack() {
+        net.minecraft.world.item.ItemStack stack = this.getHandle().getPickResult();
+        return stack == null ? ItemStack.empty() : ((ItemStackBridge)stack).cardboard$asBukkitCopy();
+    }
+
+    @Override
     public float getFallDistance() {
-        return this.entity.fallDistance;
+        return (float) this.getHandle().fallDistance;
     }
 
     @Override
     public void setFallDistance(float distance) {
-        this.entity.fallDistance = distance;
+        this.getHandle().fallDistance = distance;
     }
 
     @Override
@@ -539,1466 +672,805 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public int getTicksLived() {
-        return this.entity.tickCount;
+        //return this.getHandle().totalEntityAge; // TODO
+        return entity.tickCount;
     }
 
     @Override
     public void setTicksLived(int value) {
-        Preconditions.checkArgument(value >= 1, "Age must be at least 1 tick");
-        this.entity.tickCount = value;
+        Preconditions.checkArgument(value > 0, "Age value (%s) must be greater than 0", value);
+        this.getHandle().tickCount = value;
+        //this.getHandle().totalEntityAge = value; // TODO
     }
 
     @Override
-    public void remove() {
-        this.entity.discard();
-    }
-
-    @Override
-    public boolean isInsideVehicle() {
-        return this.entity.isPassenger();
-    }
-
-    @Override
-    public boolean leaveVehicle() {
-        return this.entity.stopRiding();
-    }
-
-    @Override
-    public org.bukkit.entity.Entity getVehicle() {
-        Entity vehicle = this.entity.getVehicle();
-        return vehicle == null ? null : ((EntityBridge)vehicle).getBukkitEntity();
-    }
-
-    @Override
-    public List<org.bukkit.entity.Entity> getPassengers() {
-        return Lists.transform(this.entity.getPassengers(), EntityBridge::getBukkitEntity);
-    }
-
-    @Override
-    public boolean addPassenger(org.bukkit.entity.Entity passenger) {
-        Preconditions.checkArgument(passenger != null, "passenger");
-        return ((CraftEntity) passenger).getHandle().startRiding(this.entity, true);
-    }
-
-    @Override
-    public boolean removePassenger(org.bukkit.entity.Entity passenger) {
-        Preconditions.checkArgument(passenger != null, "passenger");
-        if (((CraftEntity) passenger).getHandle().getVehicle() != this.entity) {
-            return false;
-        }
-        ((CraftEntity) passenger).getHandle().stopRiding();
-        return true;
-    }
-
-    @Override
-    public boolean setPassenger(org.bukkit.entity.Entity passenger) {
-        if (passenger == null) {
-            this.eject();
-            return true;
-        }
-        return this.addPassenger(passenger);
-    }
-
-    @Override
-    public org.bukkit.entity.Entity getPassenger() {
-        List<org.bukkit.entity.Entity> passengers = this.getPassengers();
-        return passengers.isEmpty() ? null : passengers.getFirst();
-    }
-
-    @Override
-    public boolean isGlowing() {
-        return this.entity.isCurrentlyGlowing();
-    }
-
-    @Override
-    public void setGlowing(boolean flag) {
-        this.entity.setGlowingTag(flag);
-    }
-
-    @Override
-    public boolean isInvulnerable() {
-        return this.entity.isInvulnerable();
-    }
-
-    @Override
-    public void setInvulnerable(boolean flag) {
-        this.entity.setInvulnerable(flag);
-    }
-
-    @Override
-    public boolean isSilent() {
-        return this.entity.isSilent();
-    }
-
-    @Override
-    public void setSilent(boolean flag) {
-        this.entity.setSilent(flag);
-    }
-
-    @Override
-    public boolean hasGravity() {
-        return !this.entity.isNoGravity();
-    }
-
-    @Override
-    public void setGravity(boolean gravity) {
-        this.entity.setNoGravity(!gravity);
-    }
-
-    @Override
-    public int getPortalCooldown() {
-        return this.entity.getPortalCooldown();
-    }
-
-    @Override
-    public void setPortalCooldown(int cooldown) {
-        Preconditions.checkArgument(cooldown >= 0, "Portal cooldown must be non-negative");
-        this.entity.setPortalCooldown(cooldown);
-    }
-
-    @Override
-    public Set<String> getScoreboardTags() {
-        return this.entity.getTags();
-    }
-
-    @Override
-    public boolean addScoreboardTag(String tag) {
-        return this.entity.addTag(tag);
-    }
-
-    @Override
-    public boolean removeScoreboardTag(String tag) {
-        return this.entity.removeTag(tag);
-    }
-
-    @Override
-    public PistonMoveReaction getPistonMoveReaction() {
-        return CraftBlock.notchToBlockFace(null) == null ? PistonMoveReaction.NORMAL : PistonMoveReaction.NORMAL;
-    }
-
-    @Override
-    public net.kyori.adventure.text.Component customName() {
-        Component customName = this.entity.getCustomName();
-        return customName == null ? null : io.papermc.paper.adventure.PaperAdventure.asAdventure(customName);
-    }
-
-    @Override
-    public void customName(net.kyori.adventure.text.Component customName) {
-        this.entity.setCustomName(customName == null ? null : io.papermc.paper.adventure.PaperAdventure.asVanilla(customName));
-    }
-
-    @Override
-    public net.kyori.adventure.text.Component name() {
-        return io.papermc.paper.adventure.PaperAdventure.asAdventure(this.entity.getName());
-    }
-
-    @Override
-    public net.kyori.adventure.text.Component teamDisplayName() {
-        return this.name();
-    }
-
-    @Override
-    public PointersSupplier<org.bukkit.entity.Entity> pointersSupplier() {
-        return POINTERS_SUPPLIER;
-    }
-
-    @Override
-    public boolean collidesAt(Location location) {
-        Preconditions.checkArgument(location != null, "location");
-        return !this.entity.level().noCollision(this.entity, this.entity.getBoundingBox().move(
-                location.getX() - this.entity.getX(),
-                location.getY() - this.entity.getY(),
-                location.getZ() - this.entity.getZ()));
-    }
-
-    @Override
-    public boolean wouldCollideUsing(BoundingBox boundingBox) {
-        Preconditions.checkArgument(boundingBox != null, "boundingBox");
-        AABB aabb = new AABB(boundingBox.getMinX(), boundingBox.getMinY(), boundingBox.getMinZ(), boundingBox.getMaxX(), boundingBox.getMaxY(), boundingBox.getMaxZ());
-        return !this.entity.level().noCollision(this.entity, aabb);
-    }
-
-    @Override
-    public org.bukkit.entity.SpawnCategory getSpawnCategory() {
-        return CraftSpawnCategory.toBukkit(this.entity.getType().getCategory());
-    }
-
-    @Override
-    public boolean isInWorld() {
-        return this.entity.level() != null;
-    }
-
-    @Override
-    public org.bukkit.entity.Entity copy() {
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    @Override
-    public org.bukkit.entity.Entity copy(Location to) {
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    @Override
-    public EntitySnapshot createSnapshot() {
-        try (ProblemReporter.ScopedCollector problemReporter = new ProblemReporter.ScopedCollector(this.entity.problemPath(), LOGGER)) {
-            TagValueOutput tagValueOutput = TagValueOutput.createWithContext(problemReporter, this.entity.registryAccess());
-            this.entity.saveWithoutId(tagValueOutput);
-            return new CraftEntitySnapshot(this.entity.getType(), tagValueOutput.buildResult());
-        }
-    }
-
-    @Override
-    public boolean isInBubbleColumn() {
-        return this.entity.isInBubbleColumn();
-    }
-
-    @Override
-    public boolean isTicking() {
-        return this.entity.isAlwaysTicking() || this.entity.level() instanceof ServerLevel serverLevel && serverLevel.isPositionEntityTicking(this.entity.blockPosition());
-    }
-
-    @Override
-    public boolean isUnderWater() {
-        return this.entity.isUnderWater();
-    }
-
-    @Override
-    public boolean isInRain() {
-        return this.entity.isInRain();
-    }
-
-    @Override
-    public boolean isInLava() {
-        return this.entity.isInLava();
-    }
-
-    @Override
-    public boolean isInPowderedSnow() {
-        return this.entity.isInPowderSnow();
-    }
-
-    @Override
-    public boolean isInWaterOrRain() {
-        return this.entity.isInWaterOrRain();
-    }
-
-    @Override
-    public boolean isInWaterOrBubbleColumn() {
-        return this.entity.isInWaterOrBubble();
-    }
-
-    @Override
-    public boolean isInWaterOrRainOrBubbleColumn() {
-        return this.entity.isInWaterRainOrBubble();
-    }
-
-    @Override
-    public boolean isInLavaOrWater() {
-        return this.entity.isInWater() || this.entity.isInLava();
-    }
-
-    @Override
-    public boolean isSwimming() {
-        return this.entity.isSwimming();
-    }
-
-    @Override
-    public void setSwimming(boolean swimming) {
-        this.entity.setSwimming(swimming);
-    }
-
-    @Override
-    public boolean isRiptiding() {
-        return this.entity.isAutoSpinAttack();
-    }
-
-    @Override
-    public boolean isSneaking() {
-        return this.entity.isShiftKeyDown();
-    }
-
-    @Override
-    public void setSneaking(boolean sneak) {
-        this.entity.setShiftKeyDown(sneak);
-    }
-
-    @Override
-    public boolean isOnGroundLegacy() {
-        return this.entity.onGround();
-    }
-
-    @Override
-    public boolean isPersistentLegacy() {
-        return this.entity.persist;
-    }
-
-    @Override
-    public boolean isOp() {
-        return false;
-    }
-
-    @Override
-    public void setOp(boolean value) {
-        if (value) {
-            throw new UnsupportedOperationException("Entities cannot be operators");
-        }
-    }
-
-    @Override
-    public boolean isPermissionSet(String name) {
-        return perm != null && perm.isPermissionSet(name);
-    }
-
-    @Override
-    public boolean isPermissionSet(Permission perm) {
-        return this.isPermissionSet(perm.getName());
-    }
-
-    @Override
-    public boolean hasPermission(String name) {
-        return perm != null && perm.hasPermission(name);
-    }
-
-    @Override
-    public boolean hasPermission(Permission perm) {
-        return this.hasPermission(perm.getName());
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin, String name, boolean value) {
-        return perm == null ? null : perm.addAttachment(plugin, name, value);
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin) {
-        return perm == null ? null : perm.addAttachment(plugin);
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin, String name, boolean value, int ticks) {
-        return perm == null ? null : perm.addAttachment(plugin, name, value, ticks);
-    }
-
-    @Override
-    public PermissionAttachment addAttachment(Plugin plugin, int ticks) {
-        return perm == null ? null : perm.addAttachment(plugin, ticks);
-    }
-
-    @Override
-    public void removeAttachment(PermissionAttachment attachment) {
-        if (perm != null) {
-            perm.removeAttachment(attachment);
-        }
-    }
-
-    @Override
-    public void recalculatePermissions() {
-        if (perm != null) {
-            perm.recalculatePermissions();
-    }
-
-    @Override
-    public Set<PermissionAttachmentInfo> getEffectivePermissions() {
-        return perm == null ? java.util.Collections.emptySet() : perm.getEffectivePermissions();
-    }
-
-    @Override
-    public Server getServer() {
-        return this.server;
-    }
-
-    @Override
-    public String getName() {
-        return this.entity.getName().getString();
-    }
-
-    @Override
-    public EntityType getType() {
+    public final EntityType getType() {
         return this.entityType;
     }
 
     @Override
+    public void playEffect(EntityEffect effect) {
+        Preconditions.checkArgument(effect != null, "Entity effect cannot be null");
+        //Preconditions.checkState(!this.entity.generation, "Cannot play effect during world generation"); // TODO
+        Preconditions.checkArgument(effect.isApplicableTo(this), "Entity effect cannot apply to this entity");
+
+        this.getHandle().level().broadcastEntityEvent(this.getHandle(), effect.getData());
+    }
+
+    @Override
+    public Sound getSwimSound() {
+        return CraftSound.minecraftToBukkit(this.getHandle().getSwimSound());
+    }
+
+    @Override
+    public Sound getSwimSplashSound() {
+        return CraftSound.minecraftToBukkit(this.getHandle().getSwimSplashSound());
+    }
+
+    @Override
+    public Sound getSwimHighSpeedSplashSound() {
+        return CraftSound.minecraftToBukkit(this.getHandle().getSwimHighSpeedSplashSound());
+    }
+
+    @Override
+    public void setMetadata(String metadataKey, MetadataValue newMetadataValue) {
+        this.server.getEntityMetadata().setMetadata(this, metadataKey, newMetadataValue);
+    }
+
+    @Override
+    public List<MetadataValue> getMetadata(String metadataKey) {
+        return this.server.getEntityMetadata().getMetadata(this, metadataKey);
+    }
+
+    @Override
+    public boolean hasMetadata(String metadataKey) {
+        return this.server.getEntityMetadata().hasMetadata(this, metadataKey);
+    }
+
+    @Override
+    public void removeMetadata(String metadataKey, Plugin owningPlugin) {
+        this.server.getEntityMetadata().removeMetadata(this, metadataKey, owningPlugin);
+    }
+
+    @Override
+    public boolean isInsideVehicle() {
+        return this.getHandle().isPassenger();
+    }
+
+    @Override
+    public boolean leaveVehicle() {
+        if (!this.isInsideVehicle()) {
+            return false;
+        }
+
+        this.getHandle().stopRiding();
+        return true;
+    }
+
+    @Override
+    public org.bukkit.entity.Entity getVehicle() {
+        if (!this.isInsideVehicle()) {
+            return null;
+        }
+
+        return this.getHandle().getVehicle().getBukkitEntity();
+    }
+
+    @Override
+    public net.kyori.adventure.text.Component customName() {
+        final Component name = this.getHandle().getCustomName();
+        return name != null ? io.papermc.paper.adventure.PaperAdventure.asAdventure(name) : null;
+    }
+
+    @Override
+    public void customName(final net.kyori.adventure.text.Component customName) {
+        this.getHandle().setCustomName(customName != null ? io.papermc.paper.adventure.PaperAdventure.asVanilla(customName) : null);
+    }
+
+    @Override
+    public net.kyori.adventure.pointer.Pointers pointers() {
+        return POINTERS_SUPPLIER.view(this);
+    }
+
+    @Override
+    public void setCustomName(String name) {
+        // sane limit for name length
+        if (name != null && name.length() > 256) {
+            name = name.substring(0, 256);
+        }
+
+        this.getHandle().setCustomName(CraftChatMessage.fromStringOrNull(name));
+    }
+
+    @Override
+    public String getCustomName() {
+        Component name = this.getHandle().getCustomName();
+
+        if (name == null) {
+            return null;
+        }
+
+        return CraftChatMessage.fromComponent(name);
+    }
+
+    @Override
+    public void setCustomNameVisible(boolean flag) {
+        this.getHandle().setCustomNameVisible(flag);
+    }
+
+    @Override
     public boolean isCustomNameVisible() {
-        return this.entity.isCustomNameVisible();
+        return this.getHandle().isCustomNameVisible();
     }
 
     @Override
-    public boolean isValidCustomName() {
-        return this.entity.getCustomName() != null;
+    public void setVisibleByDefault(boolean visible) {
+        /*if (this.getHandle().visibleByDefault != visible) {
+            if (visible) {
+                // Making visible by default, reset and show to all players
+                for (Player player : this.server.getOnlinePlayers()) {
+                    ((CraftPlayer) player).resetAndShowEntity(this);
+                }
+            } else {
+                // Hiding by default, reset and hide from all players
+                for (Player player : this.server.getOnlinePlayers()) {
+                    ((CraftPlayer) player).resetAndHideEntity(this);
+                }
+            }
+
+            this.getHandle().visibleByDefault = visible;
+        }*/ // TODO
     }
 
     @Override
-    public boolean isValidCustomNameVisible() {
-        return this.entity.isCustomNameVisible();
-    }
-
-    @Override
-    public boolean isValidGlowing() {
-        return this.entity.isCurrentlyGlowing();
-    }
-
-    @Override
-    public boolean isValidGravity() {
-        return !this.entity.isNoGravity();
-    }
-
-    @Override
-    public boolean isValidInvulnerable() {
-        return this.entity.isInvulnerable();
-    }
-
-    @Override
-    public boolean isValidSilent() {
-        return this.entity.isSilent();
-    }
-
-    @Override
-    public boolean isValidVisualFire() {
-        return this.entity.isCurrentlyGlowing();
-    }
-
-    @Override
-    public boolean isValidSwimming() {
-        return this.entity.isSwimming();
-    }
-
-    @Override
-    public boolean isValidSneaking() {
-        return this.entity.isShiftKeyDown();
-    }
-
-    @Override
-    public boolean isValidPersistent() {
-        return this.entity.persist;
-    }
-
-    @Override
-    public boolean isValidFreezeTicks() {
-        return this.entity.getTicksFrozen() >= 0;
-    }
-
-    @Override
-    public boolean isValidFireTicks() {
-        return this.entity.getRemainingFireTicks() >= 0;
-    }
-
-    @Override
-    public boolean isValidTicksLived() {
-        return this.entity.tickCount >= 0;
-    }
-
-    @Override
-    public boolean isValidLocation() {
-        return this.entity.level() != null;
-    }
-
-    @Override
-    public boolean isValidVelocity() {
-        return this.entity.getDeltaMovement() != null;
-    }
-
-    @Override
-    public boolean isValidWorld() {
-        return this.entity.level() != null;
-    }
-
-    @Override
-    public boolean isValidUniqueId() {
-        return this.entity.getUUID() != null;
-    }
-
-    @Override
-    public boolean isValidEntityId() {
-        return this.entity.getId() >= 0;
-    }
-
-    @Override
-    public boolean isValidName() {
-        return this.entity.getName() != null;
-    }
-
-    @Override
-    public boolean isValidType() {
-        return this.entityType != null;
-    }
-
-    @Override
-    public boolean isValidHeight() {
-        return this.entity.getBbHeight() >= 0;
-    }
-
-    @Override
-    public boolean isValidWidth() {
-        return this.entity.getBbWidth() >= 0;
-    }
-
-    @Override
-    public boolean isValidBoundingBox() {
-        return this.entity.getBoundingBox() != null;
-    }
-
-    @Override
-    public boolean isValidPistonMoveReaction() {
+    public boolean isVisibleByDefault() {
+        //return this.getHandle().visibleByDefault; // TODO
         return true;
     }
 
     @Override
-    public boolean isValidPose() {
-        return this.entity.getPose() != null;
+    public Set<Player> getTrackedBy() {
+        //Preconditions.checkState(!this.entity.generation, "Cannot get tracking players during world generation"); // TODO
+        ImmutableSet.Builder<Player> players = ImmutableSet.builder();
+
+        ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
+        ChunkMap.TrackedEntity entityTracker = world.getChunkSource().chunkMap.entityMap.get(this.getEntityId());
+
+        if (entityTracker != null) {
+            for (ServerPlayerConnection connection : entityTracker.seenBy) {
+                players.add((Player) ((EntityBridge)connection.getPlayer()).getBukkitEntity());
+            }
+        }
+
+        return players.build();
     }
 
     @Override
-    public boolean isValidSpawnCategory() {
-        return this.entity.getType() != null;
+    public boolean isTrackedBy(final Player player) {
+        //Preconditions.checkState(!this.entity.generation, "Cannot check tracking players during world generation"); // TODO
+        Preconditions.checkArgument(player != null, "Player cannot be null");
+
+        ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
+        ChunkMap.TrackedEntity entityTracker = world.getChunkSource().chunkMap.entityMap.get(this.getEntityId());
+        if (entityTracker == null) return false;
+
+        return entityTracker.seenBy.contains(((CraftPlayer) player).getHandle().connection);
     }
 
     @Override
-    public boolean isValidInWorld() {
-        return this.entity.level() != null;
+    public void sendMessage(String message) {
+
     }
 
     @Override
-    public boolean isValidDead() {
-        return true;
+    public void sendMessage(String... messages) {
+
     }
 
     @Override
-    public boolean isValidEmpty() {
-        return this.entity.getPassengers() != null;
+    public void sendMessage(UUID sender, String message) {
+        this.sendMessage(message); // Most entities don't know about senders
     }
 
     @Override
-    public boolean isValidInsideVehicle() {
-        return true;
+    public void sendMessage(UUID sender, String... messages) {
+        this.sendMessage(messages); // Most entities don't know about senders
     }
 
     @Override
-    public boolean isValidVehicle() {
-        return true;
+    public String getName() {
+        return CraftChatMessage.fromComponent(this.getHandle().getName());
     }
 
     @Override
-    public boolean isValidPassenger() {
-        return true;
+    public net.kyori.adventure.text.@org.jetbrains.annotations.NotNull Component name() {
+        return io.papermc.paper.adventure.PaperAdventure.asAdventure(this.getHandle().getName());
     }
 
     @Override
-    public boolean isValidGliding() {
-        return true;
+    public net.kyori.adventure.text.@org.jetbrains.annotations.NotNull Component teamDisplayName() {
+        return io.papermc.paper.adventure.PaperAdventure.asAdventure(this.getHandle().getDisplayName());
     }
 
     @Override
-    public boolean isValidSwimmingPose() {
-        return true;
+    public boolean isPermissionSet(String name) {
+        return CraftEntity.getPermissibleBase().isPermissionSet(name);
     }
 
     @Override
-    public boolean isValidSneakingPose() {
-        return true;
+    public boolean isPermissionSet(Permission perm) {
+        return CraftEntity.getPermissibleBase().isPermissionSet(perm);
     }
 
     @Override
-    public boolean isValidRiptidingPose() {
-        return true;
+    public boolean hasPermission(String name) {
+        return CraftEntity.getPermissibleBase().hasPermission(name);
     }
 
     @Override
-    public boolean isValidSleepingPose() {
-        return true;
+    public boolean hasPermission(Permission perm) {
+        return CraftEntity.getPermissibleBase().hasPermission(perm);
     }
 
     @Override
-    public boolean isValidFallFlyingPose() {
-        return true;
+    public PermissionAttachment addAttachment(Plugin plugin, String name, boolean value) {
+        return CraftEntity.getPermissibleBase().addAttachment(plugin, name, value);
     }
 
     @Override
-    public boolean isValidSpinAttackPose() {
-        return true;
+    public PermissionAttachment addAttachment(Plugin plugin) {
+        return CraftEntity.getPermissibleBase().addAttachment(plugin);
     }
 
     @Override
-    public boolean isValidLongJumpingPose() {
-        return true;
+    public PermissionAttachment addAttachment(Plugin plugin, String name, boolean value, int ticks) {
+        return CraftEntity.getPermissibleBase().addAttachment(plugin, name, value, ticks);
     }
 
     @Override
-    public boolean isValidDyingPose() {
-        return true;
+    public PermissionAttachment addAttachment(Plugin plugin, int ticks) {
+        return CraftEntity.getPermissibleBase().addAttachment(plugin, ticks);
     }
 
     @Override
-    public boolean isValidCroakingPose() {
-        return true;
+    public void removeAttachment(PermissionAttachment attachment) {
+        CraftEntity.getPermissibleBase().removeAttachment(attachment);
     }
 
     @Override
-    public boolean isValidUsingTonguePose() {
-        return true;
+    public void recalculatePermissions() {
+        CraftEntity.getPermissibleBase().recalculatePermissions();
     }
 
     @Override
-    public boolean isValidSittingPose() {
-        return true;
+    public Set<PermissionAttachmentInfo> getEffectivePermissions() {
+        return CraftEntity.getPermissibleBase().getEffectivePermissions();
     }
 
     @Override
-    public boolean isValidRoaringPose() {
-        return true;
+    public boolean isOp() {
+        return CraftEntity.getPermissibleBase().isOp();
     }
 
     @Override
-    public boolean isValidSniffingPose() {
-        return true;
+    public void setOp(boolean value) {
+        CraftEntity.getPermissibleBase().setOp(value);
     }
 
     @Override
-    public boolean isValidEmergingPose() {
-        return true;
+    public void setGlowing(boolean flag) {
+        this.getHandle().setGlowingTag(flag);
     }
 
     @Override
-    public boolean isValidDiggingPose() {
-        return true;
+    public boolean isGlowing() {
+        return this.getHandle().isCurrentlyGlowing();
     }
 
     @Override
-    public boolean isValidSlidingPose() {
-        return true;
+    public void setInvulnerable(boolean flag) {
+        this.getHandle().setInvulnerable(flag);
     }
 
     @Override
-    public boolean isValidShootingPose() {
-        return true;
+    public boolean isInvulnerable() {
+        return this.getHandle().isInvulnerableToBase(this.getHandle().damageSources().generic());
     }
 
     @Override
-    public boolean isValidInhalingPose() {
-        return true;
+    public boolean isSilent() {
+        return this.getHandle().isSilent();
     }
 
     @Override
-    public boolean isValidStandingPose() {
-        return true;
+    public void setSilent(boolean flag) {
+        this.getHandle().setSilent(flag);
     }
 
     @Override
-    public boolean isValidUsingItemPose() {
-        return true;
+    public boolean hasGravity() {
+        return !this.getHandle().isNoGravity();
     }
 
     @Override
-    public boolean isValidBlockingPose() {
-        return true;
+    public void setGravity(boolean gravity) {
+        this.getHandle().setNoGravity(!gravity);
     }
 
     @Override
-    public boolean isValidAttackingPose() {
-        return true;
+    public int getPortalCooldown() {
+        return this.getHandle().getPortalCooldown();
     }
 
     @Override
-    public boolean isValidCelebratingPose() {
-        return true;
+    public void setPortalCooldown(int cooldown) {
+        this.getHandle().setPortalCooldown(cooldown);
     }
 
     @Override
-    public boolean isValidRidingPose() {
-        return true;
+    public Set<String> getScoreboardTags() {
+        return this.getHandle().entityTags();
     }
 
     @Override
-    public boolean isValidFallFlying() {
-        return true;
+    public boolean addScoreboardTag(String tag) {
+        return this.getHandle().addTag(tag);
     }
 
     @Override
-    public boolean isValidSleeping() {
-        return true;
+    public boolean removeScoreboardTag(String tag) {
+        return this.getHandle().removeTag(tag);
     }
 
     @Override
-    public boolean isValidSwimmingLegacy() {
-        return true;
+    public PistonMoveReaction getPistonMoveReaction() {
+        return PistonMoveReaction.getById(this.getHandle().getPistonPushReaction().ordinal());
     }
 
     @Override
-    public boolean isValidSneakingLegacy() {
-        return true;
+    public BlockFace getFacing() {
+        // Use this method over getDirection because it handles boats and minecarts.
+        return CraftBlock.notchToBlockFace(this.getHandle().getMotionDirection());
     }
 
     @Override
-    public boolean isValidRiptidingLegacy() {
-        return true;
+    public CraftPersistentDataContainer getPersistentDataContainer() {
+        return this.persistentDataContainer;
     }
 
     @Override
-    public boolean isValidEntitySnapshot() {
-        return true;
+    public Pose getPose() {
+        return Pose.values()[this.getHandle().getPose().ordinal()];
     }
 
     @Override
-    public boolean isValidEntityCopy() {
+    public void setSneaking(boolean sneak) {
+        this.getHandle().setShiftKeyDown(sneak);
+    }
+
+    @Override
+    public boolean isSneaking() {
+        return this.getHandle().isShiftKeyDown();
+    }
+
+    @Override
+    public void setPose(Pose pose, boolean fixed) {
+        Preconditions.checkArgument(pose != null, "pose cannot be null");
+        this.setPose0(net.minecraft.world.entity.Pose.values()[pose.ordinal()], fixed);
+    }
+
+    public void setPose0(net.minecraft.world.entity.Pose pose, boolean fixed) {
+        final Entity handle = this.getHandle();
+        //handle.fixedPose = false; // TODO
+        handle.setPose(pose);
+        //handle.fixedPose = fixed; // TODO
+    }
+
+    @Override
+    public boolean hasFixedPose() {
+        //return this.getHandle().fixedPose; // TODO
         return false;
     }
 
     @Override
-    public boolean isValidEntityCopyLocation() {
+    public SpawnCategory getSpawnCategory() {
+        return CraftSpawnCategory.toBukkit(this.getHandle().getType().getCategory());
+    }
+
+    @Override
+    public boolean isInWorld() {
+        return ((EntityBridge)this.getHandle()).cb$getInWorld();
+    }
+
+    @Override
+    public String getAsString() {
+        try (final ProblemReporter.ScopedCollector problemReporter = new ProblemReporter.ScopedCollector(
+                () -> "Entity#toString", LOGGER
+        )) {
+            final TagValueOutput output = TagValueOutput.createWithContext(
+                    problemReporter,
+                    this.getHandle().registryAccess()
+            );
+            if (!this.getHandle().saveAsPassenger(output)) {//, false, true, true)) { // TODO
+                return null;
+            }
+
+            return output.buildResult().toString();
+        }
+    }
+
+    @Override
+    public EntitySnapshot createSnapshot() {
+        return CraftEntitySnapshot.create(this);
+    }
+
+    @Override
+    public org.bukkit.entity.Entity copy() {
+        Entity copy = this.copy(this.getHandle().level());
+        Preconditions.checkArgument(copy != null, "Error creating new entity.");
+
+        return copy.getBukkitEntity();
+    }
+
+    @Override
+    public org.bukkit.entity.Entity copy(Location location) {
+        Preconditions.checkArgument(location.getWorld() != null, "Location has no world");
+
+        Entity copy = this.copy(((CraftWorld) location.getWorld()).getHandle());
+        Preconditions.checkArgument(copy != null, "Error creating new entity.");
+
+        copy.setPos(location.getX(), location.getY(), location.getZ());
+        return location.getWorld().addEntity(copy.getBukkitEntity());
+    }
+
+    private Entity copy(net.minecraft.world.level.Level level) {
+        try (final ProblemReporter.ScopedCollector problemReporter = new ProblemReporter.ScopedCollector(
+                () -> "Entity#copy", LOGGER
+        )) {
+            final TagValueOutput output = TagValueOutput.createWithContext(problemReporter, level.registryAccess());
+            this.getHandle().saveAsPassenger(output);//, false, true, true); // TODO
+
+            return net.minecraft.world.entity.EntityType.loadEntityRecursive(output.buildResult(), level, new net.minecraft.world.entity.EntitySpawnRequest(EntitySpawnReason.LOAD, false), EntityProcessor.NOP);
+        }
+    }
+
+    public void storeBukkitValues(ValueOutput output) {
+        if (!this.persistentDataContainer.isEmpty()) {
+            output.store("BukkitValues", CompoundTag.CODEC, this.persistentDataContainer.toTagCompound());
+        }
+    }
+
+    public void readBukkitValues(ValueInput input) {
+        input.read("BukkitValues", CompoundTag.CODEC).ifPresent(this.persistentDataContainer::putAll);
+    }
+
+    protected CompoundTag save() {
+        try (final ProblemReporter.ScopedCollector problemReporter = new ProblemReporter.ScopedCollector(
+                () -> "Entity#save", LOGGER
+        )) {
+            final TagValueOutput tagValueOutput = TagValueOutput.createWithContext(
+                    problemReporter,
+                    this.getHandle().registryAccess()
+            );
+
+            tagValueOutput.putString(Entity.TAG_ID, this.getHandle().getEncodeId()); // TODO this.getHandle().getEncodeId(true)
+            this.getHandle().saveWithoutId(tagValueOutput);
+
+            return tagValueOutput.buildResult();
+        }
+    }
+
+    // re-sends the spawn entity packet to updated values which cannot be updated otherwise
+    protected void update() {
+        if (!this.getHandle().isAlive()) {
+            return;
+        }
+
+        ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
+        ChunkMap.TrackedEntity entityTracker = world.getChunkSource().chunkMap.entityMap.get(this.getEntityId());
+
+        if (entityTracker == null) {
+            return;
+        }
+
+        for (final ServerPlayerConnection connection : entityTracker.seenBy) {
+            //this.getHandle().resendPossiblyDesyncedEntityData(connection.getPlayer()); // TODO
+        }
+    }
+
+    public void update(ServerPlayer player) {
+        if (!this.getHandle().isAlive()) {
+            return;
+        }
+
+        ServerLevel world = ((CraftWorld) this.getWorld()).getHandle();
+        ChunkMap.TrackedEntity entityTracker = world.getChunkSource().chunkMap.entityMap.get(this.getEntityId());
+
+        if (entityTracker == null) {
+            return;
+        }
+
+        player.connection.send(this.getHandle().getAddEntityPacket(entityTracker.serverEntity));
+    }
+
+    private static PermissibleBase getPermissibleBase() {
+        if (CraftEntity.perm == null) {
+            CraftEntity.perm = new PermissibleBase(new ServerOperator() {
+
+                @Override
+                public boolean isOp() {
+                    return false;
+                }
+
+                @Override
+                public void setOp(boolean value) {
+
+                }
+            });
+        }
+        return CraftEntity.perm;
+    }
+
+    // Paper start - more teleport API / async chunk API
+    @Override
+    public CompletableFuture<Boolean> teleportAsync(final Location location, final TeleportCause cause, final TeleportFlag... teleportFlags) {
+        /*Preconditions.checkArgument(location != null, "location cannot be null");
+        Preconditions.checkArgument(location.getWorld() != null, "Target world cannot be null");
+        Preconditions.checkState(!this.entity.generation, "Cannot teleport entity to an other world during world generation");
+        location.checkFinite();
+        Location locationClone = location.clone(); // clone so we don't need to worry about mutations after this call.
+
+        ServerLevel world = ((CraftWorld)locationClone.getWorld()).getHandle();
+        CompletableFuture<Boolean> ret = new CompletableFuture<>();
+
+        world.loadChunksForMoveAsync(this.getHandle().getBoundingBoxAt(locationClone.getX(), locationClone.getY(), locationClone.getZ()),
+                this instanceof CraftPlayer ? ca.spottedleaf.concurrentutil.util.Priority.HIGHER : ca.spottedleaf.concurrentutil.util.Priority.NORMAL, (chunks) -> {
+                    MinecraftServer.getServer().scheduleOnMain(() -> {
+                        final ServerChunkCache chunkCache = world.getChunkSource();
+                        for (final net.minecraft.world.level.chunk.ChunkAccess chunk : chunks) {
+                            chunkCache.addTicketAtLevel(TicketType.POST_TELEPORT, chunk.getPos(), ChunkLevel.FULL_CHUNK_LEVEL);
+                        }
+                        try {
+                            ret.complete(CraftEntity.this.teleport0(locationClone, cause, teleportFlags) ? Boolean.TRUE : Boolean.FALSE);
+                        } catch (Throwable throwable) {
+                            MinecraftServer.LOGGER.error("Failed to teleport entity {}", CraftEntity.this, throwable);
+                            ret.completeExceptionally(throwable);
+                        }
+                    });
+                });
+
+        return ret;*/ // TODO
+        location.checkFinite();
+        Location locationClone = location.clone();
+        ServerLevel world = ((CraftWorld)locationClone.getWorld()).getHandle();
+        CompletableFuture<Boolean> ret = new CompletableFuture<Boolean>();
+
+        AABB box = this.getHandle().getDimensions(this.getHandle().getPose())
+                .makeBoundingBox(locationClone.getX(), locationClone.getY(), locationClone.getZ());
+
+        boolean tp = this.teleport(location, cause);
+        CompletableFuture<Boolean> b = CompletableFuture.completedFuture( tp );
+        return b;
+    }
+    // Paper end - more teleport API / async chunk API
+
+    private final org.bukkit.entity.Entity.Spigot spigot = new org.bukkit.entity.Entity.Spigot() {
+
+        @Override
+        public void sendMessage(net.md_5.bungee.api.chat.BaseComponent component) {
+        }
+
+        @Override
+        public void sendMessage(net.md_5.bungee.api.chat.BaseComponent... components) {
+        }
+
+        @Override
+        public void sendMessage(UUID sender, BaseComponent... components) {
+        }
+
+        @Override
+        public void sendMessage(UUID sender, BaseComponent component) {
+        }
+    };
+
+    public org.bukkit.entity.Entity.Spigot spigot() {
+        return this.spigot;
+    }
+
+    @Override
+    public Location getOrigin() {
+        Location origin = ((EntityBridge)getHandle()).getOriginBF();
+        return origin == null ? null : origin.clone();
+        // TODO: Update
+    }
+
+    @Override
+    public boolean fromMobSpawner() {
+        //return this.getHandle().spawnedViaMobSpawner; // TODO
         return false;
     }
 
     @Override
-    public boolean isValidScoreboardTags() {
-        return this.entity.getTags() != null;
+    public org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason getEntitySpawnReason() {
+        //return this.getHandle().spawnReason; // TODO
+        return CreatureSpawnEvent.SpawnReason.DEFAULT;
     }
 
     @Override
-    public boolean isValidTrackedPlayers() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidScheduler() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSpawnAt() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCustomNameAdventure() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTeamDisplayName() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPointersSupplier() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCollidesAt() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidWouldCollideUsing() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInBubbleColumn() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTicking() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidUnderWater() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInRain() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInLava() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInPowderedSnow() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInWaterOrRain() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInWaterOrBubbleColumn() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInWaterOrRainOrBubbleColumn() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInLavaOrWater() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidNoPhysics() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidOnGround() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidRotation() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPortalCooldown() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidMetadata() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPermissions() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidServer() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidNameLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTypeLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidVelocityLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidNearbyEntities() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTeleport() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidRemove() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidVehicleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPassengerLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEffect() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSpigot() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPermissionAttachment() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidAdventure() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidComponent() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidScoreboard() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSound() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPersistentDataContainer() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEntityEffect() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCustomNameLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCustomNameVisibleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidGlowingLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidGravityLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInvulnerableLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSilentLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidVisualFireLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidFreezeTicksLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidFireTicksLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTicksLivedLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidBoundingBoxLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPoseLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSpawnCategoryLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidDeadLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEmptyLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInsideVehicleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidFallDistance() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidLastDamageCause() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidUniqueIdLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEntityIdLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidWorldLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidHeightLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidWidthLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidIsInWater() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidOnGroundLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPersistentLegacy() {
-        return true;
-    }
-
-    @Override
-    public net.kyori.adventure.text.Component displayName() {
-        return this.name();
-    }
-
-    @Override
-    public net.kyori.adventure.text.Component teamDisplayNameLegacy() {
-        return this.name();
-    }
-
-    @Override
-    public boolean isValidDisplayName() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTeamDisplayNameLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCustomNameComponent() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidNameComponent() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTeamDisplayNameComponent() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPointer() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPermissionChecker() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidIdentity() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidAudience() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidMessage() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidMessageType() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendMessage() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendPlainMessage() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendRichMessage() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendActionBar() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendPlayerListHeader() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendPlayerListFooter() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendPlayerListHeaderAndFooter() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidShowTitle() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidClearTitle() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidResetTitle() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidShowBossBar() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidHideBossBar() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPlaySound() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidStopSound() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidOpenBook() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendPlayerListHeaderAndFooterLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSendActionBarLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidShowTitleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidClearTitleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidResetTitleLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidShowBossBarLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidHideBossBarLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPlaySoundLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidStopSoundLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidOpenBookLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidAdventureLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidComponentLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidPersistentDataContainerLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEntitySnapshotLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidEntityCopyLegacy() {
-        return false;
-    }
-
-    @Override
-    public boolean isValidEntityCopyLocationLegacy() {
-        return false;
-    }
-
-    @Override
-    public boolean isValidSchedulerLegacy() {
-        return true;
+    public boolean isUnderWater() {
+        return this.getHandle().isUnderWater();
     }
 
     @Override
-    public boolean isValidTrackedPlayersLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidSpawnAtLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidCollidesAtLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidWouldCollideUsingLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidTickingLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidUnderWaterLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInRainLegacy() {
-        return true;
-    }
-
-    @Override
-    public boolean isValidInLavaLegacy() {
-        return true;
+    public boolean isInRain() {
+        return this.getHandle().isInRain();
     }
 
     @Override
-    public boolean isValidInPowderedSnowLegacy() {
-        return true;
+    public boolean isInLava() {
+        return this.getHandle().isInLava();
     }
 
     @Override
-    public boolean isValidInWaterOrRainLegacy() {
+    public boolean isTicking() {
+        //return this.getHandle().isTicking(); // TODO
         return true;
     }
 
     @Override
-    public boolean isValidInWaterOrBubbleColumnLegacy() {
-        return true;
-    }
+    public Set<org.bukkit.entity.Player> getTrackedPlayers() {
+        ServerLevel world = (net.minecraft.server.level.ServerLevel)this.entity.level();
+        ChunkMap.TrackedEntity tracker = world == null ? null : world.getChunkSource().chunkMap.entityMap.get(this.entity.getId());
+        if (tracker == null) {
+            return java.util.Collections.emptySet();
+        }
 
-    @Override
-    public boolean isValidInWaterOrRainOrBubbleColumnLegacy() {
-        return true;
+        Set<org.bukkit.entity.Player> set = new java.util.HashSet<>(tracker.seenBy.size());
+        for (net.minecraft.server.network.ServerPlayerConnection connection : tracker.seenBy) {
+            set.add(((CraftPlayer)((EntityBridge)connection.getPlayer()).getBukkitEntity()).getPlayer());
+        }
+        return set;
     }
 
     @Override
-    public boolean isValidInLavaOrWaterLegacy() {
+    public boolean spawnAt(Location location, CreatureSpawnEvent.SpawnReason reason) {
+        Preconditions.checkNotNull(location, "location cannot be null");
+        Preconditions.checkNotNull(reason, "reason cannot be null");
+        this.entity.setLevel(((CraftWorld) location.getWorld()).getHandle());
+        this.entity.setPos(location.getX(), location.getY(), location.getZ());
+        this.entity.setRot(location.getYaw(), location.getPitch());
+        final boolean spawned = !((EntityBridge)this.entity).isValidBF() && this.entity.level().addFreshEntity(this.entity);//, reason); // TODO
+        if (!spawned) return false; // Do not attempt to spawn rest if root was not spawned in
+        // Like net.minecraft.world.level.ServerLevelAccessor.addFreshEntityWithPassengers(net.minecraft.world.entity.Entity, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason)
+        this.entity.getIndirectPassengers().forEach(e -> e.level().addFreshEntity(e));//, reason)); // TODO
         return true;
     }
 
     @Override
-    public boolean isValidNoPhysicsLegacy() {
-        return true;
+    public boolean isInPowderedSnow() {
+        return this.getHandle().isInPowderSnow || this.getHandle().wasInPowderSnow; // depending on the location in the entity "tick" either could be needed.
     }
 
     @Override
-    public boolean isValidRotationLegacy() {
-        return true;
+    public double getX() {
+        return this.entity.getX();
     }
 
     @Override
-    public boolean isValidPortalCooldownLegacy() {
-        return true;
+    public double getY() {
+        return this.entity.getY();
     }
 
     @Override
-    public boolean isValidMetadataLegacy() {
-        return true;
+    public double getZ() {
+        return this.entity.getZ();
     }
 
     @Override
-    public boolean isValidPermissionsLegacy() {
-        return true;
+    public float getPitch() {
+        return this.entity.getXRot();
     }
 
     @Override
-    public boolean isValidServerLegacy() {
-        return true;
+    public float getYaw() {
+        return this.entity.cardboard$getBukkitYaw();
     }
 
     @Override
-    public boolean isValidNearbyEntitiesLegacy() {
-        return true;
+    public boolean isInvisible() {
+        return this.getHandle().isInvisible();
     }
 
     @Override
-    public boolean isValidTeleportLegacy() {
-        return true;
+    public void setInvisible(boolean invisible) {
+        //this.getHandle().persistentInvisibility = invisible; // TODO
+        this.getHandle().setSharedFlag(Entity.FLAG_INVISIBLE, invisible);
     }
 
     @Override
-    public boolean isValidRemoveLegacy() {
-        return true;
+    public void setNoPhysics(boolean noPhysics) {
+        this.getHandle().noPhysics = noPhysics;
     }
 
     @Override
-    public boolean isValidEffectLegacy() {
-        return true;
+    public boolean hasNoPhysics() {
+        return this.getHandle().noPhysics;
     }
 
     @Override
-    public boolean isValidSpigotLegacy() {
-        return true;
-    }
+    public boolean collidesAt(@org.jetbrains.annotations.NotNull Location location) {
+        net.minecraft.world.phys.AABB box = ((EntityBridge)this.getHandle()).cardboad_getBoundingBoxAt(location.getX(), location.getY(), location.getZ());
 
-    @Override
-    public boolean isValidPermissionAttachmentLegacy() {
-        return true;
+        return !this.getHandle().level().noCollision(this.getHandle(), box);
     }
 
     @Override
-    public boolean isValidSoundLegacy() {
-        return true;
-    }
+    public boolean wouldCollideUsing(@org.jetbrains.annotations.NotNull BoundingBox boundingBox) {
+        net.minecraft.world.phys.AABB box = new AABB(boundingBox.getMinX(), boundingBox.getMinY(), boundingBox.getMinZ(), boundingBox.getMaxX(), boundingBox.getMaxY(), boundingBox.getMaxZ());
 
-    @Override
-    public boolean isValidScoreboardLegacy() {
-        return true;
+        return !this.getHandle().level().noCollision(this.getHandle(), box);
     }
 
     @Override
-    public boolean isValidMessageLegacy() {
-        return true;
+    public String getScoreboardEntryName() {
+        return this.getHandle().getScoreboardName();
     }
 
     @Override
-    public boolean isValidMessageTypeLegacy() {
-        return true;
+    public void broadcastHurtAnimation(java.util.Collection<Player> players) {
+        //noinspection SuspiciousMethodCalls
+        Preconditions.checkArgument(!players.contains(this), "Cannot broadcast hurt animation to self without a yaw");
+        for (final org.bukkit.entity.Player player : players) {
+            ((CraftPlayer) player).sendHurtAnimation(0, this);
+        }
     }
-
     @Override
-    public boolean isValidSendMessageLegacy() {
-        return true;
+    public <T> @Nullable T getData(@NotNull final DataComponentType.Valued<T> type) {
+        return this.entity.get(io.papermc.paper.datacomponent.PaperDataComponentType.bukkitToMinecraft(type));
     }
 
     @Override
-    public boolean isValidSendPlainMessageLegacy() {
-        return true;
+    public <T> @Nullable T getDataOrDefault(@NotNull final DataComponentType.Valued<? extends T> type, @Nullable final T fallback) {
+        return this.entity.getOrDefault(io.papermc.paper.datacomponent.PaperDataComponentType.bukkitToMinecraft(type), fallback);
     }
 
     @Override
-    public boolean isValidSendRichMessageLegacy() {
-        return true;
+    public boolean hasData(final @NotNull DataComponentType type) {
+        return this.entity.get(io.papermc.paper.datacomponent.PaperDataComponentType.bukkitToMinecraft(type)) != null;
     }
 
+    // 26.2: Paper's Entity now extends adventure Sound.Source.Provider
     @Override
-    public boolean isValidPointerLegacy() {
-        return true;
+    public net.kyori.adventure.sound.Sound.Source soundSource() {
+        return net.kyori.adventure.sound.Sound.Source.NAMES
+                .valueOr(this.entity.getSoundSource().getName(), net.kyori.adventure.sound.Sound.Source.NEUTRAL);
     }
 
+    // 26.2: newly abstract on the Paper Entity interface
     @Override
-    public boolean isValidPermissionCheckerLegacy() {
-        return true;
+    public org.bukkit.SoundCategory getSoundCategory() {
+        // SoundSource and SoundCategory share their constant names
+        return org.bukkit.SoundCategory.valueOf(this.entity.getSoundSource().name());
     }
 
     @Override
-    public boolean isValidIdentityLegacy() {
-        return true;
+    public io.papermc.paper.entity.RemovalReason getRemovalReason() {
+        final net.minecraft.world.entity.Entity.RemovalReason reason = this.entity.getRemovalReason();
+        // both enums declare the same constants; null while the entity is still alive
+        return reason == null ? null : io.papermc.paper.entity.RemovalReason.valueOf(reason.name());
     }
 
     @Override
-    public boolean isValidAudienceLegacy() {
-        return true;
+    public org.bukkit.event.entity.EntityRemoveEvent.Cause getRemoveEventCause() {
+        final net.minecraft.world.entity.Entity.RemovalReason reason = this.entity.getRemovalReason();
+        if (reason == null) return null;
+        return switch (reason) {
+            case KILLED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH;
+            case DISCARDED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD;
+            case UNLOADED_TO_CHUNK -> org.bukkit.event.entity.EntityRemoveEvent.Cause.UNLOAD;
+            case UNLOADED_WITH_PLAYER, CHANGED_DIMENSION ->
+                    org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT;
+        };
     }
 
-    @Override
-    public Spigot spigot() {
-        return new Spigot() {};
-    }
 }
