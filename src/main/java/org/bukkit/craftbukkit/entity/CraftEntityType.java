@@ -7,6 +7,7 @@ import io.papermc.paper.registry.RegistryKey;
 import java.util.Locale;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.craftbukkit.CraftRegistry;
@@ -22,15 +23,17 @@ public class CraftEntityType {
         Preconditions.checkArgument(minecraft != null);
 
         net.minecraft.core.Registry<net.minecraft.world.entity.EntityType<?>> registry = CraftRegistry.getMinecraftRegistry(Registries.ENTITY_TYPE);
-        EntityType bukkit = Registry.ENTITY_TYPE.get(CraftNamespacedKey.fromMinecraft(registry.getResourceKey(minecraft).orElseThrow().identifier()));
+        Identifier id = registry.getResourceKey(minecraft).orElseThrow().identifier();
+        EntityType bukkit = Registry.ENTITY_TYPE.get(CraftNamespacedKey.fromMinecraft(id));
 
         if (null == bukkit) {
-        	// Cardboard:
-        	// Check if Added from non-vanilla identifier.
-        	bukkit = RegistryUtil.getCraftTypeFromMinecraft(minecraft);
+            // Cardboard: custom/modded entity types are registered from BuiltInRegistries,
+            // while the runtime server registry may not preserve the same object identity.
+            // Fall back to the stable registry identifier as well as the legacy identity map.
+            bukkit = RegistryUtil.getCraftTypeFromMinecraft(minecraft, id);
         }
-        
-        Preconditions.checkArgument(bukkit != null);
+
+        Preconditions.checkArgument(bukkit != null, "No Bukkit EntityType mapping for %s", id);
 
         return bukkit;
     }
