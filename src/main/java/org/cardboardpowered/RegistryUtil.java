@@ -60,6 +60,11 @@ public class RegistryUtil {
 		EntityType bukkit = MODDED_ENTITIES_MAP.get(mc);
 		return bukkit != null ? bukkit : MODDED_ENTITIES_BY_KEY.get(id);
 	}
+
+    static void cacheModdedEntityType(net.minecraft.world.entity.EntityType<?> minecraftType, Identifier id, EntityType bukkitType) {
+        MODDED_ENTITIES_MAP.put(minecraftType, bukkitType);
+        MODDED_ENTITIES_BY_KEY.put(id, bukkitType);
+    }
 	
 	private static void register_entities() {
 		DefaultedRegistry<net.minecraft.world.entity.EntityType<?>> registry = BuiltInRegistries.ENTITY_TYPE;
@@ -82,8 +87,7 @@ public class RegistryUtil {
                 
                 cb.cardboard$setKey(key);
                 cb.cardboard$addToMaps(entityType.toLowerCase(), (short) typeId);
-                MODDED_ENTITIES_MAP.put(entity, bukkitType);
-                MODDED_ENTITIES_BY_KEY.put(id, bukkitType);
+                cacheModdedEntityType(entity, id, bukkitType);
 
                 CardboardMod.LOGGER.info("Registered modded \"" + id + "\" as CraftEntity " + bukkitType);
             }
