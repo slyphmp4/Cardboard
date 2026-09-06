@@ -33,6 +33,7 @@ public class RegistryUtil {
     private static final Map<Short, EntityType> CUSTOM_ENTITY_ID_MAP = new HashMap<Short, EntityType>();
 	
     public static Map<net.minecraft.world.entity.EntityType<?>, EntityType> MODDED_ENTITIES_MAP = new ConcurrentHashMap<>();
+    private static final Map<Identifier, EntityType> MODDED_ENTITIES_BY_KEY = new ConcurrentHashMap<>();
     
 	/**
 	 * Inject Minecraft builtin registry entries into Bukkit API.
@@ -46,7 +47,18 @@ public class RegistryUtil {
 	}
 	
 	public static EntityType getCraftTypeFromMinecraft(net.minecraft.world.entity.EntityType<?> mc) {
-		return MODDED_ENTITIES_MAP.get(mc);
+		EntityType bukkit = MODDED_ENTITIES_MAP.get(mc);
+		if (bukkit != null) {
+			return bukkit;
+		}
+
+		Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(mc);
+		return id == null ? null : MODDED_ENTITIES_BY_KEY.get(id);
+	}
+
+	public static EntityType getCraftTypeFromMinecraft(net.minecraft.world.entity.EntityType<?> mc, Identifier id) {
+		EntityType bukkit = MODDED_ENTITIES_MAP.get(mc);
+		return bukkit != null ? bukkit : MODDED_ENTITIES_BY_KEY.get(id);
 	}
 	
 	private static void register_entities() {
@@ -71,6 +83,7 @@ public class RegistryUtil {
                 cb.cardboard$setKey(key);
                 cb.cardboard$addToMaps(entityType.toLowerCase(), (short) typeId);
                 MODDED_ENTITIES_MAP.put(entity, bukkitType);
+                MODDED_ENTITIES_BY_KEY.put(id, bukkitType);
 
                 CardboardMod.LOGGER.info("Registered modded \"" + id + "\" as CraftEntity " + bukkitType);
             }
