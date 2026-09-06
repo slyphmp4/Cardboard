@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.cardboardpowered.mixin.bukkit.entity",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "CraftEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
