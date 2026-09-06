@@ -6,6 +6,10 @@ on:
       - ver/26.2
     paths:
       - .github/workflows/issue-30-dirtnt-integration.yml
+      - src/main/java/org/cardboardpowered/RegistryUtil.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityType.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+      - src/test/java/org/cardboardpowered/RegistryUtilTest.java
 
 permissions:
   contents: read
@@ -128,7 +132,7 @@ jobs:
             exit 1
           fi
 
-          if grep -qE 'No Bukkit EntityType mapping|CraftEntityType.*IllegalArgumentException|Encountered an unexpected exception' "$log"; then
+          if grep -qE 'No Bukkit EntityType mapping|CraftEntityType.*IllegalArgumentException|Unknown entity class fourmisain\.dirtnt|Encountered an unexpected exception' "$log"; then
             echo '::error::Detected the custom EntityType crash signature'
             tail -n 400 "$log"
             exit 1
