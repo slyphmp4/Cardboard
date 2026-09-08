@@ -115,6 +115,17 @@ jobs:
       - name: Build Cardboard
         run: ./gradlew clean build --no-daemon --stacktrace
 
+      - name: Remove superseded release
+        if: steps.release.outputs.tag == 'v26.2.17'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v26.2.16 >/dev/null 2>&1; then
+            gh release delete v26.2.16 --cleanup-tag --yes
+          fi
+
       - name: Publish GitHub release
         shell: bash
         env:
