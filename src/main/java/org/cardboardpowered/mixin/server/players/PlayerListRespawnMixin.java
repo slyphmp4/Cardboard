@@ -4,6 +4,9 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
+import java.util.List;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
@@ -98,5 +101,46 @@ public abstract class PlayerListRespawnMixin {
 
         player.unsetRemoved();
         player.setShiftKeyDown(false);
+    }
+
+    @Inject(method = "respawn", at = @At("RETURN"))
+    private void cardboard$resyncReusedPlayerEntityData(
+            ServerPlayer player,
+            boolean keepInventory,
+            Entity.RemovalReason removalReason,
+            CallbackInfoReturnable<ServerPlayer> cir
+    ) {
+        ServerPlayer respawnedPlayer = cir.getReturnValue();
+        if (respawnedPlayer == null || respawnedPlayer.connection == null) {
+            return;
+        }
+
+        /*
+         * Vanilla constructs a fresh ServerPlayer during respawn. Its constructor
+         * reapplies ClientInformation (including modelCustomisation), and
+         * restoreFrom() copies the player entity metadata before the new entity is
+         * tracked by the client.
+         *
+         * Cardboard intentionally reuses the existing ServerPlayer above. The
+         * ClientboundRespawnPacket makes the client recreate its local player state,
+         * but the reused server entity may have no dirty metadata to resend. That
+         * leaves client-side player model customisation at its default value (0),
+         * hiding the hat/jacket/sleeves/pants second skin layer until the client
+         * changes a skin option again.
+         *
+         * Resend the current non-default metadata after the respawn sequence. This
+         * preserves the player's actual client-selected model-part mask instead of
+         * forcing every layer on, and also keeps the reused entity synchronized with
+         * the freshly recreated client-side player.
+         */
+        List<SynchedEntityData.DataValue<?>> entityData =
+                respawnedPlayer.getEntityData().getNonDefaultValues();
+        if (entityData == null || entityData.isEmpty()) {
+            return;
+        }
+
+        respawnedPlayer.connection.send(
+                new ClientboundSetEntityDataPacket(respawnedPlayer.getId(), entityData)
+        );
     }
 }
