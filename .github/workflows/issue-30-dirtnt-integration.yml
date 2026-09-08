@@ -1,6 +1,19 @@
 name: Issue 30 DirTNT runtime integration
 
 on:
+  pull_request:
+    branches:
+      - ver/26.2
+    paths:
+      - .github/workflows/issue-30-dirtnt-integration.yml
+      - src/main/java/org/cardboardpowered/RegistryUtil.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityType.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityTypes.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+      - src/main/java/org/cardboardpowered/mixin/bukkit/entity/CraftEntityMixin.java
+      - src/main/resources/cardboard-modded-entity-fix.mixins.json
+      - src/main/resources/fabric.mod.json
+      - src/test/java/org/cardboardpowered/RegistryUtilTest.java
   push:
     branches:
       - ver/26.2
@@ -8,18 +21,20 @@ on:
       - .github/workflows/issue-30-dirtnt-integration.yml
       - src/main/java/org/cardboardpowered/RegistryUtil.java
       - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityType.java
+      - src/main/java/org/bukkit/craftbukkit/entity/CraftEntityTypes.java
       - src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
       - src/main/java/org/cardboardpowered/mixin/bukkit/entity/CraftEntityMixin.java
       - src/main/resources/cardboard-modded-entity-fix.mixins.json
       - src/main/resources/fabric.mod.json
       - src/test/java/org/cardboardpowered/RegistryUtilTest.java
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   dirtnt-runtime:
-    name: Prime DirTNT on Cardboard 26.2
+    name: DirTNT custom entity smoke test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -78,7 +93,7 @@ jobs:
           EOF
           echo "Using DirTNT JAR: $dirtnt_jar"
 
-      - name: Start server and prime Sand TNT
+      - name: Start server and verify DirTNT custom entity
         shell: bash
         run: |
           set -euo pipefail
@@ -121,33 +136,49 @@ jobs:
             exit 1
           fi
 
+          # Issue #30 is about Cardboard handling a Fabric-registered EntityType.
+          # Test the block registry separately, then create the custom entity
+          # directly so the smoke test does not depend on redstone timing or
+          # DirTNT's block-priming implementation.
           printf 'forceload add 0 0\n' >&3
           printf 'setblock 0 100 0 dirtnt:sand_tnt\n' >&3
-          sleep 1
-          printf 'setblock 1 100 0 minecraft:redstone_block\n' >&3
-          sleep 1
-          printf 'execute if entity @e[type=dirtnt:sand_tnt] run say ISSUE30_DIRTNT_ENTITY_PRESENT\n' >&3
-          sleep 6
+          printf 'execute if block 0 100 0 dirtnt:sand_tnt run say ISSUE30_DIRTNT_BLOCK_PRESENT\n' >&3
+          printf 'summon dirtnt:sand_tnt 0.5 101 0.5\n' >&3
+          printf 'execute if entity @e[type=dirtnt:sand_tnt,limit=1] run say ISSUE30_DIRTNT_ENTITY_PRESENT\n' >&3
+          printf 'kill @e[type=dirtnt:sand_tnt]\n' >&3
+          sleep 3
 
           if ! kill -0 "$server_pid" 2>/dev/null; then
-            echo '::error::Server crashed after DirTNT was primed'
+            echo '::error::Server crashed while spawning the DirTNT custom entity'
             tail -n 400 "$log"
             exit 1
           fi
 
-          if grep -qE 'No Bukkit EntityType mapping|CraftEntityType.*IllegalArgumentException|Unknown entity class fourmisain\.dirtnt|Encountered an unexpected exception' "$log"; then
+          if grep -qE 'No Bukkit EntityType mapping|CraftEntityType.*IllegalArgumentException|AssertionError: Unknown entity.*fourmisain\.dirtnt|Unknown entity class fourmisain\.dirtnt|Encountered an unexpected exception' "$log"; then
             echo '::error::Detected the custom EntityType crash signature'
             tail -n 400 "$log"
             exit 1
           fi
 
-          if ! grep -q 'ISSUE30_DIRTNT_ENTITY_PRESENT' "$log"; then
-            echo '::error::DirTNT primed entity was not observed after powering the block'
+          if ! grep -q 'Registered modded "dirtnt:sand_tnt" as CraftEntity' "$log"; then
+            echo '::error::DirTNT sand_tnt was not registered in the Bukkit entity registry'
             tail -n 400 "$log"
             exit 1
           fi
 
-          echo 'DirTNT sand TNT primed successfully and Cardboard stayed alive.'
+          if ! grep -q 'ISSUE30_DIRTNT_BLOCK_PRESENT' "$log"; then
+            echo '::error::DirTNT sand_tnt block was not available at runtime'
+            tail -n 400 "$log"
+            exit 1
+          fi
+
+          if ! grep -q 'ISSUE30_DIRTNT_ENTITY_PRESENT' "$log"; then
+            echo '::error::DirTNT sand_tnt custom entity could not be spawned or selected'
+            tail -n 400 "$log"
+            exit 1
+          fi
+
+          echo 'DirTNT custom block/entity registered, spawned, and Cardboard stayed alive.'
           printf 'stop\n' >&3
           wait "$server_pid"
           trap - EXIT
@@ -155,7 +186,7 @@ jobs:
 
       - name: Upload server log
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: issue-30-dirtnt-runtime-log-${{ github.run_id }}
           path: issue30-server.log
