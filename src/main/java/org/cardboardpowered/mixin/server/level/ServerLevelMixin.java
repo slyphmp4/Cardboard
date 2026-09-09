@@ -5,8 +5,11 @@ import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import net.minecraft.world.level.storage.LevelData;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.cardboardpowered.CardboardConfig;
+import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.level.storage.LevelData_RespawnDataBridge;
 import org.cardboardpowered.bridge.world.level.storage.PrimaryLevelDataBridge;
 import org.cardboardpowered.impl.world.CraftWorld;
@@ -32,7 +35,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.LevelLoadListener;
 import net.minecraft.server.level.progress.LoggingLevelLoadListener;
 import net.minecraft.util.ProgressListener;
-import net.minecraft.world.RandomSequences;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.CustomSpawner;
 import net.minecraft.world.level.Level;
@@ -77,6 +79,19 @@ public class ServerLevelMixin extends LevelMixin implements ServerLevelBridge {
         
         // TODO: add ServerWorld argument to LoggingChunkLoadProgress constructor
         this.cardboard$levelLoadListener = new LoggingLevelLoadListener(false);
+    }
+
+    @Inject(method = "addFreshEntity", at = @At("HEAD"), cancellable = true)
+    private void cardboard$projectileLaunchEvent(Entity entity, CallbackInfoReturnable<Boolean> cir) {
+        if (!(((EntityBridge) entity).getBukkitEntity() instanceof org.bukkit.entity.Projectile projectile)) {
+            return;
+        }
+
+        ProjectileLaunchEvent event = new ProjectileLaunchEvent(projectile);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            cir.setReturnValue(false);
+        }
     }
 
     /**
