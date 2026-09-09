@@ -17,11 +17,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityMixin_VehicleEvents {
 
     @Inject(
-            method = "startRiding(Lnet/minecraft/world/entity/Entity;Z)Z",
+            method = "startRiding(Lnet/minecraft/world/entity/Entity;ZZ)Z",
             at = @At("HEAD"),
             cancellable = true
     )
-    private void cardboard$vehicleEnterEvent(Entity entityToRide, boolean force, CallbackInfoReturnable<Boolean> cir) {
+    private void cardboard$vehicleEnterEvent(Entity entityToRide, boolean force, boolean sendEventAndTriggers, CallbackInfoReturnable<Boolean> cir) {
+        if (!sendEventAndTriggers) {
+            return;
+        }
+
         Entity passenger = (Entity) (Object) this;
         if (passenger.getVehicle() == entityToRide) {
             return;
