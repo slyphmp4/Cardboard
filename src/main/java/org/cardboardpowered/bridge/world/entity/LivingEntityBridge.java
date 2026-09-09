@@ -14,6 +14,10 @@ public interface LivingEntityBridge {
 
     CraftAttributeMap cardboard_getAttr();
 
+    boolean cardboard$getBukkitPickUpLoot();
+
+    void cardboard$setBukkitPickUpLoot(boolean pickup);
+
     @Nullable ItemEntity cardboard$drop(ItemStack stack, boolean randomizeMotion, boolean includeThrower);
 
     @Nullable ItemEntity cardboard$drop(ItemStack stack, boolean randomizeMotion, boolean includeThrower, boolean callEvent, java.util.function.@Nullable Consumer<org.bukkit.entity.Item> entityOperation);

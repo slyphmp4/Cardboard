@@ -244,7 +244,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
         if (getHandle() instanceof Mob) {
             return ((Mob) getHandle()).canPickUpLoot();
         }
-        return true; // todo
+        return ((LivingEntityBridge) this.getHandle()).cardboard$getBukkitPickUpLoot();
     }
 
     @Override
@@ -339,13 +339,13 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public PotionEffect getPotionEffect(PotionEffectType arg0) {
-    	
     	me.isaiah.common.cmixin.IMixinEntity ic = ((me.isaiah.common.cmixin.IMixinEntity)(Object) entity);
-
     	MobEffectInstance handle = ic.IC$get_status_effect(arg0.getId());
-    	
+        if (handle == null) {
+            return null;
+        }
     	int typeId = ic.IC$get_status_effect_id(handle);
-        return (handle == null) ? null : new PotionEffect(PotionEffectType.getById(typeId), handle.getDuration(), handle.getAmplifier(), handle.isAmbient(), handle.isVisible());
+        return new PotionEffect(PotionEffectType.getById(typeId), handle.getDuration(), handle.getAmplifier(), handle.isAmbient(), handle.isVisible());
     }
 
     @Override
@@ -401,8 +401,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public boolean isGliding() {
-        // TODO Auto-generated method stub
-        return false;
+        return this.getHandle().isFallFlying();
     }
 
     @Override
@@ -456,7 +455,11 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public void setCanPickupItems(boolean arg0) {
-        // TODO Auto-generated method stub
+        if (this.getHandle() instanceof Mob mob) {
+            mob.setCanPickUpLoot(arg0);
+        } else {
+            ((LivingEntityBridge) this.getHandle()).cardboard$setBukkitPickUpLoot(arg0);
+        }
     }
 
     @Override

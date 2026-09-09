@@ -219,16 +219,9 @@ public class ServerPlayerGameModeMixin implements ServerPlayerGameModeBridge {
 
     @Inject(at = @At("HEAD"), method = "useItemOn", cancellable = true)
     public void interactBlock(ServerPlayer entityplayer, Level world, ItemStack itemstack, InteractionHand enumhand, BlockHitResult movingobjectpositionblock, CallbackInfoReturnable<InteractionResult> ci) {
-        InteractionResult result = UseBlockCallback.EVENT.invoker().interact(entityplayer, world, enumhand, movingobjectpositionblock);
-
-        if (result != InteractionResult.PASS) {
-        	ci.setReturnValue(result);
-            return;
-        }
-
         BlockPos blockposition = movingobjectpositionblock.getBlockPos();
         BlockState iblockdata = world.getBlockState(blockposition);
-        InteractionResult enuminteractionresult = result;// ActionResult.PASS;
+        InteractionResult enuminteractionresult = InteractionResult.PASS;
         boolean cancelledBlock = false;
 
         if (this.gameModeForPlayer == GameType.SPECTATOR) {
@@ -239,6 +232,8 @@ public class ServerPlayerGameModeMixin implements ServerPlayerGameModeBridge {
         if (entityplayer.getCooldowns().isOnCooldown(itemstack))
             cancelledBlock = true;
 
+        // Bukkit must see and be able to deny the action before Fabric callbacks
+        // or vanilla block/item logic can mutate state.
         PlayerInteractEvent event = CraftEventFactory.callPlayerInteractEvent(entityplayer, Action.RIGHT_CLICK_BLOCK, blockposition, movingobjectpositionblock.getDirection(), itemstack, cancelledBlock, enumhand);
         firedInteract = true;
         interactResult = event.useItemInHand() == Event.Result.DENY;
@@ -262,6 +257,14 @@ public class ServerPlayerGameModeMixin implements ServerPlayerGameModeBridge {
             } else ci.setReturnValue(InteractionResult.PASS);
             return;
         } else {
+            // Fabric hooks are still honored, but only after Bukkit has had the
+            // first chance to cancel the interaction.
+            InteractionResult fabricResult = UseBlockCallback.EVENT.invoker().interact(entityplayer, world, enumhand, movingobjectpositionblock);
+            if (fabricResult != InteractionResult.PASS) {
+                ci.setReturnValue(fabricResult);
+                return;
+            }
+
             boolean flag = !entityplayer.getMainHandItem().isEmpty() || !entityplayer.getOffhandItem().isEmpty();
             boolean flag1 = entityplayer.isSecondaryUseActive() && flag;
             ItemStack itemstack1 = itemstack.copy();

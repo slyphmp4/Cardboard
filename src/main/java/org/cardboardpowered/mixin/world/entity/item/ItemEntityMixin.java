@@ -108,16 +108,17 @@ public class ItemEntityMixin extends EntityMixin implements ItemEntityBridge {
             itemstack.setCount(canHold);
             // Call legacy event
             PlayerPickupItemEvent playerEvent = new PlayerPickupItemEvent((org.bukkit.entity.Player) ((ServerPlayerBridge)entityhuman).getBukkitEntity(), (org.bukkit.entity.Item) this.getBukkitEntity(), remaining);
-            //playerEvent.setCancelled(!entityhuman.canPickUpLoot);
+            playerEvent.setCancelled(!playerEvent.getPlayer().getCanPickupItems());
             Bukkit.getServer().getPluginManager().callEvent(playerEvent);
             if (playerEvent.isCancelled()) {
                 itemstack.setCount(i); // SPIGOT-5294 - restore count
+                ci.cancel();
                 return;
             }
 
             // Call newer event afterwards
             EntityPickupItemEvent entityEvent = new EntityPickupItemEvent((org.bukkit.entity.Player) ((ServerPlayerBridge)entityhuman).getBukkitEntity(), (org.bukkit.entity.Item) this.getBukkitEntity(), remaining);
-            //entityEvent.setCancelled(!entityhuman.canPickUpLoot);
+            entityEvent.setCancelled(!entityEvent.getEntity().getCanPickupItems());
             Bukkit.getServer().getPluginManager().callEvent(entityEvent);
             if (entityEvent.isCancelled()) {
                 itemstack.setCount(i); // SPIGOT-5294 - restore count
