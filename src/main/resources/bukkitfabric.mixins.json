@@ -92,6 +92,7 @@
     "world.SimpleContainerMixin",
     "world.damagesource.DamageSourceMixin",
     "world.effect.MobEffectsMixin",
+    "world.food.FoodDataMixin",
     "world.entity.EntityMixin",
     "world.entity.EntityMixin_VehicleEvents",
     "world.entity.ExperienceOrbMixin",
