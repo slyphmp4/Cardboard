@@ -18,6 +18,9 @@ class EventCancellationParityTest {
         String actions = source("org/cardboardpowered/mixin/server/network/ServerGamePacketListenerImplMixin_PlayerActionEvents.java");
 
         assertTrue(network.contains("PlayerToggleSneakEvent"));
+        assertTrue(network.contains("method = \"handlePlayerInput\""));
+        assertTrue(network.contains("this.player.getLastClientInput().shift() == packet.input().shift()"));
+        assertTrue(network.contains("this.player.setLastClientInput(packet.input());"));
         assertTrue(network.contains("@Inject(at = @At(\"HEAD\"), method = \"handlePlayerAbilities\", cancellable = true)"));
         assertTrue(network.contains("double y = poss.y;"));
         assertTrue(network.contains("double z = poss.z;"));
