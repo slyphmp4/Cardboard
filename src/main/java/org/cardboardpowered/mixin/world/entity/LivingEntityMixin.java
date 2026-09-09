@@ -13,6 +13,7 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.jspecify.annotations.Nullable;
@@ -69,6 +70,22 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
     @Override
     public void cardboard$setBukkitPickUpLoot(boolean pickup) {
         this.cardboard$bukkitPickUpLoot = pickup;
+    }
+
+    @Inject(method = "stopFallFlying", at = @At("HEAD"), cancellable = true)
+    private void cardboard$toggleGlideStop(CallbackInfo ci) {
+        if (!this.get().isFallFlying()) {
+            return;
+        }
+
+        EntityToggleGlideEvent event = new EntityToggleGlideEvent(
+                (org.bukkit.entity.LivingEntity) this.getBukkitEntity(),
+                false
+        );
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            ci.cancel();
+        }
     }
 
     @Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;finishUsingItem(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/item/ItemStack;"), 
