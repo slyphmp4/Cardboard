@@ -1,0 +1,126 @@
+name: Vehicle mixin runtime smoke
+
+on:
+  pull_request:
+    branches:
+      - ver/26.2
+    paths:
+      - .github/workflows/vehicle-mixin-runtime-smoke.yml
+      - src/main/java/org/cardboardpowered/mixin/world/entity/EntityMixin_VehicleEvents.java
+      - src/main/resources/bukkitfabric.mixins.json
+      - src/test/java/org/cardboardpowered/event/EventCancellationParityTest.java
+  push:
+    branches:
+      - ver/26.2
+    paths:
+      - .github/workflows/vehicle-mixin-runtime-smoke.yml
+      - src/main/java/org/cardboardpowered/mixin/world/entity/EntityMixin_VehicleEvents.java
+      - src/main/resources/bukkitfabric.mixins.json
+      - src/test/java/org/cardboardpowered/event/EventCancellationParityTest.java
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-smoke:
+    name: Minecraft 26.2 bootstrap smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out Cardboard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-provider: basic
+
+      - name: Prepare disposable server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p run
+          printf 'eula=true\n' > run/eula.txt
+          cat > run/server.properties <<'EOF'
+          online-mode=false
+          level-name=vehicle-mixin-smoke
+          spawn-protection=0
+          view-distance=3
+          simulation-distance=3
+          pause-when-empty-seconds=0
+          EOF
+
+      - name: Start Minecraft and verify Cardboard mixins apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$GITHUB_WORKSPACE/vehicle-mixin-runtime.log"
+          pipe="$GITHUB_WORKSPACE/vehicle-mixin-runtime-input"
+          rm -f "$pipe"
+          mkfifo "$pipe"
+
+          ./gradlew runServer --no-daemon < "$pipe" > "$log" 2>&1 &
+          server_pid=$!
+          exec 3>"$pipe"
+
+          cleanup() {
+            if kill -0 "$server_pid" 2>/dev/null; then
+              printf 'stop\n' >&3 || true
+              sleep 2
+              kill "$server_pid" 2>/dev/null || true
+            fi
+            exec 3>&- || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for _ in $(seq 1 180); do
+            if grep -qE 'Done \([0-9.]+s\)!|Done \(' "$log"; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo '::error::Server exited before startup completed'
+              tail -n 400 "$log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [[ "$ready" != 1 ]]; then
+            echo '::error::Server did not become ready within 180 seconds'
+            tail -n 400 "$log"
+            exit 1
+          fi
+
+          if grep -qE 'Mixin apply for mod cardboard failed|InvalidInjectionException|MixinApplyError|MixinTransformerError|Failed to start the minecraft server' "$log"; then
+            echo '::error::Detected Cardboard mixin bootstrap failure'
+            tail -n 400 "$log"
+            exit 1
+          fi
+
+          echo 'Minecraft 26.2 reached ready state with Cardboard mixins applied.'
+          printf 'stop\n' >&3
+          wait "$server_pid"
+          trap - EXIT
+          exec 3>&-
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vehicle-mixin-runtime-log-${{ github.run_id }}
+          path: vehicle-mixin-runtime.log
+          if-no-files-found: ignore
+          retention-days: 7
