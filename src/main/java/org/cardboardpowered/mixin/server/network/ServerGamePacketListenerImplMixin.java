@@ -58,6 +58,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerToggleSprintEvent;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.slf4j.Logger;
@@ -260,8 +261,8 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
         
         Vec3 poss = pos.position();
         double x = poss.x;
-        double y = poss.x;
-        double z = poss.x;
+        double y = poss.y;
+        double z = poss.z;
         
         float yaw = pos.yRot();
         float pitch = pos.xRot();
@@ -360,14 +361,14 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
 
         if (e.ic_isRemoved()) return;
         switch (packetplayinentityaction.getAction()) {
-            /*
-        	case PRESS_SHIFT_KEY:
+            case PRESS_SHIFT_KEY:
             case RELEASE_SHIFT_KEY:
-                PlayerToggleSneakEvent event = new PlayerToggleSneakEvent(this.getPlayer(), packetplayinentityaction.getMode() == ClientCommandC2SPacket.Mode.PRESS_SHIFT_KEY);
-                CraftServer.INSTANCE.getPluginManager().callEvent(event);
-                if (event.isCancelled()) ci.cancel();
+                PlayerToggleSneakEvent sneakEvent = new PlayerToggleSneakEvent(this.getPlayer(), packetplayinentityaction.getAction() == ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY);
+                CraftServer.INSTANCE.getPluginManager().callEvent(sneakEvent);
+                if (sneakEvent.isCancelled()) {
+                    ci.cancel();
+                }
                 break;
-            */
             case START_SPRINTING:
             case STOP_SPRINTING:
                 PlayerToggleSprintEvent e2 = new PlayerToggleSprintEvent(this.getPlayer(), packetplayinentityaction.getAction() == ServerboundPlayerCommandPacket.Action.START_SPRINTING);
@@ -725,14 +726,16 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
     }
 
     // 1.17 - onPlayerAbilities, 1.18 - onUpdatePlayerAbilities
-    @Inject(at = @At("TAIL"), method = "handlePlayerAbilities")
+    @Inject(at = @At("HEAD"), method = "handlePlayerAbilities", cancellable = true)
     public void doBukkitEvent_PlayerToggleFlightEvent(ServerboundPlayerAbilitiesPacket packet, CallbackInfo ci) {
+        PacketUtils.ensureRunningOnSameThread(packet, get(), this.player.level());
         if (this.player.abilities.mayfly && this.player.abilities.flying != packet.isFlying()) {
             PlayerToggleFlightEvent event = new PlayerToggleFlightEvent((Player)(((ServerPlayerBridge)this.player).getBukkitEntity()), packet.isFlying());
             Bukkit.getPluginManager().callEvent(event);
-            if (!event.isCancelled()) {
-                this.player.abilities.flying = packet.isFlying();
-            } else this.player.onUpdateAbilities();
+            if (event.isCancelled()) {
+                this.player.onUpdateAbilities();
+                ci.cancel();
+            }
         }
     }
 
