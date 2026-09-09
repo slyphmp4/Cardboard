@@ -39,6 +39,8 @@ import net.minecraft.world.level.gamerules.GameRules;
 public abstract class LivingEntityMixin extends EntityMixin implements LivingEntityBridge {
 
     private transient EntityPotionEffectEvent.Cause bukkitCause;
+    private boolean cardboard$bukkitPickUpLoot = true;
+
     private LivingEntity get() {
         return (LivingEntity)(Object)this;
     }
@@ -57,6 +59,16 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
             this.craftAttributes = new CraftAttributeMap( get().getAttributes() ); // new CardboardAttributable(this.attributes);
         }
         return craftAttributes;
+    }
+
+    @Override
+    public boolean cardboard$getBukkitPickUpLoot() {
+        return this.cardboard$bukkitPickUpLoot;
+    }
+
+    @Override
+    public void cardboard$setBukkitPickUpLoot(boolean pickup) {
+        this.cardboard$bukkitPickUpLoot = pickup;
     }
 
     @Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;finishUsingItem(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/item/ItemStack;"), 
