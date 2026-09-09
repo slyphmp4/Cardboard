@@ -66,6 +66,9 @@ class EventCancellationParityTest {
         assertTrue(projectile.contains("cir.setReturnValue(false)"));
         assertTrue(vehicle.contains("VehicleEnterEvent"));
         assertTrue(vehicle.contains("VehicleExitEvent"));
+        assertTrue(vehicle.contains("startRiding(Lnet/minecraft/world/entity/Entity;ZZ)Z"));
+        assertTrue(vehicle.contains("boolean sendEventAndTriggers"));
+        assertTrue(vehicle.contains("removePassenger(Lnet/minecraft/world/entity/Entity;)V"));
         assertTrue(food.contains("FoodLevelChangeEvent"));
     }
 }
