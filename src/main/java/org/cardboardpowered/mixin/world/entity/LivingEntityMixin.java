@@ -11,6 +11,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.attribute.CraftAttributeMap;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
@@ -23,6 +25,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import net.minecraft.server.level.ServerLevel;
@@ -32,11 +35,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gamerules.GameRules;
 
 @Mixin(LivingEntity.class)
+@SuppressWarnings({"deprecation", "removal"})
 public abstract class LivingEntityMixin extends EntityMixin implements LivingEntityBridge {
 
     private transient EntityPotionEffectEvent.Cause bukkitCause;
@@ -70,6 +75,48 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
     @Override
     public void cardboard$setBukkitPickUpLoot(boolean pickup) {
         this.cardboard$bukkitPickUpLoot = pickup;
+    }
+
+    /**
+     * Fire Bukkit's damage event before LivingEntity mutates health, armor,
+     * invulnerability timers or knockback state. This intentionally keeps the
+     * first parity pass small: cancellation is authoritative, and the common
+     * entity/projectile damager forms are represented by
+     * EntityDamageByEntityEvent (which also reaches EntityDamageEvent
+     * listeners through the inherited handler list).
+     */
+    @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
+    private void cardboard$entityDamageEvent(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        org.bukkit.entity.Entity damagee = this.getBukkitEntity();
+        Entity direct = source.getDirectEntity();
+        Entity causing = source.getEntity();
+
+        EntityDamageEvent.DamageCause cause;
+        if (direct instanceof Projectile) {
+            cause = EntityDamageEvent.DamageCause.PROJECTILE;
+        } else if (causing != null) {
+            cause = EntityDamageEvent.DamageCause.ENTITY_ATTACK;
+        } else {
+            cause = EntityDamageEvent.DamageCause.CUSTOM;
+        }
+
+        EntityDamageEvent event;
+        Entity damager = direct != null ? direct : causing;
+        if (damager != null) {
+            event = new EntityDamageByEntityEvent(
+                    ((EntityBridge) damager).getBukkitEntity(),
+                    damagee,
+                    cause,
+                    amount
+            );
+        } else {
+            event = new EntityDamageEvent(damagee, cause, amount);
+        }
+
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            cir.setReturnValue(false);
+        }
     }
 
     @Inject(method = "stopFallFlying", at = @At("HEAD"), cancellable = true)
