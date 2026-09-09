@@ -88,7 +88,9 @@ public abstract class AbstractContainerMenuMixin implements AbstractContainerMen
     private Set<Slot> quickcraftSlots;
 
     @Shadow
-    protected abstract void resetQuickCraft();
+    protected void resetQuickCraft() {
+        throw new AssertionError();
+    }
 
     @Shadow
     private RemoteSlot remoteCarried;
