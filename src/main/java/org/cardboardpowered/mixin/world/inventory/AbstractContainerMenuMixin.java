@@ -75,7 +75,9 @@ public abstract class AbstractContainerMenuMixin implements AbstractContainerMen
     }
 
     @Shadow
-    public abstract void setCarried(ItemStack stack);
+    public void setCarried(ItemStack stack) {
+        throw new AssertionError();
+    }
 
     @Shadow
     private int quickcraftStatus;
