@@ -71,6 +71,7 @@
     "server.network.ServerGamePacketListenerImplMixin",
     "server.network.ServerGamePacketListenerImplMixin_ChatEvent",
     "server.network.ServerGamePacketListenerImplMixin_InventoryClickEvent",
+    "server.network.ServerGamePacketListenerImplMixin_PlayerActionEvents",
     "server.network.ServerGamePacketListenerImplMixin_PlayerCommandPreprocessEvent",
     "server.network.ServerGamePacketListenerImplMixin_PlayerMove",
     "server.network.ServerGamePacketListenerImplMixin_SignUpdateEvent",
