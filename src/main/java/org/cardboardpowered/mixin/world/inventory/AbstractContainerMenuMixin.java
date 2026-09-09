@@ -1,17 +1,28 @@
 package org.cardboardpowered.mixin.world.inventory;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerSynchronizer;
 import net.minecraft.world.inventory.RemoteSlot;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftHumanEntity;
 import org.bukkit.craftbukkit.inventory.CraftInventory;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.event.Event;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.InventoryView;
-import org.bukkit.craftbukkit.inventory.CraftInventoryView;
 import org.cardboardpowered.impl.inventory.CustomInventoryView;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import org.cardboardpowered.CardboardMod;
 import org.cardboardpowered.bridge.world.ContainerBridge;
@@ -22,6 +33,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -61,6 +73,22 @@ public abstract class AbstractContainerMenuMixin implements AbstractContainerMen
     public ItemStack getCarried() {
         return null;
     }
+
+    @Shadow
+    public abstract void setCarried(ItemStack stack);
+
+    @Shadow
+    private int quickcraftStatus;
+
+    @Shadow
+    private int quickcraftType;
+
+    @Shadow
+    @Final
+    private Set<Slot> quickcraftSlots;
+
+    @Shadow
+    protected abstract void resetQuickCraft();
 
     @Shadow
     private RemoteSlot remoteCarried;
@@ -143,7 +171,77 @@ public abstract class AbstractContainerMenuMixin implements AbstractContainerMen
         this.checkReachable = bl;
     }
 
-    // TODO InventoryDragEvent
+    /**
+     * CraftBukkit/Paper parity for QUICK_CRAFT. The vanilla quick-craft state is
+     * built over several packets; the Bukkit event belongs to the final packet,
+     * before any slot mutation is committed.
+     */
+    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
+    private void cardboard$inventoryDragEvent(int slotIndex, int buttonNum, ContainerInput containerInput, Player player, CallbackInfo ci) {
+        if (containerInput != ContainerInput.QUICK_CRAFT) {
+            return;
+        }
+
+        final int header = buttonNum & 3;
+        // QUICKCRAFT_HEADER_END = 2, QUICKCRAFT_HEADER_CONTINUE = 1
+        if (header != 2 || this.quickcraftStatus != 1 || this.quickcraftSlots.isEmpty() || this.getCarried().isEmpty()) {
+            return;
+        }
+
+        final ItemStack oldCarried = this.getCarried().copy();
+        final ItemStack source = oldCarried.copy();
+        int remaining = source.getCount();
+        final Map<Integer, org.bukkit.inventory.ItemStack> eventMap = new HashMap<>();
+
+        for (Slot slot : this.quickcraftSlots) {
+            ItemStack current = slot.getItem();
+            int existing = current.isEmpty() ? 0 : current.getCount();
+            int placed;
+            switch (this.quickcraftType) {
+                case 0 -> placed = source.getCount() / this.quickcraftSlots.size(); // left drag / even split
+                case 1 -> placed = 1; // right drag / one per slot
+                case 2 -> placed = source.getMaxStackSize(); // creative clone drag
+                default -> {
+                    return;
+                }
+            }
+
+            int maxSize = Math.min(source.getMaxStackSize(), slot.getMaxStackSize(source));
+            int newCount = Math.min(existing + placed, maxSize);
+            remaining -= newCount - existing;
+            eventMap.put(slot.index, CraftItemStack.asBukkitCopy(source.copyWithCount(newCount)));
+        }
+
+        org.bukkit.inventory.ItemStack newCursor = CraftItemStack.asBukkitCopy(source);
+        newCursor.setAmount(Math.max(remaining, 0));
+
+        // Match CraftBukkit's ordering: update cursor before calling plugins so a
+        // plugin closing the inventory from the event cannot duplicate the stack.
+        this.setCarried(CraftItemStack.asNMSCopy(newCursor));
+
+        InventoryView view = this.getBukkitView();
+        InventoryDragEvent event = new InventoryDragEvent(
+                view,
+                newCursor,
+                CraftItemStack.asBukkitCopy(oldCarried),
+                this.quickcraftType == 1,
+                eventMap
+        );
+        Bukkit.getPluginManager().callEvent(event);
+
+        if (event.getResult() != Event.Result.DENY) {
+            for (Map.Entry<Integer, org.bukkit.inventory.ItemStack> entry : eventMap.entrySet()) {
+                view.setItem(entry.getKey(), entry.getValue());
+            }
+            this.setCarried(CraftItemStack.asNMSCopy(event.getCursor()));
+        } else {
+            this.setCarried(oldCarried);
+        }
+
+        this.resetQuickCraft();
+        ((AbstractContainerMenu)(Object)this).sendAllDataToRemote();
+        ci.cancel();
+    }
 
     // CraftBukkit start - from synchronizeCarriedToRemote
     @Override
