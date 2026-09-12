@@ -4,7 +4,8 @@
   "package": "org.cardboardpowered.mixin.bukkit.entity",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "CraftEntityMixin"
+    "CraftEntityMixin",
+    "EntityPersistenceMixin"
   ],
   "injectors": {
     "defaultRequire": 1
