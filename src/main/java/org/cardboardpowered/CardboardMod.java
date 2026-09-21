@@ -42,6 +42,8 @@ import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
 import org.cardboardpowered.library.LibraryManager;
+import org.cardboardpowered.mohistremap.RemapUtilProvider;
+import org.cardboardpowered.util.nms.RemapUtils;
 
 import io.papermc.paper.plugin.PluginInitializerManager;
 import joptsimple.OptionSet;
@@ -134,7 +136,13 @@ public class CardboardMod implements ModInitializer {
         }
 
         CardboardEventManager.INSTANCE.callCardboardEvents();
-        
+
+        // Paper plugin bootstrappers can load classes while providers are scanned.
+        // Make Cardboard's remapper available before PluginInitializerManager runs.
+        RemapUtils remapUtil = new RemapUtils();
+        RemapUtilProvider.setInstance(remapUtil);
+        remapUtil.init();
+
         System.out.println("loading PluginInitializerManager");
         try {
 			PluginInitializerManager.load(options);
