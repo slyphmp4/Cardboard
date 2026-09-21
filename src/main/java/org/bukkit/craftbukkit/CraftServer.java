@@ -48,8 +48,6 @@ import org.cardboardpowered.bridge.world.level.saveddata.maps.MapItemSavedDataBr
 import org.cardboardpowered.bridge.world.level.storage.PrimaryLevelDataBridge;
 import org.cardboardpowered.impl.MetadataStoreImpl;
 import org.bukkit.craftbukkit.scheduler.CraftScheduler;
-import org.cardboardpowered.mohistremap.RemapUtilProvider;
-import org.cardboardpowered.util.nms.RemapUtils;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
@@ -412,10 +410,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public void loadPlugins() {
-        RemapUtils remapUtil = new RemapUtils();
-        RemapUtilProvider.setInstance(remapUtil);
-        remapUtil.init();
-
         pluginManager.registerInterface(JavaPluginLoader.class);
 
         io.papermc.paper.plugin.entrypoint.LaunchEntryPointHandler.INSTANCE.enter(io.papermc.paper.plugin.entrypoint.Entrypoint.PLUGIN); // Paper - replace implementation
