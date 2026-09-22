@@ -66,8 +66,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  nightcore-nbt-diagnostic:
-    name: NightCore 2.16.4 NBT diagnostic
+  nightcore-compatibility:
+    name: NightCore 2.16.4 compatibility smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -89,27 +89,6 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Add temporary component diagnostics
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java')
-          text = path.read_text()
-          needle = '        return net.minecraft.world.item.ItemStack.isSameItemSameComponents(this.handle, that.handle); // Paper - re-implement after delegating all api ItemStack calls to CraftItemStack\n'
-          replacement = '''        boolean same = net.minecraft.world.item.ItemStack.isSameItemSameComponents(this.handle, that.handle); // Paper - re-implement after delegating all api ItemStack calls to CraftItemStack
-          if (!same) {
-              System.err.println("[NightCore NBT diagnostic] original=" + this.handle.getComponentsPatch());
-              System.err.println("[NightCore NBT diagnostic] parsed=" + that.handle.getComponentsPatch());
-          }
-          return same;
-          '''
-          if needle not in text:
-              raise SystemExit('CraftItemStack diagnostic insertion point not found')
-          path.write_text(text.replace(needle, replacement, 1))
-          PY
-
       - name: Prepare NightCore server
         shell: bash
         run: |
@@ -129,12 +108,12 @@ jobs:
             --output run/plugins/nightcore-2.16.4.jar
           echo '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab  run/plugins/nightcore-2.16.4.jar' | sha256sum --check
 
-      - name: Run NightCore NBT diagnostic
+      - name: Run NightCore compatibility smoke
         shell: bash
         run: |
           set -euo pipefail
-          log="$GITHUB_WORKSPACE/nightcore-nbt-diagnostic.log"
-          pipe="$GITHUB_WORKSPACE/nightcore-nbt-diagnostic-input"
+          log="$GITHUB_WORKSPACE/nightcore-compatibility.log"
+          pipe="$GITHUB_WORKSPACE/nightcore-compatibility-input"
           rm -f "$pipe"
           mkfifo "$pipe"
 
@@ -158,7 +137,7 @@ jobs:
               result=pass
               break
             fi
-            if grep -q 'Could not initialize NBT Utils' "$log"; then
+            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore' "$log"; then
               result=fail
               break
             fi
@@ -169,7 +148,7 @@ jobs:
             sleep 1
           done
 
-          grep -E 'nightcore|NightCore NBT diagnostic|Server version detected|Could not initialize NBT Utils|Plugin loaded in' "$log" || true
+          grep -Ei 'nightcore|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
 
           if [[ "$result" == pass ]]; then
             printf 'stop\n' >&3
@@ -179,16 +158,16 @@ jobs:
             exit 0
           fi
 
-          echo "::error::NightCore NBT diagnostic result: $result"
+          echo "::error::NightCore compatibility smoke result: $result"
           tail -n 300 "$log"
           exit 1
 
-      - name: Upload diagnostic log
+      - name: Upload NightCore smoke log
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: nightcore-nbt-diagnostic-${{ github.run_id }}
-          path: nightcore-nbt-diagnostic.log
+          name: nightcore-compatibility-${{ github.run_id }}
+          path: nightcore-compatibility.log
           if-no-files-found: ignore
           retention-days: 7
 
