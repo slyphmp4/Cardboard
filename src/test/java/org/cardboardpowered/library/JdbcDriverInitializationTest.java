@@ -22,5 +22,7 @@ final class JdbcDriverInitializationTest {
         assertTrue(addLibraries >= 0, "Bundled libraries must be added to Knot");
         assertTrue(sqliteDriver > addLibraries, "SQLite must initialize after its jar is available");
         assertTrue(mysqlDriver > addLibraries, "MySQL must initialize after its jar is available");
+        assertTrue(source.contains("getLauncher().getTargetClassLoader()"),
+                "Drivers must be loaded through Fabric\'s target classloader");
     }
 }
