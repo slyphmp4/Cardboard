@@ -110,7 +110,7 @@ jobs:
           curl --fail --location --retry 3 \
             https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar \
             --output run/plugins/ExcellentEnchants-5.4.3.jar
-          sha256sum run/plugins/ExcellentEnchants-5.4.3.jar
+          echo '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133  run/plugins/ExcellentEnchants-5.4.3.jar' | sha256sum --check
 
       - name: Run NightCore compatibility smoke
         shell: bash
@@ -137,12 +137,12 @@ jobs:
 
           result=timeout
           for _ in $(seq 1 240); do
-            if grep -q 'Done (' "$log" && grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log" && grep -q 'Enabling ExcellentEnchants' "$log"; then
-              result=pass
-              break
-            fi
             if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore|Error occurred while enabling ExcellentEnchants|Failed to run bootstrapper|Mixin apply failed' "$log"; then
               result=fail
+              break
+            fi
+            if grep -q 'Done (' "$log" && grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log" && grep -q 'Enabling ExcellentEnchants' "$log"; then
+              result=pass
               break
             fi
             if ! kill -0 "$server_pid" 2>/dev/null; then
@@ -157,6 +157,11 @@ jobs:
           if [[ "$result" == pass ]]; then
             printf 'stop\n' >&3
             wait "$server_pid"
+            if grep -Eq 'Error occurred while enabling nightcore|Error occurred while enabling ExcellentEnchants|Failed to run bootstrapper' "$log"; then
+              echo '::error::Plugin startup failed after the server reported ready'
+              tail -n 300 "$log"
+              exit 1
+            fi
             trap - EXIT
             exec 3>&-
             exit 0

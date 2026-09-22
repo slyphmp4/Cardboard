@@ -1,6 +1,6 @@
 package org.bukkit.craftbukkit.inventory;
 
-import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.bukkit.NamespacedKey;
 import org.bukkit.craftbukkit.CraftServer;
@@ -11,9 +11,9 @@ import org.cardboardpowered.bridge.world.item.crafting.RecipeManagerBridge;
 
 public class CraftComplexRecipe extends CraftingRecipe implements CraftRecipe, ComplexRecipe {
 
-    private final CustomRecipe recipe;
+    private final Recipe<?> recipe;
 
-    public CraftComplexRecipe(NamespacedKey key, ItemStack result, CustomRecipe recipe) {
+    public CraftComplexRecipe(NamespacedKey key, ItemStack result, Recipe<?> recipe) {
         super(key, result);
         this.recipe = recipe;
     }

@@ -3,6 +3,8 @@ package org.cardboardpowered.mixin.world.item.crafting;
 import net.minecraft.world.item.crafting.*;
 import org.bukkit.craftbukkit.inventory.*;
 import org.cardboardpowered.bridge.world.item.crafting.RecipeHolderBridge;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
@@ -73,6 +75,24 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 		org.bukkit.craftbukkit.inventory.CraftSmithingTransformRecipe recipe = new org.bukkit.craftbukkit.inventory.CraftSmithingTransformRecipe(id, result, org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.template), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.base), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.addition));
 
 		return recipe;
+	}
+
+	/** Dye and imbue recipes have a fixed result but do not extend CustomRecipe. */
+	private org.bukkit.inventory.Recipe toBukkitSpecialRecipe(Recipe<?> special, NamespacedKey id) {
+		try {
+			// The result template is private in vanilla 26.2. Keep this isolated here so
+			// recipeIterator() returns the real result instead of an empty placeholder.
+			Field field = special.getClass().getDeclaredField("result");
+			field.setAccessible(true);
+			Object template = field.get(special);
+			ItemStack result = (ItemStack) template.getClass().getMethod("create").invoke(template);
+			CraftComplexRecipe recipe = new CraftComplexRecipe(id, CraftItemStack.asCraftMirror(result), special);
+			recipe.setGroup(special.group());
+			recipe.setCategory(CraftRecipe.getCategory(special.category()));
+			return recipe;
+		} catch (ReflectiveOperationException exception) {
+			throw new IllegalStateException("Cannot convert recipe " + id + " of type " + special.getClass().getName(), exception);
+		}
 	}
 
 	@Override
@@ -222,6 +242,8 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 			return toBukkitRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()));
 		} else if(nmsRecipe instanceof TransmuteRecipe nms) {
 			return toBukkitRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()));
+		} else if (nmsRecipe instanceof DyeRecipe || nmsRecipe instanceof ImbueRecipe) {
+			return toBukkitSpecialRecipe(nmsRecipe, CraftNamespacedKey.fromMinecraft(id.identifier()));
 		} else {
 			throw new IllegalArgumentException("Invalid recipe type: " + nmsRecipe.getClass());
 		}
