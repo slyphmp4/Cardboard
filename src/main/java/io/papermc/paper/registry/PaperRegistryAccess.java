@@ -30,6 +30,12 @@ import org.jetbrains.annotations.VisibleForTesting;
 public class PaperRegistryAccess
 implements RegistryAccess {
     private final Map<RegistryKey<?>, RegistryHolder<?>> registries = new ConcurrentHashMap();
+    private final Map<net.minecraft.resources.ResourceKey<?>, Registry<?>> nativeRegistries = new ConcurrentHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    public <M> Registry<M> getNativeRegistry(net.minecraft.resources.ResourceKey<? extends Registry<M>> key) {
+        return (Registry<M>) this.nativeRegistries.get(key);
+    }
 
     public static PaperRegistryAccess instance() {
         return (PaperRegistryAccess)RegistryAccessHolder.INSTANCE.orElseThrow(() -> new IllegalStateException("No RegistryAccess implementation found"));
@@ -92,6 +98,15 @@ implements RegistryAccess {
         return registry;
     }
 
+    @SuppressWarnings("unchecked")
+    public <M, T extends Keyed, B extends PaperRegistryBuilder<M, T>> WritableCraftRegistry<M, T, B> getWritableRegistry(RegistryKey<T> key) {
+        final org.bukkit.Registry<T> registry = this.getRegistry(key);
+        if (!(registry instanceof WritableCraftRegistry<?, ?, ?>)) {
+            throw new IllegalArgumentException(key + " is not a writable registry");
+        }
+        return (WritableCraftRegistry<M, T, B>) registry;
+    }
+
     public <M> void registerReloadableRegistry(net.minecraft.resources.ResourceKey<? extends Registry<M>> resourceKey, Registry<M> registry) {
         this.registerRegistry(resourceKey, registry, true);
     }
@@ -101,6 +116,7 @@ implements RegistryAccess {
     }
 
     private <M, B extends Keyed, R extends org.bukkit.Registry<B>> void registerRegistry(net.minecraft.resources.ResourceKey<? extends Registry<M>> resourceKey, Registry<M> registry, boolean replace) {
+        this.nativeRegistries.put(resourceKey, registry);
     	@Nullable RegistryEntry<M, B> entry = PaperRegistries.getEntry(resourceKey);
         if (entry == null) {
             return;
@@ -124,6 +140,7 @@ implements RegistryAccess {
     }
     
     private <M, B extends Keyed, R extends org.bukkit.Registry<B>> void registerRegistry(final net.minecraft.core.Registry<M> registry, final boolean replace) {
+        this.nativeRegistries.put(registry.key(), registry);
         final RegistryEntry<M, B> entry = PaperRegistries.getEntry(registry.key());
         if (entry == null) { // skip registries that don't have API entries
             return;
@@ -160,4 +177,3 @@ implements RegistryAccess {
     }
 
 }
-

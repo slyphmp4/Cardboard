@@ -40,6 +40,14 @@ public final class CardboardLifecycleEventRunner {
             ((CardboardLifecycleEventType<?, E, ?>) cardboardType).fire(event);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <E extends LifecycleEvent> void fireStrict(LifecycleEventType<?, ? extends E, ?> eventType, E event) {
+        if (!(eventType instanceof CardboardLifecycleEventType<?, ?, ?> cardboardType)) {
+            throw new IllegalArgumentException("Unsupported registry lifecycle event: " + eventType);
+        }
+        ((CardboardLifecycleEventType<?, E, ?>) cardboardType).fireStrict(event);
+    }
+
     /**
      * Forgets every handler the given owner registered, for every lifecycle event. Called when a
      * plugin is disabled so a reload does not run its handlers twice.

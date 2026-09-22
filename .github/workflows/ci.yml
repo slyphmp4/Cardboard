@@ -67,7 +67,7 @@ jobs:
           retention-days: 7
 
   nightcore-compatibility:
-    name: NightCore 2.16.4 compatibility smoke
+    name: NightCore 2.16.4 + ExcellentEnchants 5.4.3 smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -107,6 +107,10 @@ jobs:
             https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar \
             --output run/plugins/nightcore-2.16.4.jar
           echo '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab  run/plugins/nightcore-2.16.4.jar' | sha256sum --check
+          curl --fail --location --retry 3 \
+            https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar \
+            --output run/plugins/ExcellentEnchants-5.4.3.jar
+          sha256sum run/plugins/ExcellentEnchants-5.4.3.jar
 
       - name: Run NightCore compatibility smoke
         shell: bash
@@ -133,11 +137,11 @@ jobs:
 
           result=timeout
           for _ in $(seq 1 240); do
-            if grep -q 'Plugin loaded in' "$log"; then
+            if grep -q 'Done (' "$log" && grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log" && grep -q 'Enabling ExcellentEnchants' "$log"; then
               result=pass
               break
             fi
-            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore' "$log"; then
+            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore|Error occurred while enabling ExcellentEnchants|Failed to run bootstrapper|Mixin apply failed' "$log"; then
               result=fail
               break
             fi
@@ -148,7 +152,7 @@ jobs:
             sleep 1
           done
 
-          grep -Ei 'nightcore|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
+          grep -Ei 'nightcore|ExcellentEnchants|Cardboard registry|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
 
           if [[ "$result" == pass ]]; then
             printf 'stop\n' >&3
