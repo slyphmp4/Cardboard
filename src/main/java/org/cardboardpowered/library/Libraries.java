@@ -84,7 +84,21 @@ public class Libraries {
 
     	LibraryManager man = new LibraryManager("lib", true, 2, libraries);
     	man.run();
+
+		// These jars are added to Knot's classpath at runtime, after the JVM's
+		// JDBC service scan may already have happened. Initialize Paper's bundled
+		// drivers explicitly so DriverManager can serve plugin-side pools.
+		loadJdbcDriver("org.sqlite.JDBC");
+		loadJdbcDriver("com.mysql.cj.jdbc.Driver");
     }
+
+	private static void loadJdbcDriver(String className) {
+		try {
+			Class.forName(className);
+		} catch (ClassNotFoundException | LinkageError error) {
+			LibraryManager.logger.error("Could not initialize bundled JDBC driver " + className, error);
+		}
+	}
 
     /**
      * Add a jar file to Fabric's Knot Classloader.
