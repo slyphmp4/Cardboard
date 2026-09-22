@@ -94,7 +94,8 @@ public class Libraries {
 
 	private static void loadJdbcDriver(String className) {
 		try {
-			Class.forName(className);
+			Class.forName(className, true,
+					net.fabricmc.loader.impl.launch.FabricLauncherBase.getLauncher().getTargetClassLoader());
 		} catch (ClassNotFoundException | LinkageError error) {
 			LibraryManager.logger.error("Could not initialize bundled JDBC driver " + className, error);
 		}
