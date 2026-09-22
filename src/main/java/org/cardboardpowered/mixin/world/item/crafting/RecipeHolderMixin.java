@@ -78,7 +78,7 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 	}
 
 	/** Dye and imbue recipes have a fixed result but do not extend CustomRecipe. */
-	private org.bukkit.inventory.Recipe toBukkitSpecialRecipe(Recipe<?> special, NamespacedKey id) {
+	private org.bukkit.inventory.Recipe toBukkitSpecialRecipe(Recipe<?> special, NamespacedKey id, CraftingBookCategory category) {
 		try {
 			// The result template is private in vanilla 26.2. Keep this isolated here so
 			// recipeIterator() returns the real result instead of an empty placeholder.
@@ -88,7 +88,7 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 			ItemStack result = (ItemStack) template.getClass().getMethod("create").invoke(template);
 			CraftComplexRecipe recipe = new CraftComplexRecipe(id, CraftItemStack.asCraftMirror(result), special);
 			recipe.setGroup(special.group());
-			recipe.setCategory(CraftRecipe.getCategory(special.category()));
+			recipe.setCategory(CraftRecipe.getCategory(category));
 			return recipe;
 		} catch (ReflectiveOperationException exception) {
 			throw new IllegalStateException("Cannot convert recipe " + id + " of type " + special.getClass().getName(), exception);
@@ -242,8 +242,10 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 			return toBukkitRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()));
 		} else if(nmsRecipe instanceof TransmuteRecipe nms) {
 			return toBukkitRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()));
-		} else if (nmsRecipe instanceof DyeRecipe || nmsRecipe instanceof ImbueRecipe) {
-			return toBukkitSpecialRecipe(nmsRecipe, CraftNamespacedKey.fromMinecraft(id.identifier()));
+		} else if (nmsRecipe instanceof DyeRecipe nms) {
+			return toBukkitSpecialRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()), nms.category());
+		} else if (nmsRecipe instanceof ImbueRecipe nms) {
+			return toBukkitSpecialRecipe(nms, CraftNamespacedKey.fromMinecraft(id.identifier()), nms.category());
 		} else {
 			throw new IllegalArgumentException("Invalid recipe type: " + nmsRecipe.getClass());
 		}
