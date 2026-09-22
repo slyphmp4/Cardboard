@@ -41,7 +41,7 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         return this.name;
     }
 
-    void register(LifecycleEventOwner owner, LifecycleEventHandler<? super E> handler, int priority, boolean monitor) {
+    public void register(LifecycleEventOwner owner, LifecycleEventHandler<? super E> handler, int priority, boolean monitor) {
         synchronized (this.handlers) {
             this.handlers.add(new RegisteredHandler<>(owner, handler, priority, monitor));
             this.handlers.sort(ORDER);
