@@ -46,6 +46,7 @@ import org.cardboardpowered.mohistremap.RemapUtilProvider;
 import org.cardboardpowered.util.nms.RemapUtils;
 
 import io.papermc.paper.plugin.PluginInitializerManager;
+import io.papermc.paper.plugin.entrypoint.LaunchEntryPointHandler;
 import joptsimple.OptionSet;
 import me.isaiah.common.event.EventHandler;
 import me.isaiah.common.event.EventRegistery;
@@ -146,6 +147,9 @@ public class CardboardMod implements ModInitializer {
         System.out.println("loading PluginInitializerManager");
         try {
 			PluginInitializerManager.load(options);
+			// Paper plugins can declare a bootstrapper in paper-plugin.yml. Run it
+			// after provider discovery and before the normal plugin entrypoint.
+			LaunchEntryPointHandler.enterBootstrappers();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
