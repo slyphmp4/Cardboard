@@ -29,6 +29,7 @@
     "core.registries.BuiltInRegistriesMixin",
     "network.ConnectionMixin",
     "network.FriendlyByteBufMixin",
+    "network.chat.MutableComponentMixin",
     "network.chat.StyleMixin",
     "network.chat.TextColorMixin",
     "network.protocol.game.ClientboundPlayerInfoUpdatePacketMixin",

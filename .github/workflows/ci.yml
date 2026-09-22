@@ -66,6 +66,111 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  nightcore-compatibility:
+    name: NightCore 2.16.4 compatibility smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out Cardboard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-provider: basic
+
+      - name: Prepare NightCore server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p run/plugins
+          printf 'eula=true\n' > run/eula.txt
+          cat > run/server.properties <<'EOF'
+          online-mode=false
+          level-name=nightcore-nbt-smoke
+          spawn-protection=0
+          view-distance=3
+          simulation-distance=3
+          pause-when-empty-seconds=0
+          EOF
+          curl --fail --location --retry 3 \
+            https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar \
+            --output run/plugins/nightcore-2.16.4.jar
+          echo '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab  run/plugins/nightcore-2.16.4.jar' | sha256sum --check
+
+      - name: Run NightCore compatibility smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$GITHUB_WORKSPACE/nightcore-compatibility.log"
+          pipe="$GITHUB_WORKSPACE/nightcore-compatibility-input"
+          rm -f "$pipe"
+          mkfifo "$pipe"
+
+          ./gradlew runServer --no-daemon < "$pipe" > "$log" 2>&1 &
+          server_pid=$!
+          exec 3>"$pipe"
+
+          cleanup() {
+            if kill -0 "$server_pid" 2>/dev/null; then
+              printf 'stop\n' >&3 || true
+              sleep 2
+              kill "$server_pid" 2>/dev/null || true
+            fi
+            exec 3>&- || true
+          }
+          trap cleanup EXIT
+
+          result=timeout
+          for _ in $(seq 1 240); do
+            if grep -q 'Plugin loaded in' "$log"; then
+              result=pass
+              break
+            fi
+            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore' "$log"; then
+              result=fail
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              result=exit
+              break
+            fi
+            sleep 1
+          done
+
+          grep -Ei 'nightcore|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
+
+          if [[ "$result" == pass ]]; then
+            printf 'stop\n' >&3
+            wait "$server_pid"
+            trap - EXIT
+            exec 3>&-
+            exit 0
+          fi
+
+          echo "::error::NightCore compatibility smoke result: $result"
+          tail -n 300 "$log"
+          exit 1
+
+      - name: Upload NightCore smoke log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightcore-compatibility-${{ github.run_id }}
+          path: nightcore-compatibility.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   reproducible-build:
     name: Reproducible Cardboard JAR
     runs-on: ubuntu-latest
