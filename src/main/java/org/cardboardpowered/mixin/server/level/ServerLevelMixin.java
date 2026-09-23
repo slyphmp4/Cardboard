@@ -18,6 +18,7 @@ import org.cardboardpowered.mixin.world.level.LevelMixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -32,6 +33,7 @@ import org.cardboardpowered.bridge.world.level.LevelBridge;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.server.level.progress.LevelLoadListener;
 import net.minecraft.server.level.progress.LoggingLevelLoadListener;
 import net.minecraft.util.ProgressListener;
@@ -46,6 +48,12 @@ import net.minecraft.world.level.storage.ServerLevelData;
 
 @Mixin(ServerLevel.class)
 public class ServerLevelMixin extends LevelMixin implements ServerLevelBridge {
+
+    /** The Paper NMS lookup used by plugins must not load missing chunks. */
+    @Unique
+    public LevelChunk getChunkIfLoaded(int x, int z) {
+        return ((ServerLevel) (Object) this).getChunkSource().getChunkNow(x, z);
+    }
 
    // @Shadow
    // public boolean inEntityTick;

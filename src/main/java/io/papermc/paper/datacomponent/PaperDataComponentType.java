@@ -59,10 +59,8 @@ public abstract class PaperDataComponentType<T, NMS> extends HolderableBase<net.
 
     @SuppressWarnings({"unchecked"})
     public static <NMS> DataComponentType of(final Holder<?> holder) {
-        final DataComponentAdapter<NMS, ?> adapter = (DataComponentAdapter<NMS, ?>) DataComponentAdapters.ADAPTERS.get(holder.unwrapKey().orElseThrow());
-        if (adapter == null) {
-            throw new IllegalArgumentException("No adapter found for " + holder);
-        }
+        final DataComponentAdapter<NMS, ?> adapter = (DataComponentAdapter<NMS, ?>)
+                DataComponentAdapters.adapterFor(holder.unwrapKey().orElseThrow());
         if (adapter.isUnimplemented()) {
             return new Unimplemented<>((Holder<net.minecraft.core.component.DataComponentType<NMS>>) holder, adapter);
         } else if (adapter.isValued()) {

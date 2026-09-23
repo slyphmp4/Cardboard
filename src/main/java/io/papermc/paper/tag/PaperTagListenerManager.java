@@ -2,6 +2,10 @@ package io.papermc.paper.tag;
 
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventRunner;
+import io.papermc.paper.plugin.lifecycle.event.registrar.RegistrarEventImpl;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardLifecycleEventRunner;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardLifecycleEventType;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardPrioritizableEventType;
 import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEvent;
 import io.papermc.paper.plugin.lifecycle.event.types.AbstractLifecycleEventType;
 import io.papermc.paper.plugin.lifecycle.event.types.PrioritizableLifecycleEventType;
@@ -30,6 +34,9 @@ public class PaperTagListenerManager {
     public final RegistryEventMap preFlatten = new RegistryEventMap(PRE_FLATTEN_EVENT_NAME);
     public final RegistryEventMap postFlatten = new RegistryEventMap(POST_FLATTEN_EVENT_NAME);
 
+    private final RegistryEventMap cardboardPreFlatten = new RegistryEventMap(PRE_FLATTEN_EVENT_NAME);
+    private final RegistryEventMap cardboardPostFlatten = new RegistryEventMap(POST_FLATTEN_EVENT_NAME);
+
     private PaperTagListenerManager() {
     }
 
@@ -41,12 +48,7 @@ public class PaperTagListenerManager {
             return initial;
         }
         final PaperPreFlattenTagRegistrar<A> registrar = new PaperPreFlattenTagRegistrar<>(initial, config);
-        LifecycleEventRunner.INSTANCE.callReloadableRegistrarEvent(
-            config.preFlatten(),
-            registrar,
-            BootstrapContext.class,
-            config.cause()
-        );
+        fireTagEvent(config.preFlatten(), registrar, config.cause());
         return Map.copyOf(registrar.tags);
     }
 
@@ -58,13 +60,13 @@ public class PaperTagListenerManager {
             return initial;
         }
         final PaperPostFlattenTagRegistrar<M, A> registrar = new PaperPostFlattenTagRegistrar<>(initial, config);
-        LifecycleEventRunner.INSTANCE.callReloadableRegistrarEvent(
-            config.postFlatten(),
-            registrar,
-            BootstrapContext.class,
-            config.cause()
-        );
+        fireTagEvent(config.postFlatten(), registrar, config.cause());
         return Map.copyOf(registrar.tags);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void fireTagEvent(CardboardLifecycleEventType type, io.papermc.paper.plugin.lifecycle.event.registrar.PaperRegistrar<BootstrapContext> registrar, ReloadableRegistrarEvent.Cause cause) {
+        CardboardLifecycleEventRunner.fireStrict(type, new RegistrarEventImpl.ReloadableImpl<>(registrar, BootstrapContext.class, cause));
     }
 
     public <M, B> @Nullable TagEventConfig<Holder<M>, B> createEventConfig(final Registry<M> registry, final ReloadableRegistrarEvent.Cause cause) {
@@ -73,13 +75,13 @@ public class PaperTagListenerManager {
             return null;
         }
         final RegistryKey<B> registryKey = PaperRegistries.registryFromNms(registry.key());
-        @Nullable AbstractLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>, ?> preFlatten = null;
-        if (this.preFlatten.hasHandlers(registryKey)) {
-            preFlatten = (AbstractLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>, ?>) this.preFlatten.<B, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>>getEventType(registryKey);
+        @Nullable CardboardLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>, ?> preFlatten = null;
+        if (this.cardboardPreFlatten.hasHandlers(registryKey)) {
+            preFlatten = (CardboardLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>, ?>) this.cardboardPreFlatten.<B, ReloadableRegistrarEvent<PreFlattenTagRegistrar<B>>>getEventType(registryKey);
         }
-        @Nullable AbstractLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>, ?> postFlatten = null;
-        if (this.postFlatten.hasHandlers(registryKey)) {
-            postFlatten = (AbstractLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>, ?>) this.postFlatten.<B, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>>getEventType(registryKey);
+        @Nullable CardboardLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>, ?> postFlatten = null;
+        if (this.cardboardPostFlatten.hasHandlers(registryKey)) {
+            postFlatten = (CardboardLifecycleEventType<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>, ?>) this.cardboardPostFlatten.<B, ReloadableRegistrarEvent<PostFlattenTagRegistrar<B>>>getEventType(registryKey);
         }
         return new TagEventConfig<>(
             preFlatten,
@@ -89,6 +91,14 @@ public class PaperTagListenerManager {
             h -> ((Holder.Reference<M>) h).key().identifier(),
             PaperRegistries.registryFromNms(registry.key())
         );
+    }
+
+    public <T> CardboardPrioritizableEventType<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<T>>> getCardboardPreFlattenType(final RegistryKey<T> registryKey) {
+        return this.cardboardPreFlatten.getOrCreate(registryKey, (key, name) -> new CardboardPrioritizableEventType<>(key + " / " + name));
+    }
+
+    public <T> CardboardPrioritizableEventType<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<T>>> getCardboardPostFlattenType(final RegistryKey<T> registryKey) {
+        return this.cardboardPostFlatten.getOrCreate(registryKey, (key, name) -> new CardboardPrioritizableEventType<>(key + " / " + name));
     }
 
     public <T> PrioritizableLifecycleEventType.Simple<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<T>>> getPreFlattenType(final RegistryKey<T> registryKey) {

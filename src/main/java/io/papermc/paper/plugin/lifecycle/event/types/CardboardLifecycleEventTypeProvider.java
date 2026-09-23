@@ -7,6 +7,7 @@ import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEven
 import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.tag.PostFlattenTagRegistrar;
 import io.papermc.paper.tag.PreFlattenTagRegistrar;
+import io.papermc.paper.tag.PaperTagListenerManager;
 
 /**
  * Backs the lifecycle event API. Found through {@code META-INF/services}; without it every
@@ -29,20 +30,16 @@ public class CardboardLifecycleEventTypeProvider implements LifecycleEventTypePr
         return new CardboardTagEventTypeProvider();
     }
 
-    /**
-     * Tag rewriting happens during plugin bootstrap, which Cardboard does not run. The event types
-     * are still handed out so that touching them does not crash; they simply never fire.
-     */
     private static final class CardboardTagEventTypeProvider implements TagEventTypeProvider {
 
         @Override
         public <T> LifecycleEventType.Prioritizable<BootstrapContext, ReloadableRegistrarEvent<PreFlattenTagRegistrar<T>>> preFlatten(RegistryKey<T> registryKey) {
-            return new CardboardPrioritizableEventType<>("tags/pre_flatten/" + registryKey);
+            return PaperTagListenerManager.INSTANCE.getCardboardPreFlattenType(registryKey);
         }
 
         @Override
         public <T> LifecycleEventType.Prioritizable<BootstrapContext, ReloadableRegistrarEvent<PostFlattenTagRegistrar<T>>> postFlatten(RegistryKey<T> registryKey) {
-            return new CardboardPrioritizableEventType<>("tags/post_flatten/" + registryKey);
+            return PaperTagListenerManager.INSTANCE.getCardboardPostFlattenType(registryKey);
         }
     }
 }

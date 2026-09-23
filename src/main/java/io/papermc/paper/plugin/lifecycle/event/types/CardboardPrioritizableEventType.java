@@ -5,11 +5,11 @@ import io.papermc.paper.plugin.lifecycle.event.LifecycleEventOwner;
 import io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler;
 import io.papermc.paper.plugin.lifecycle.event.handler.configuration.PrioritizedLifecycleEventHandlerConfiguration;
 
-public final class CardboardPrioritizableEventType<O extends LifecycleEventOwner, E extends LifecycleEvent>
+public class CardboardPrioritizableEventType<O extends LifecycleEventOwner, E extends LifecycleEvent>
         extends CardboardLifecycleEventType<O, E, PrioritizedLifecycleEventHandlerConfiguration<O>>
         implements LifecycleEventType.Prioritizable<O, E> {
 
-    CardboardPrioritizableEventType(String name) {
+    public CardboardPrioritizableEventType(String name) {
         super(name);
     }
 

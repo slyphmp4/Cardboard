@@ -41,7 +41,7 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         return this.name;
     }
 
-    void register(LifecycleEventOwner owner, LifecycleEventHandler<? super E> handler, int priority, boolean monitor) {
+    public void register(LifecycleEventOwner owner, LifecycleEventHandler<? super E> handler, int priority, boolean monitor) {
         synchronized (this.handlers) {
             this.handlers.add(new RegisteredHandler<>(owner, handler, priority, monitor));
             this.handlers.sort(ORDER);
@@ -58,11 +58,26 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         }
     }
 
+    public boolean hasHandlers() {
+        synchronized (this.handlers) {
+            return !this.handlers.isEmpty();
+        }
+    }
+
     /**
      * Runs every registered handler. A handler that throws is logged against its own owner and
      * does not stop the remaining handlers.
      */
     public void fire(E event) {
+        this.fire(event, false);
+    }
+
+    /** Registry mutations must abort startup on failure rather than silently omit content. */
+    public void fireStrict(E event) {
+        this.fire(event, true);
+    }
+
+    private void fire(E event, boolean strict) {
         List<RegisteredHandler<E>> snapshot;
         synchronized (this.handlers) {
             snapshot = List.copyOf(this.handlers);
@@ -71,14 +86,33 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         for (RegisteredHandler<E> registered : snapshot) {
             CardboardLifecycleEventRunner.setCurrentOwner(registered.owner());
             try {
+                if (event instanceof OwnerAwareLifecycleEvent<?> aware) {
+                    setEventOwner(aware, registered.owner());
+                }
                 registered.handler().run(event);
             } catch (Throwable throwable) {
+                if (strict) {
+                    if (throwable instanceof Error error) throw error;
+                    if (throwable instanceof RuntimeException exception) throw exception;
+                    throw new IllegalStateException("Registry handler failed for " + ownerName(registered.owner()), throwable);
+                }
                 Bukkit.getLogger().log(Level.SEVERE, "Plugin " + ownerName(registered.owner())
                         + " failed handling the '" + this.name + "' lifecycle event", throwable);
             } finally {
+                if (event instanceof OwnerAwareLifecycleEvent<?> aware) {
+                    setEventOwner(aware, null);
+                }
                 CardboardLifecycleEventRunner.setCurrentOwner(null);
             }
         }
+        if (event instanceof io.papermc.paper.plugin.lifecycle.event.PaperLifecycleEvent paperEvent) {
+            paperEvent.invalidate();
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void setEventOwner(OwnerAwareLifecycleEvent aware, LifecycleEventOwner owner) {
+        aware.setOwner(owner == null ? null : aware.castOwner(owner));
     }
 
     private static String ownerName(LifecycleEventOwner owner) {

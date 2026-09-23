@@ -1,6 +1,7 @@
 package org.cardboardpowered.impl;
 
 import net.minecraft.world.level.block.Block;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public class CardboardModdedBlock implements CardboardModdedMaterial {
 
@@ -28,7 +29,10 @@ public class CardboardModdedBlock implements CardboardModdedMaterial {
 
     @Override
     public boolean isItem() {
-        return false;
+        // Block items share their registry key with the block. These materials
+        // are registered from the block registry first, so their metadata must
+        // still expose the item form to Bukkit's recipe choices.
+        return BuiltInRegistries.ITEM.getOptional(BuiltInRegistries.BLOCK.getKey(block)).isPresent();
     }
 
     @Override

@@ -262,6 +262,9 @@ dependencies {
 	include(implementation("org.apache.maven.resolver:maven-resolver-spi:1.9.18"))
 	*/
 	include(implementation("org.apache.maven.resolver:maven-resolver-supplier:1.9.18"))
+    // Maven Resolver reads this model when resolving snapshot plugin libraries.
+    // It is a separate artifact from maven-artifact and include() is non-transitive.
+    include(implementation("org.apache.maven:maven-repository-metadata:3.9.6"))
     // Cardboard V10: Paper plugin library loader HTTP runtime
     //
     // Paper plugins may declare libraries: in plugin.yml.
@@ -421,4 +424,3 @@ publishing {
     //    }
     //}
 }
-

@@ -5,11 +5,14 @@ import java.util.stream.Stream;
 
 import com.mojang.serialization.Lifecycle;
 import io.papermc.paper.registry.PaperRegistryAccess;
+import io.papermc.paper.registry.PaperRegistryListenerManager;
+import io.papermc.paper.registry.data.util.Conversions;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.resources.RegistryLoadTask;
 import net.minecraft.resources.RegistryLoadTask.PendingRegistration;
 import net.minecraft.resources.ResourceManagerRegistryLoadTask;
+import org.cardboardpowered.bridge.resources.ResourceManagerRegistryLoadTaskBridge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -46,6 +49,11 @@ public abstract class RegistryLoadTaskMixin<T> {
 		if ((Object) this instanceof ResourceManagerRegistryLoadTask<?>) {
 			PaperRegistryAccess.instance()
 					.lockReferenceHolders(this.registry.key());
+			final var lookup = ((ResourceManagerRegistryLoadTaskBridge) this).cardboard$registryLookup();
+			if (lookup == null) {
+				throw new IllegalStateException("Registry conversions are unavailable for " + this.registry.key());
+			}
+			PaperRegistryListenerManager.INSTANCE.runFreezeListeners(this.registry.key(), new Conversions(lookup));
 		}
 	}
 }

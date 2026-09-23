@@ -4,6 +4,8 @@ import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEvent;
 // import io.papermc.paper.plugin.lifecycle.event.LifecycleEventRunner;
 // import io.papermc.paper.plugin.lifecycle.event.types.AbstractLifecycleEventType;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardLifecycleEventType;
+import io.papermc.paper.plugin.lifecycle.event.types.AbstractLifecycleEventType;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEventType;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.HashMap;
@@ -38,9 +40,9 @@ public final class RegistryEventMap {
     }
 
     public boolean hasHandlers(final RegistryKey<?> registryKey) {
-        // final AbstractLifecycleEventType<?, ?, ?> type = ((AbstractLifecycleEventType<?, ?, ?>) this.eventTypes.get(registryKey));
-        // return type != null && type.hasHandlers();
-    	return false; // TODO
+        final LifecycleEventType<?, ?, ?> type = this.eventTypes.get(registryKey);
+        if (type instanceof CardboardLifecycleEventType<?, ?, ?> cardboardType) return cardboardType.hasHandlers();
+        return type instanceof AbstractLifecycleEventType<?, ?, ?> paperType && paperType.hasHandlers();
     }
 
 }

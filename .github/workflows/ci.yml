@@ -67,7 +67,7 @@ jobs:
           retention-days: 7
 
   nightcore-compatibility:
-    name: NightCore 2.16.4 compatibility smoke
+    name: NightCore 2.16.4 + ExcellentEnchants 5.4.3 smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -94,6 +94,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p run/plugins
+          ./gradlew -p tools/torture/plugin jar --no-daemon
+          cp tools/torture/plugin/build/libs/cardboard-torture-plugin-1.0.0.jar run/plugins/
           printf 'eula=true\n' > run/eula.txt
           cat > run/server.properties <<'EOF'
           online-mode=false
@@ -107,6 +109,10 @@ jobs:
             https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar \
             --output run/plugins/nightcore-2.16.4.jar
           echo '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab  run/plugins/nightcore-2.16.4.jar' | sha256sum --check
+          curl --fail --location --retry 3 \
+            https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar \
+            --output run/plugins/ExcellentEnchants-5.4.3.jar
+          echo '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133  run/plugins/ExcellentEnchants-5.4.3.jar' | sha256sum --check
 
       - name: Run NightCore compatibility smoke
         shell: bash
@@ -133,12 +139,12 @@ jobs:
 
           result=timeout
           for _ in $(seq 1 240); do
-            if grep -q 'Plugin loaded in' "$log"; then
-              result=pass
+            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore|Error occurred while enabling ExcellentEnchants|Error occurred while enabling CardboardTorture|Could not load.*CardboardTorture|Failed to run bootstrapper|Mixin apply failed' "$log"; then
+              result=fail
               break
             fi
-            if grep -Eq 'Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|Error occurred while enabling nightcore' "$log"; then
-              result=fail
+            if grep -q 'Done (' "$log" && grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log" && grep -q 'Enabling ExcellentEnchants' "$log" && grep -q 'CardboardTorture ready' "$log"; then
+              result=pass
               break
             fi
             if ! kill -0 "$server_pid" 2>/dev/null; then
@@ -148,11 +154,16 @@ jobs:
             sleep 1
           done
 
-          grep -Ei 'nightcore|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
+          grep -Ei 'nightcore|ExcellentEnchants|CardboardTorture|Bukkit plugins|Cardboard registry|Server version detected|Could not initialize NBT Utils|ConfigCodecs|No suitable driver|Plugin loaded in' "$log" || true
 
           if [[ "$result" == pass ]]; then
             printf 'stop\n' >&3
             wait "$server_pid"
+            if grep -Eq 'Error occurred while enabling nightcore|Error occurred while enabling ExcellentEnchants|Error occurred while enabling CardboardTorture|Failed to run bootstrapper' "$log"; then
+              echo '::error::Plugin startup failed after the server reported ready'
+              tail -n 300 "$log"
+              exit 1
+            fi
             trap - EXIT
             exec 3>&-
             exit 0
@@ -168,6 +179,41 @@ jobs:
         with:
           name: nightcore-compatibility-${{ github.run_id }}
           path: nightcore-compatibility.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  common-plugins-smoke:
+    name: Common plugins + NightCore + ExcellentEnchants server smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out Cardboard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-provider: basic
+
+      - name: Boot Fabric server and verify all seven plugins together
+        run: bash tools/ci/common-plugins-smoke.sh
+
+      - name: Upload common plugins startup log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: common-plugins-smoke-${{ github.run_id }}
+          path: common-plugins-smoke.log
           if-no-files-found: ignore
           retention-days: 7
 

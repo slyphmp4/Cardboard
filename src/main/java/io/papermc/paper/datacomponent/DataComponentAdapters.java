@@ -254,6 +254,16 @@ public final class DataComponentAdapters {
         registerInternal(key, UNIMPLEMENTED_TO_API_CONVERTER, DataComponentAdapter.API_TO_UNIMPLEMENTED_CONVERTER, false);
     }
 
+    // Fabric mods can register component types after the static Paper adapter
+    // table was first initialized. Expose their keys to Paper plugins without
+    // pretending we can convert their values to a Paper API component.
+    @SuppressWarnings("unchecked")
+    static DataComponentAdapter<?, ?> adapterFor(final ResourceKey<?> key) {
+        return ADAPTERS.computeIfAbsent((ResourceKey<DataComponentType<?>>) key, ignored ->
+                new DataComponentAdapter<>(DataComponentAdapter.API_TO_UNIMPLEMENTED_CONVERTER,
+                        UNIMPLEMENTED_TO_API_CONVERTER, false));
+    }
+
     private static <NMS, API extends Handleable<NMS>> void register(final DataComponentType<NMS> type, final Function<NMS, API> vanillaToApi) {
         registerInternal(getKey(type), vanillaToApi, Handleable::getHandle, false);
     }

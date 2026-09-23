@@ -1,0 +1,58 @@
+package io.papermc.paper.registry.event.type;
+
+import io.papermc.paper.plugin.bootstrap.BootstrapContext;
+import io.papermc.paper.plugin.lifecycle.event.handler.LifecycleEventHandler;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardHandlerConfiguration;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardLifecycleEventType;
+import io.papermc.paper.registry.RegistryBuilder;
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.TypedKey;
+import io.papermc.paper.registry.event.RegistryEntryAddEvent;
+import java.util.function.Predicate;
+
+public final class CardboardRegistryEntryAddEventType<T, B extends RegistryBuilder<T>>
+        extends CardboardLifecycleEventType<BootstrapContext, RegistryEntryAddEvent<T, B>, RegistryEntryAddConfiguration<T>>
+        implements RegistryEntryAddEventType<T, B> {
+
+    public CardboardRegistryEntryAddEventType(RegistryKey<T> registryKey, String eventName) {
+        super(registryKey + " / " + eventName);
+    }
+
+    @Override
+    public RegistryEntryAddConfiguration<T> newHandler(LifecycleEventHandler<? super RegistryEntryAddEvent<T, B>> handler) {
+        final class Configuration implements RegistryEntryAddConfiguration<T>, CardboardHandlerConfiguration {
+            private Predicate<TypedKey<T>> filter = key -> true;
+            private int priority;
+            private boolean monitor;
+
+            @Override
+            public RegistryEntryAddConfiguration<T> filter(Predicate<TypedKey<T>> predicate) {
+                this.filter = java.util.Objects.requireNonNull(predicate);
+                return this;
+            }
+
+            @Override
+            public RegistryEntryAddConfiguration<T> priority(int priority) {
+                this.priority = priority;
+                this.monitor = false;
+                return this;
+            }
+
+            @Override
+            public RegistryEntryAddConfiguration<T> monitor() {
+                this.monitor = true;
+                return this;
+            }
+
+            @Override
+            public void registerTo(io.papermc.paper.plugin.lifecycle.event.LifecycleEventOwner owner) {
+                CardboardRegistryEntryAddEventType.this.register(owner, event -> {
+                    if (this.filter.test(event.key())) {
+                        handler.run(event);
+                    }
+                }, this.priority, this.monitor);
+            }
+        }
+        return new Configuration();
+    }
+}

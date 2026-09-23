@@ -2,7 +2,7 @@ package io.papermc.paper.tag;
 
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.lifecycle.event.registrar.ReloadableRegistrarEvent;
-import io.papermc.paper.plugin.lifecycle.event.types.AbstractLifecycleEventType;
+import io.papermc.paper.plugin.lifecycle.event.types.CardboardLifecycleEventType;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.Optional;
 import java.util.function.Function;
@@ -13,8 +13,8 @@ import org.checkerframework.framework.qual.DefaultQualifier;
 
 @DefaultQualifier(NonNull.class)
 public record TagEventConfig<M, A>(
-    @Nullable AbstractLifecycleEventType<BootstrapContext, ? extends ReloadableRegistrarEvent<PreFlattenTagRegistrar<A>>, ?> preFlatten,
-    @Nullable AbstractLifecycleEventType<BootstrapContext, ? extends ReloadableRegistrarEvent<PostFlattenTagRegistrar<A>>, ?> postFlatten,
+    @Nullable CardboardLifecycleEventType<BootstrapContext, ? extends ReloadableRegistrarEvent<PreFlattenTagRegistrar<A>>, ?> preFlatten,
+    @Nullable CardboardLifecycleEventType<BootstrapContext, ? extends ReloadableRegistrarEvent<PostFlattenTagRegistrar<A>>, ?> postFlatten,
     ReloadableRegistrarEvent.Cause cause,
     Function<Identifier, Optional<? extends M>> fromIdConverter,
     Function<M, Identifier> toIdConverter,
