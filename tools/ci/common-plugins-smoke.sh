@@ -61,8 +61,10 @@ download_plugin ProtocolLib \
 # Compile a small consumer against the exact public API and plugin under test.
 paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/io.papermc.paper/paper-api" -name 'paper-api-*.jar' -print -quit)
 test -n "$paper_api"
+adventure_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.kyori" -name '*.jar' -print | paste -sd: -)
+test -n "$adventure_api"
 mkdir -p run/commandapi-probe-classes
-javac -cp "$paper_api:run/plugins/CommandAPI.jar" -d run/commandapi-probe-classes \
+javac -cp "$paper_api:$adventure_api:run/plugins/CommandAPI.jar" -d run/commandapi-probe-classes \
   tools/ci/commandapi-probe/CommandAPIProbe.java
 cp tools/ci/commandapi-probe/plugin.yml run/commandapi-probe-classes/
 jar cf run/plugins/CardboardCommandAPIProbe.jar -C run/commandapi-probe-classes .
