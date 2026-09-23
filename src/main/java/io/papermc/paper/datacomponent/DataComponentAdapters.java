@@ -257,8 +257,9 @@ public final class DataComponentAdapters {
     // Fabric mods can register component types after the static Paper adapter
     // table was first initialized. Expose their keys to Paper plugins without
     // pretending we can convert their values to a Paper API component.
-    static DataComponentAdapter<?, ?> adapterFor(final ResourceKey<DataComponentType<?>> key) {
-        return ADAPTERS.computeIfAbsent(key, ignored ->
+    @SuppressWarnings("unchecked")
+    static DataComponentAdapter<?, ?> adapterFor(final ResourceKey<?> key) {
+        return ADAPTERS.computeIfAbsent((ResourceKey<DataComponentType<?>>) key, ignored ->
                 new DataComponentAdapter<>(DataComponentAdapter.API_TO_UNIMPLEMENTED_CONVERTER,
                         UNIMPLEMENTED_TO_API_CONVERTER, false));
     }
