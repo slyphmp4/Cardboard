@@ -132,10 +132,13 @@ if [[ "$result" == ready ]]; then
     if ! grep -q 'COMMANDAPI_PROBE_OK:success' "$log"; then
       result=commandapi-execution
     fi
+    if grep -Eq '\[[^]]+/ERROR\]|\[[^]]+/SEVERE\]' "$log"; then
+      result=error
+    fi
   fi
 fi
 
-grep -Ei 'Initialized [0-9]+ plugins|Bukkit plugins|Paper plugins|Loading server plugin|Enabling|Cardboard registry .*enchantment|Loaded [0-9]+ enchantments|Done \(|/ERROR\]|/SEVERE\]' "$log" || true
+grep -Ei 'Initialized [0-9]+ plugins|Bukkit plugins|Paper plugins|Loading server plugin|Enabling|Cardboard registry .*enchantment|Loaded [0-9]+ enchantments|Done \(|COMMANDAPI_PROBE_OK|/ERROR\]|/SEVERE\]' "$log" || true
 if [[ "$result" != ready ]]; then
   echo "::error::Common plugins server smoke failed: $result"
   tail -n 300 "$log"
