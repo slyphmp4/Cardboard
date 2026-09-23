@@ -13,6 +13,7 @@ import org.bukkit.craftbukkit.entity.CraftEntity;
 
 import org.cardboardpowered.bridge.commands.CommandSourceBridge;
 import org.cardboardpowered.bridge.commands.CommandSourceStackBridge;
+import org.cardboardpowered.impl.command.NullCommandSender;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
 import org.cardboardpowered.impl.world.CraftWorld;
@@ -66,6 +67,12 @@ public abstract class CommandSourceStackMixin
 
     @Override
     public org.bukkit.command.CommandSender getBukkitSender() {
+        // The client command packet inspects plugin Brigadier requirements
+        // using CommandSource.NULL. Plugins can call this method directly,
+        // so return a sender that grants no permissions for that inspection.
+        if (this.source == CommandSource.NULL) {
+            return NullCommandSender.INSTANCE;
+        }
         return ((CommandSourceBridge) this.source)
                 .getBukkitSender((CommandSourceStack) (Object) this);
     }

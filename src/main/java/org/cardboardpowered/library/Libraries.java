@@ -56,6 +56,7 @@ public class Libraries {
         	Library.of("org.apache.maven", "maven-model", "3.9.6", "ac9a1c8a8cfa36f3a5489837e653ec0cd530d576"),
         	Library.of("org.apache.maven", "maven-model-builder", "3.9.6", "983ce00d50a9f78ad1b805e21e4fd71807fa6ebf"),
         	Library.of("org.apache.maven", "maven-resolver-provider", "3.9.6", "848c45d334f6cc5c8dd602b0e58fd4482964eddc"),
+		Library.of("org.apache.maven", "maven-repository-metadata", "3.9.6"),
         	Library.of("org.apache.maven.resolver", "maven-resolver-api", "1.9.18", "0cd5174d6e80175398debe4869d484169c0abbf8"),
         	Library.of("org.apache.maven.resolver", "maven-resolver-connector-basic", "1.9.18", "baac1ca4eb5e5fbdd2df554262a1b97f84ae3cec"),
         	Library.of("org.apache.maven.resolver", "maven-resolver-impl", "1.9.18", "e928b128d1e52e6299f94431ce3df74647bc8c26"),
