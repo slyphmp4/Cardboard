@@ -63,8 +63,10 @@ paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/
 test -n "$paper_api"
 adventure_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.kyori" -name '*.jar' -print | paste -sd: -)
 test -n "$adventure_api"
+bungee_chat=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.md-5/bungeecord-chat" -name '*.jar' -print -quit)
+test -n "$bungee_chat"
 mkdir -p run/commandapi-probe-classes
-javac -cp "$paper_api:$adventure_api:run/plugins/CommandAPI.jar" -d run/commandapi-probe-classes \
+javac -cp "$paper_api:$adventure_api:$bungee_chat:run/plugins/CommandAPI.jar" -d run/commandapi-probe-classes \
   tools/ci/commandapi-probe/CommandAPIProbe.java
 cp tools/ci/commandapi-probe/plugin.yml run/commandapi-probe-classes/
 jar cf run/plugins/CardboardCommandAPIProbe.jar -C run/commandapi-probe-classes .
