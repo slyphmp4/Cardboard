@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run a disposable Fabric 26.2 server with ordinary Bukkit/Paper plugins.
+# Run a disposable Fabric 26.2 server with ordinary plugins alongside
+# NightCore and ExcellentEnchants on the same instance.
 set -euo pipefail
 
 log="${GITHUB_WORKSPACE:-$PWD}/common-plugins-smoke.log"
@@ -44,6 +45,12 @@ download_plugin EssentialsXChat \
 download_plugin EssentialsXSpawn \
   'https://github.com/EssentialsX/Essentials/releases/download/2.22.0/EssentialsXSpawn-2.22.0.jar' \
   'dd5377c4c921b9b67814209f4f6646ffbb959729003e721ec5e63c47c7c010b8'
+download_plugin nightcore \
+  'https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar' \
+  '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab'
+download_plugin ExcellentEnchants \
+  'https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar' \
+  '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133'
 
 rm -f "$pipe"
 mkfifo "$pipe"
@@ -65,7 +72,7 @@ trap cleanup EXIT
 
 result=timeout
 for _ in $(seq 1 360); do
-  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|\[/ERROR\]|\[/SEVERE\]' "$log"; then
+  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[/ERROR\]|\[/SEVERE\]' "$log"; then
     result=error
     break
   fi
@@ -83,18 +90,21 @@ done
 if [[ "$result" == ready ]]; then
   # Catch errors emitted by plugins immediately after the server reports ready.
   sleep 5
-  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn; do
+  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants; do
     if ! grep -Eq "Enabling ${plugin} v[^[:space:]]+" "$log"; then
       result="missing-$plugin"
       break
     fi
   done
-  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|\[/ERROR\]|\[/SEVERE\]' "$log"; then
+  if ! grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log"; then
+    result=missing-enchantments
+  fi
+  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[/ERROR\]|\[/SEVERE\]' "$log"; then
     result=error
   fi
 fi
 
-grep -Ei 'Initialized [0-9]+ plugins|Bukkit plugins|Paper plugins|Loading server plugin|Enabling|Done \(|/ERROR\]|/SEVERE\]' "$log" || true
+grep -Ei 'Initialized [0-9]+ plugins|Bukkit plugins|Paper plugins|Loading server plugin|Enabling|Cardboard registry .*enchantment|Loaded [0-9]+ enchantments|Done \(|/ERROR\]|/SEVERE\]' "$log" || true
 if [[ "$result" != ready ]]; then
   echo "::error::Common plugins server smoke failed: $result"
   tail -n 300 "$log"
