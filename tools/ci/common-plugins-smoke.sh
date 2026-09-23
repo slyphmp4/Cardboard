@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run a disposable Fabric 26.2 server with ordinary plugins alongside
-# NightCore and ExcellentEnchants on the same instance.
+# NightCore, ExcellentEnchants, and Paper CommandAPI on the same instance.
 set -euo pipefail
 
 log="${GITHUB_WORKSPACE:-$PWD}/common-plugins-smoke.log"
@@ -51,6 +51,9 @@ download_plugin nightcore \
 download_plugin ExcellentEnchants \
   'https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar' \
   '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133'
+download_plugin CommandAPI \
+  'https://cdn.modrinth.com/data/ExxvCi0y/versions/tVPSAZFC/CommandAPI-12.0.0-Paper.jar' \
+  'd731a9e8c056dc43fd5aeb37b44839d1f584d8c17cf3215c762a96e4c13aa613'
 
 rm -f "$pipe"
 mkfifo "$pipe"
@@ -90,7 +93,7 @@ done
 if [[ "$result" == ready ]]; then
   # Catch errors emitted by plugins immediately after the server reports ready.
   sleep 5
-  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants; do
+  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants CommandAPI; do
     if ! grep -Eq "Enabling ${plugin} v[^[:space:]]+" "$log"; then
       result="missing-$plugin"
       break

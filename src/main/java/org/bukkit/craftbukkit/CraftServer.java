@@ -205,7 +205,7 @@ import org.bukkit.craftbukkit.tag.CraftFluidTag;
 import org.cardboardpowered.impl.tag.CraftItemTag;
 import org.cardboardpowered.impl.util.CommandPermissions;
 import org.cardboardpowered.impl.util.CardboardCachedServerIcon;
-import org.cardboardpowered.impl.util.SimpleHelpMap;
+import org.bukkit.craftbukkit.help.SimpleHelpMap;
 import org.cardboardpowered.impl.world.ChunkDataImpl;
 import org.cardboardpowered.impl.world.CraftWorld;
 import org.checkerframework.checker.nullness.qual.NonNull;

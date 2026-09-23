@@ -183,7 +183,7 @@ jobs:
           retention-days: 7
 
   common-plugins-smoke:
-    name: Common plugins + NightCore + ExcellentEnchants server smoke
+    name: Common plugins + NightCore + ExcellentEnchants + CommandAPI server smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
