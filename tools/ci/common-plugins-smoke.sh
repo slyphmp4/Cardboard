@@ -20,12 +20,7 @@ download_plugin() {
   local name="$1" url="$2" hash="$3"
   local file="run/plugins/$name.jar"
   curl --fail --location --retry 3 --silent --show-error "$url" --output "$file"
-  if [[ -n "$hash" ]]; then
-    printf '%s  %s\n' "$hash" "$file" | sha256sum --check
-  else
-    # Print hashes for the initial CI run; pin these after confirming the upstream bytes.
-    sha256sum "$file"
-  fi
+  printf '%s  %s\n' "$hash" "$file" | sha256sum --check
   if ! jar tf "$file" | grep -Eq '^(paper-plugin|plugin)\.yml$'; then
     echo "::error::$name download is not a Bukkit/Paper plugin JAR"
     exit 1
@@ -35,9 +30,11 @@ download_plugin() {
 # Versions and immutable release assets are deliberately fixed so the smoke
 # only changes when the plugin matrix is explicitly updated.
 download_plugin LuckPerms \
-  'https://cdn.modrinth.com/data/Vebnzrzj/versions/MBSY8toc/LuckPerms-Bukkit-5.5.53.jar' ''
+  'https://cdn.modrinth.com/data/Vebnzrzj/versions/MBSY8toc/LuckPerms-Bukkit-5.5.53.jar' \
+  'fc8d4eccbf11c1e844af4527f018bbfde90c1866a9aba1bf880173a8e644cd59'
 download_plugin PlaceholderAPI \
-  'https://cdn.modrinth.com/data/lKEzGugV/versions/pIvQcXW8/PlaceholderAPI-2.12.3.jar' ''
+  'https://cdn.modrinth.com/data/lKEzGugV/versions/pIvQcXW8/PlaceholderAPI-2.12.3.jar' \
+  'fde03259f5af6938f3c33eeb4d814000a1adabf1d2304ce14970be81f609a437'
 download_plugin EssentialsX \
   'https://github.com/EssentialsX/Essentials/releases/download/2.22.0/EssentialsX-2.22.0.jar' \
   'bda4685105977fca2e209820a9f0ad24275bd103390a03236f38e59bfdac58e6'
