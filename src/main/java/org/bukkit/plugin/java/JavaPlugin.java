@@ -26,6 +26,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 
 import com.google.common.base.Charsets;
+import io.papermc.paper.plugin.provider.classloader.ConfiguredPluginClassLoader;
 import org.cardboardpowered.BukkitLogger;
 
 /**
@@ -444,10 +445,10 @@ public abstract class JavaPlugin extends PluginBase {
             throw new IllegalArgumentException(clazz + " does not extend " + JavaPlugin.class);
         }
         final ClassLoader cl = clazz.getClassLoader();
-        if (!(cl instanceof PluginClassLoader)) {
-            throw new IllegalArgumentException(clazz + " is not initialized by " + PluginClassLoader.class);
+        if (!(cl instanceof ConfiguredPluginClassLoader configuredLoader)) {
+            throw new IllegalArgumentException(clazz + " is not initialized by a plugin class loader");
         }
-        JavaPlugin plugin = ((PluginClassLoader) cl).plugin;
+        JavaPlugin plugin = configuredLoader.getPlugin();
         if (plugin == null) {
             throw new IllegalStateException("Cannot get plugin for " + clazz + " from a static initializer");
         }
@@ -470,10 +471,10 @@ public abstract class JavaPlugin extends PluginBase {
     public static JavaPlugin getProvidingPlugin(Class<?> clazz) {
         Validate.notNull(clazz, "Null class cannot have a plugin");
         final ClassLoader cl = clazz.getClassLoader();
-        if (!(cl instanceof PluginClassLoader)) {
-            throw new IllegalArgumentException(clazz + " is not provided by " + PluginClassLoader.class);
+        if (!(cl instanceof ConfiguredPluginClassLoader configuredLoader)) {
+            throw new IllegalArgumentException(clazz + " is not provided by a plugin class loader");
         }
-        JavaPlugin plugin = ((PluginClassLoader) cl).plugin;
+        JavaPlugin plugin = configuredLoader.getPlugin();
         if (plugin == null) {
             throw new IllegalStateException("Cannot get plugin for " + clazz + " from a static initializer");
         }
