@@ -115,6 +115,18 @@ jobs:
       - name: Build Cardboard
         run: ./gradlew clean build --no-daemon --stacktrace
 
+      - name: Verify Fabric server and CommandAPI before publishing
+        run: bash tools/ci/common-plugins-smoke.sh
+
+      - name: Upload server smoke log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.7.2
+        with:
+          name: release-server-smoke-${{ github.run_id }}
+          path: common-plugins-smoke.log
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Remove superseded release
         if: steps.release.outputs.tag == 'v26.2.17'
         shell: bash
