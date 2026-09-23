@@ -95,7 +95,7 @@ jobs:
           set -euo pipefail
           mkdir -p run/plugins
           ./gradlew -p tools/torture/plugin jar --no-daemon
-          cp tools/torture/plugin/build/libs/CardboardTorture-1.0.0.jar run/plugins/
+          cp tools/torture/plugin/build/libs/cardboard-torture-plugin-1.0.0.jar run/plugins/
           printf 'eula=true\n' > run/eula.txt
           cat > run/server.properties <<'EOF'
           online-mode=false
