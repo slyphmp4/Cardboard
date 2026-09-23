@@ -1,0 +1,5 @@
+name: CardboardCommandAPIProbe
+version: 1.0.0
+main: org.cardboardpowered.ci.CommandAPIProbe
+api-version: '1.21'
+depend: [CommandAPI]

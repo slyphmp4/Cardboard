@@ -183,7 +183,7 @@ jobs:
           retention-days: 7
 
   common-plugins-smoke:
-    name: Common plugins + NightCore + ExcellentEnchants server smoke
+    name: Common plugins + NightCore + ExcellentEnchants + CommandAPI + ProtocolLib server smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -205,7 +205,7 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Boot Fabric server and verify all seven plugins together
+      - name: Boot Fabric server and verify all ten plugins together
         run: bash tools/ci/common-plugins-smoke.sh
 
       - name: Upload common plugins startup log

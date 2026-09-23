@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run a disposable Fabric 26.2 server with ordinary plugins alongside
-# NightCore and ExcellentEnchants on the same instance.
+# NightCore, ExcellentEnchants, and Paper CommandAPI on the same instance.
 set -euo pipefail
 
 log="${GITHUB_WORKSPACE:-$PWD}/common-plugins-smoke.log"
@@ -51,6 +51,25 @@ download_plugin nightcore \
 download_plugin ExcellentEnchants \
   'https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar' \
   '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133'
+download_plugin CommandAPI \
+  'https://cdn.modrinth.com/data/ExxvCi0y/versions/tVPSAZFC/CommandAPI-12.0.0-Paper.jar' \
+  'd731a9e8c056dc43fd5aeb37b44839d1f584d8c17cf3215c762a96e4c13aa613'
+download_plugin ProtocolLib \
+  'https://github.com/dmulloy2/ProtocolLib/releases/download/5.4.0/ProtocolLib.jar' \
+  'ee2e7ab9b5386f2d103081c4d108e61b1035df2ca692b53d6e2409fb1f5caccf'
+
+# Compile a small consumer against the exact public API and plugin under test.
+paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/io.papermc.paper/paper-api" -name 'paper-api-*.jar' -print -quit)
+test -n "$paper_api"
+adventure_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.kyori" -name '*.jar' -print | paste -sd: -)
+test -n "$adventure_api"
+bungee_chat=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.md-5/bungeecord-chat" -name '*.jar' -print -quit)
+test -n "$bungee_chat"
+mkdir -p run/commandapi-probe-classes
+javac -cp "$paper_api:$adventure_api:$bungee_chat:run/plugins/CommandAPI.jar" -d run/commandapi-probe-classes \
+  tools/ci/commandapi-probe/CommandAPIProbe.java
+cp tools/ci/commandapi-probe/plugin.yml run/commandapi-probe-classes/
+jar cf run/plugins/CardboardCommandAPIProbe.jar -C run/commandapi-probe-classes .
 
 rm -f "$pipe"
 mkfifo "$pipe"
@@ -72,7 +91,7 @@ trap cleanup EXIT
 
 result=timeout
 for _ in $(seq 1 360); do
-  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[/ERROR\]|\[/SEVERE\]' "$log"; then
+  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[[^]]+/ERROR\]|\[[^]]+/SEVERE\]' "$log"; then
     result=error
     break
   fi
@@ -90,7 +109,7 @@ done
 if [[ "$result" == ready ]]; then
   # Catch errors emitted by plugins immediately after the server reports ready.
   sleep 5
-  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants; do
+  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants CommandAPI ProtocolLib CardboardCommandAPIProbe; do
     if ! grep -Eq "Enabling ${plugin} v[^[:space:]]+" "$log"; then
       result="missing-$plugin"
       break
@@ -99,8 +118,20 @@ if [[ "$result" == ready ]]; then
   if ! grep -Eq 'Cardboard registry .*enchantment.* registered [1-9][0-9]* entries during compose' "$log"; then
     result=missing-enchantments
   fi
-  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[/ERROR\]|\[/SEVERE\]' "$log"; then
+  if grep -Eq 'Failed to run bootstrapper|Could not load .+ in folder|Error occurred while (loading|enabling)|Mixin apply failed|Could not initialize NBT Utils|ConfigCodecs is not initialized|No suitable driver|\[[^]]+/ERROR\]|\[[^]]+/SEVERE\]' "$log"; then
     result=error
+  fi
+  if [[ "$result" == ready ]]; then
+    printf 'cardboardcommandapitest success\n' >&3
+    for _ in $(seq 1 10); do
+      if grep -q 'COMMANDAPI_PROBE_OK:success' "$log"; then
+        break
+      fi
+      sleep 1
+    done
+    if ! grep -q 'COMMANDAPI_PROBE_OK:success' "$log"; then
+      result=commandapi-execution
+    fi
   fi
 fi
 
