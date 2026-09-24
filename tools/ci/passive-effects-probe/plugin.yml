@@ -1,0 +1,11 @@
+name: CardboardPassiveEffectsProbe
+main: org.cardboardpowered.ci.PassiveEffectsProbe
+version: 1.0.0
+api-version: '1.21'
+commands:
+  cardboardpassiveprobe:
+    description: Checks player inventory slot events and Night Vision/Health Boost potion API
+    permission: cardboard.probe
+permissions:
+  cardboard.probe:
+    default: op
