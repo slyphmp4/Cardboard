@@ -85,6 +85,7 @@ import net.minecraft.world.waypoints.WaypointStyleAsset;
 import net.minecraft.world.waypoints.WaypointStyleAssets;
 
 import org.bukkit.entity.*;
+import org.bukkit.craftbukkit.potion.CraftPotionEffectType;
 import org.bukkit.craftbukkit.potion.CraftPotionUtil;
 import org.bukkit.craftbukkit.inventory.CraftEntityEquipment;
 import org.cardboardpowered.impl.world.CraftWorld;
@@ -200,19 +201,13 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public boolean addPotionEffect(PotionEffect effect) {
-        return addPotionEffect(effect, false);
+        return this.getHandle().addEffect(CraftPotionUtil.fromBukkit(effect));
     }
 
     @Override
     public boolean addPotionEffect(PotionEffect effect, boolean force) {
-        MobEffect type = BuiltInRegistries.MOB_EFFECT.byId(effect.getType().getId());
-
-        me.isaiah.common.cmixin.IMixinEntity ic = ((me.isaiah.common.cmixin.IMixinEntity)(Object) entity);
-        ic.IC$add_status_effect(type, effect.getDuration(), effect.getAmplifier(), effect.isAmbient(), effect.hasParticles());
-        
-        // nms.addStatusEffect(new StatusEffectInstance(type, effect.getDuration(), effect.getAmplifier(), effect.isAmbient(), effect.hasParticles())/*, EntityPotionEffectEvent.Cause.PLUGIN*/);
-
-        return true;
+        // The deprecated force argument is ignored by Paper as well.
+        return addPotionEffect(effect);
     }
 
     @Override
@@ -231,10 +226,8 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
     @Override
     public Collection<PotionEffect> getActivePotionEffects() {
         List<PotionEffect> effects = new ArrayList<>();
-        for (MobEffectInstance handle :  this.getHandle().activeEffects.values()) {
-                // effects.add(new PotionEffect(PotionEffectType.getById(Registries.STATUS_EFFECT.getRawId(handle.getEffectType())), handle.getDuration(), handle.getAmplifier(), handle.isAmbient(), handle.shouldShowParticles()));
-                effects.add(CraftPotionUtil.toBukkit(handle));
-        
+        for (MobEffectInstance handle : this.getHandle().getActiveEffects()) {
+            effects.add(CraftPotionUtil.toBukkit(handle));
         }
         return effects;
     }
@@ -339,13 +332,8 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public PotionEffect getPotionEffect(PotionEffectType arg0) {
-    	me.isaiah.common.cmixin.IMixinEntity ic = ((me.isaiah.common.cmixin.IMixinEntity)(Object) entity);
-    	MobEffectInstance handle = ic.IC$get_status_effect(arg0.getId());
-        if (handle == null) {
-            return null;
-        }
-    	int typeId = ic.IC$get_status_effect_id(handle);
-        return new PotionEffect(PotionEffectType.getById(typeId), handle.getDuration(), handle.getAmplifier(), handle.isAmbient(), handle.isVisible());
+        MobEffectInstance handle = this.getHandle().getEffect(CraftPotionEffectType.bukkitToMinecraftHolder(arg0));
+        return handle == null ? null : CraftPotionUtil.toBukkit(handle);
     }
 
     @Override
@@ -388,9 +376,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public boolean hasPotionEffect(PotionEffectType arg0) {
-    	me.isaiah.common.cmixin.IMixinEntity ic = ((me.isaiah.common.cmixin.IMixinEntity)(Object) entity);
-    	return ic.IC$has_status_effect(BuiltInRegistries.MOB_EFFECT.byId(arg0.getId()));
-        // return nms.hasStatusEffect(Registries.STATUS_EFFECT.get(arg0.getId()));
+        return this.getHandle().hasEffect(CraftPotionEffectType.bukkitToMinecraftHolder(arg0));
     }
 
     @Override
@@ -440,11 +426,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public void removePotionEffect(PotionEffectType type) {
-    	me.isaiah.common.cmixin.IMixinEntity ic = ((me.isaiah.common.cmixin.IMixinEntity)(Object) entity);
-    	
-    	ic.IC$remove_status_effect( BuiltInRegistries.MOB_EFFECT.byId(type.getId()) );
-    	
-        //nms.removeStatusEffect(Registries.STATUS_EFFECT.get(type.getId())/*, EntityPotionEffectEvent.Cause.PLUGIN*/);
+        this.getHandle().removeEffect(CraftPotionEffectType.bukkitToMinecraftHolder(type));
     }
 
     @Override
@@ -1070,8 +1052,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
 	@Override
 	public boolean clearActivePotionEffects() {
-		// TODO Auto-generated method stub
-		return false;
+		return this.getHandle().removeAllEffects();
 	}
 
 	@Override

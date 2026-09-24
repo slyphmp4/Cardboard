@@ -1,12 +1,22 @@
 package org.cardboardpowered.mixin.world.inventory;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import io.papermc.paper.event.player.PlayerInventorySlotChangeEvent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.ContainerListener;
 import net.minecraft.world.inventory.ContainerSynchronizer;
 import net.minecraft.world.inventory.RemoteSlot;
+import net.minecraft.world.inventory.ResultSlot;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftHumanEntity;
 import org.bukkit.craftbukkit.inventory.CraftInventory;
@@ -68,6 +78,47 @@ public abstract class AbstractContainerMenuMixin implements AbstractContainerMen
     @Final
     @Mutable
     public NonNullList<Slot> slots;
+
+    // The vanilla listener only receives the new stack. Capture the previous
+    // tracked value before triggerSlotListeners updates it, as Paper does.
+    @Inject(method = "triggerSlotListeners", at = @At("HEAD"))
+    private void cardboard$capturePreviousSlot(int slotIndex, ItemStack stack, Supplier<ItemStack> supplier,
+                                                CallbackInfo ci, @Share("previousStack") LocalRef<ItemStack> previousStack) {
+        if (PlayerInventorySlotChangeEvent.getHandlerList().getRegisteredListeners().length != 0) {
+            ItemStack previous = this.lastSlots.get(slotIndex);
+            if (!ItemStack.matches(previous, stack)) {
+                previousStack.set(previous.copy());
+            }
+        }
+    }
+
+    @WrapOperation(method = "triggerSlotListeners", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/inventory/ContainerListener;slotChanged(Lnet/minecraft/world/inventory/AbstractContainerMenu;ILnet/minecraft/world/item/ItemStack;)V"))
+    private void cardboard$playerInventorySlotChanged(ContainerListener listener, AbstractContainerMenu menu,
+                                                      int slotIndex, ItemStack newStack, Operation<Void> original,
+                                                      @Share("previousStack") LocalRef<ItemStack> previousStack,
+                                                      @Share("eventSent") LocalBooleanRef eventSent,
+                                                      @Share("triggerAdvancements") LocalBooleanRef triggerAdvancements) {
+        if (previousStack.get() != null && !eventSent.get()) {
+            InventoryView view = this.getBukkitView();
+            if (view.getPlayer() instanceof CraftPlayer player &&
+                    (menu == player.getHandle().containerMenu || menu == player.getHandle().inventoryMenu)) {
+                Slot slot = menu.getSlot(slotIndex);
+                if (!(slot instanceof ResultSlot) && slot.container == player.getHandle().getInventory()) {
+                    PlayerInventorySlotChangeEvent event = new PlayerInventorySlotChangeEvent(
+                            player, slotIndex, CraftItemStack.asBukkitCopy(previousStack.get()),
+                            CraftItemStack.asBukkitCopy(newStack));
+                    eventSent.set(true);
+                    Bukkit.getPluginManager().callEvent(event);
+                    triggerAdvancements.set(event.shouldTriggerAdvancements());
+                }
+            }
+        }
+
+        if (!eventSent.get() || triggerAdvancements.get()) {
+            original.call(listener, menu, slotIndex, newStack);
+        }
+    }
 
     @Shadow
     public ItemStack getCarried() {

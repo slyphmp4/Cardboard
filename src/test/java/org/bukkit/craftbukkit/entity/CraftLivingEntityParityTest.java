@@ -9,15 +9,16 @@ import org.junit.jupiter.api.Test;
 class CraftLivingEntityParityTest {
 
     @Test
-    void absentPotionEffectIsGuardedBeforeStatusEffectAccess() throws Exception {
+    void potionLookupUsesRegistryHolderAndKeepsAbsentEffectNullable() throws Exception {
         String source = Files.readString(Path.of("src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java"));
         int method = source.indexOf("public PotionEffect getPotionEffect(PotionEffectType arg0)");
-        int nullGuard = source.indexOf("if (handle == null)", method);
-        int idLookup = source.indexOf("IC$get_status_effect_id(handle)", method);
+        int nextMethod = source.indexOf("public int getRemainingAir()", method);
+        String lookup = source.substring(method, nextMethod);
 
         assertTrue(method >= 0);
-        assertTrue(nullGuard > method);
-        assertTrue(idLookup > nullGuard);
+        assertTrue(lookup.contains("CraftPotionEffectType.bukkitToMinecraftHolder(arg0)"));
+        assertTrue(lookup.contains("handle == null ? null : CraftPotionUtil.toBukkit(handle)"));
+        assertTrue(!lookup.contains("getId()"));
     }
 
     @Test

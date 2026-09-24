@@ -71,6 +71,12 @@ javac -cp "$paper_api:$adventure_api:$bungee_chat:run/plugins/CommandAPI.jar" -d
 cp tools/ci/commandapi-probe/plugin.yml run/commandapi-probe-classes/
 jar cf run/plugins/CardboardCommandAPIProbe.jar -C run/commandapi-probe-classes .
 
+mkdir -p run/passive-effects-probe-classes
+javac -cp "$paper_api:$adventure_api:$bungee_chat" -d run/passive-effects-probe-classes \
+  tools/ci/passive-effects-probe/PassiveEffectsProbe.java
+cp tools/ci/passive-effects-probe/plugin.yml run/passive-effects-probe-classes/
+jar cf run/plugins/CardboardPassiveEffectsProbe.jar -C run/passive-effects-probe-classes .
+
 rm -f "$pipe"
 mkfifo "$pipe"
 ./gradlew runServer --no-daemon < "$pipe" > "$log" 2>&1 &
@@ -109,7 +115,7 @@ done
 if [[ "$result" == ready ]]; then
   # Catch errors emitted by plugins immediately after the server reports ready.
   sleep 5
-  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants CommandAPI ProtocolLib CardboardCommandAPIProbe; do
+  for plugin in LuckPerms PlaceholderAPI Essentials EssentialsChat EssentialsSpawn nightcore ExcellentEnchants CommandAPI ProtocolLib CardboardCommandAPIProbe CardboardPassiveEffectsProbe; do
     if ! grep -Eq "Enabling ${plugin} v[^[:space:]]+" "$log"; then
       result="missing-$plugin"
       break
