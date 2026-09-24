@@ -72,7 +72,9 @@ cp tools/ci/commandapi-probe/plugin.yml run/commandapi-probe-classes/
 jar cf run/plugins/CardboardCommandAPIProbe.jar -C run/commandapi-probe-classes .
 
 mkdir -p run/passive-effects-probe-classes
-javac -cp "$paper_api:$adventure_api:$bungee_chat" -d run/passive-effects-probe-classes \
+jetbrains_annotations=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/org.jetbrains/annotations" -name '*.jar' -print -quit)
+test -n "$jetbrains_annotations"
+javac -cp "$paper_api:$adventure_api:$bungee_chat:$jetbrains_annotations" -d run/passive-effects-probe-classes \
   tools/ci/passive-effects-probe/PassiveEffectsProbe.java
 cp tools/ci/passive-effects-probe/plugin.yml run/passive-effects-probe-classes/
 jar cf run/plugins/CardboardPassiveEffectsProbe.jar -C run/passive-effects-probe-classes .
