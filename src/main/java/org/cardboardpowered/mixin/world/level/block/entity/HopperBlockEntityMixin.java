@@ -116,7 +116,11 @@ public abstract class HopperBlockEntityMixin implements Container, ContainerBrid
                     sourceInventory = new CraftInventory(iinventory);
 
 
-                    InventoryMoveItemEvent event = new InventoryMoveItemEvent(sourceInventory, oitemstack.clone(), ((ContainerBridge)ihopper).getOwner().getInventory(), false);
+                    // CraftHopper#getInventory() wraps the live container. Build that
+                    // wrapper directly; resolving the holder here eagerly snapshots
+                    // the whole hopper via NBT, even when listeners never need it.
+                    // CraftInventory#getHolder() still resolves it on demand.
+                    InventoryMoveItemEvent event = new InventoryMoveItemEvent(sourceInventory, oitemstack.clone(), new CraftInventory((Container) ihopper), false);
                     Bukkit.getServer().getPluginManager().callEvent(event);
                     if (event.isCancelled()) {
                         iinventory.setItem(i, itemstack1);
