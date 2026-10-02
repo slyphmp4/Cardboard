@@ -25,8 +25,8 @@ public class Libraries {
         //		.withSha1("223f4b673a6cefe155849a18d7a82b422bf45335")
         //		.overrideRepo("https://repo.papermc.io/repository/maven-snapshots/");
         
-        Library paperApi = Library.of("io.papermc.paper", "paper-api", "26.2.build.110-stable")
-        		.withSha1("c94ea2a3efbe687f70b8135934588c8ca575b75a")
+        Library paperApi = Library.of("io.papermc.paper", "paper-api", "26.2.build.129-stable")
+        		.withSha256("f469d110d164a4ee7cb2428710cd6e433108eca8d8e0aebd6452547f408469a6")
         		.overrideRepo("https://repo.papermc.io/repository/maven-public/");
 
         List<Library> libraries = List.of(

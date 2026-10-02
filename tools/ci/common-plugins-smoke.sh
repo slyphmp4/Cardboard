@@ -59,6 +59,11 @@ download_plugin ProtocolLib \
   'ee2e7ab9b5386f2d103081c4d108e61b1035df2ca692b53d6e2409fb1f5caccf'
 
 # Compile a small consumer against the exact public API and plugin under test.
+# PR runners can start with an empty Gradle cache. Resolve the root compile
+# classpath before reading artifacts from that cache; runServer will then reuse
+# the compiled classes and resolved dependencies.
+./gradlew compileJava --no-daemon
+
 paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/io.papermc.paper/paper-api" -name 'paper-api-*.jar' -print -quit)
 test -n "$paper_api"
 adventure_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.kyori" -name '*.jar' -print | paste -sd: -)
