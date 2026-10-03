@@ -9,11 +9,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = {
-        "net.minecraft.world.entity.monster.cubemob.AbstractCubeMob$CubeMobAttackGoal",
-        "net.minecraft.world.entity.monster.cubemob.AbstractCubeMob$CubeMobFloatGoal",
-        "net.minecraft.world.entity.monster.cubemob.AbstractCubeMob$CubeMobRandomDirectionGoal",
-        "net.minecraft.world.entity.monster.cubemob.AbstractCubeMob$CubeMobKeepOnJumpingGoal"
+@Mixin({
+        AbstractCubeMob.CubeMobAttackGoal.class,
+        AbstractCubeMob.CubeMobFloatGoal.class,
+        AbstractCubeMob.CubeMobRandomDirectionGoal.class,
+        AbstractCubeMob.CubeMobKeepOnJumpingGoal.class
 })
 public abstract class CubeMobWanderGoalMixin {
 
