@@ -48,6 +48,7 @@ class KostiaFedP0ParityTest {
     void teamColorsUseSerializedNamesThroughOneConversionPath() throws Exception {
         String adventure = source("src/main/java/io/papermc/paper/adventure/PaperAdventure.java");
         String team = source("src/main/java/org/bukkit/craftbukkit/scoreboard/CraftTeam.java");
+        String chat = source("src/main/java/org/bukkit/craftbukkit/util/CraftChatMessage.java");
 
         assertTrue(adventure.contains("teamColor.getSerializedName()"));
         assertTrue(adventure.contains("TeamColor.byName(color.toString())"));
@@ -58,6 +59,8 @@ class KostiaFedP0ParityTest {
         assertTrue(team.contains("PaperAdventure::asVanilla"));
         assertTrue(team.contains("TeamColor::byName"));
         assertTrue(team.contains("TextColor::serialize"));
+        assertTrue(team.contains("CraftChatMessage::toLegacyFormat"));
+        assertTrue(chat.contains("public static ChatFormatting toLegacyFormat(final TextColor color)"));
         assertFalse(team.contains("TeamColor.byName(CraftChatMessage.getColor(color).name())"));
     }
 }
