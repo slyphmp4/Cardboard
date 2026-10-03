@@ -2158,7 +2158,24 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadPermissions() {
-        // TODO Auto-generated method stub
+        this.pluginManager.clearPermissions();
+
+        for (Plugin plugin : this.pluginManager.getPlugins()) {
+            for (Permission permission : plugin.getDescription().getPermissions()) {
+                try {
+                    this.pluginManager.addPermission(permission);
+                } catch (IllegalArgumentException ex) {
+                    this.getLogger().log(Level.WARNING,
+                            "Plugin " + plugin.getDescription().getFullName()
+                                    + " tried to register permission '" + permission.getName()
+                                    + "' but it is already registered",
+                            ex);
+                }
+            }
+        }
+
+        DefaultPermissions.registerCorePermissions();
+        CommandPermissions.registerCorePermissions();
     }
 
     @Override
