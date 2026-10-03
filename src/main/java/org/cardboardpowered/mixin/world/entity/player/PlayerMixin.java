@@ -23,6 +23,9 @@ public abstract class PlayerMixin extends LivingEntityMixin implements EntityBri
     @Shadow
     public AbstractContainerMenu containerMenu;
 
+    @Shadow
+    protected abstract void updatePlayerPose();
+
     @Inject(method = "startFallFlying", at = @At("HEAD"), cancellable = true)
     private void cardboard$toggleGlideStart(CallbackInfo ci) {
         Player self = (Player) (Object) this;
@@ -38,6 +41,11 @@ public abstract class PlayerMixin extends LivingEntityMixin implements EntityBri
         if (event.isCancelled()) {
             ci.cancel();
         }
+    }
+
+    @Override
+    public void cardboard$updatePlayerPose() {
+        this.updatePlayerPose();
     }
 
     @Override
