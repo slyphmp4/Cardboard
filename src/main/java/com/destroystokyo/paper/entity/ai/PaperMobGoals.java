@@ -116,7 +116,7 @@ public class PaperMobGoals implements MobGoals {
         CraftMob craftMob = (CraftMob) mob;
         Set<Goal<T>> goals = new HashSet<>();
         for (WrappedGoal item : getHandle(craftMob, type).getAvailableGoals()) {
-            if (!item.getGoal().hasFlag(MobGoalHelper.paperToVanilla(type))) {
+            if (!MobGoalHelper.hasType(item.getGoal(), type)) {
                 continue;
             }
             goals.add(toPaperGoal(item.getGoal()));
@@ -133,7 +133,7 @@ public class PaperMobGoals implements MobGoals {
                 continue;
             }
             for (WrappedGoal item : getHandle(craftMob, internalType).getAvailableGoals()) {
-                if (item.getGoal().hasFlag(MobGoalHelper.paperToVanilla(type))) {
+                if (MobGoalHelper.hasType(item.getGoal(), type)) {
                     continue;
                 }
                 goals.add(toPaperGoal(item.getGoal()));
@@ -157,7 +157,7 @@ public class PaperMobGoals implements MobGoals {
         Set<Goal<T>> goals = new HashSet<>();
         getHandle(craftMob, type).getAvailableGoals().stream()
             .filter(WrappedGoal::isRunning)
-            .filter(item -> item.getGoal().hasFlag(MobGoalHelper.paperToVanilla(type)))
+            .filter(item -> MobGoalHelper.hasType(item.getGoal(), type))
             .forEach(item -> goals.add(toPaperGoal(item.getGoal())));
         return goals;
     }
@@ -172,7 +172,7 @@ public class PaperMobGoals implements MobGoals {
             }
             getHandle(craftMob, internalType).getAvailableGoals().stream()
                 .filter(WrappedGoal::isRunning)
-                .filter(item -> !item.getGoal().hasFlag(MobGoalHelper.paperToVanilla(type)))
+                .filter(item -> !MobGoalHelper.hasType(item.getGoal(), type))
                 .forEach(item -> goals.add(toPaperGoal(item.getGoal())));
         }
         return goals;
