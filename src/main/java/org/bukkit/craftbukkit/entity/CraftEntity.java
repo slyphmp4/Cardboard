@@ -1064,15 +1064,15 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     public void setPose0(net.minecraft.world.entity.Pose pose, boolean fixed) {
         final Entity handle = this.getHandle();
-        //handle.fixedPose = false; // TODO
+        final EntityBridge bridge = (EntityBridge) handle;
+        bridge.cardboard$setFixedPose(false);
         handle.setPose(pose);
-        //handle.fixedPose = fixed; // TODO
+        bridge.cardboard$setFixedPose(fixed);
     }
 
     @Override
     public boolean hasFixedPose() {
-        //return this.getHandle().fixedPose; // TODO
-        return false;
+        return ((EntityBridge) this.getHandle()).cardboard$hasFixedPose();
     }
 
     @Override
