@@ -61,6 +61,7 @@
     "server.level.ChunkMapMixin",
     "server.level.EntityCallbacksMixin",
     "server.level.ServerBossEventMixin",
+    "server.level.ServerChunkCacheMixin",
     "server.level.ServerEntityMixin",
     "server.level.ServerLevelMixin",
     "server.level.ServerPlayerEntityCommandSenderMixin",

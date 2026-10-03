@@ -100,4 +100,19 @@ class KostiaFedP2ParityTest {
         assertFalse(bridge.contains("MannequinEntity_ALL_MODEL_PARTS"));
     }
 
+    @Test
+    void worldSpawnFlagsBackTheNewMonsterToggle() throws Exception {
+        String world = source("src/main/java/org/cardboardpowered/impl/world/CraftWorld.java");
+        String cache = source("src/main/java/org/cardboardpowered/mixin/server/level/ServerChunkCacheMixin.java");
+
+        assertTrue(world.contains("cardboard$getSpawnFriendlies()"));
+        assertTrue(world.contains("cardboard$getSpawnEnemies()"));
+        assertTrue(world.contains("cardboard$setSpawnSettings(allowMonsters, allowAnimals)"));
+        assertTrue(world.contains("this.world.getChunkSource().setSpawnSettings(allow);"));
+        assertFalse(world.contains("setSpawnFlags(boolean arg0, boolean arg1)"));
+        assertTrue(cache.contains("private boolean cardboard$spawnFriendlies = true"));
+        assertTrue(cache.contains("getFilteredSpawningCategories"));
+        assertTrue(cache.contains("index = 1"));
+    }
+
 }

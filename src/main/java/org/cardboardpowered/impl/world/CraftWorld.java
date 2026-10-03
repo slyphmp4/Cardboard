@@ -497,14 +497,14 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean getAllowAnimals() {
-		// TODO Auto-generated method stub
-		return true;
+		return ((org.cardboardpowered.bridge.server.level.ServerChunkCacheBridge)
+				(Object) this.world.getChunkSource()).cardboard$getSpawnFriendlies();
 	}
 
 	@Override
 	public boolean getAllowMonsters() {
-		// TODO Auto-generated method stub
-		return true;
+		return ((org.cardboardpowered.bridge.server.level.ServerChunkCacheBridge)
+				(Object) this.world.getChunkSource()).cardboard$getSpawnEnemies();
 	}
 
 	@Override
@@ -1701,8 +1701,10 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	@Override
-	public void setSpawnFlags(boolean arg0, boolean arg1) {
-		// TODO Auto-generated method stub
+	public void setSpawnFlags(boolean allowMonsters, boolean allowAnimals) {
+		((org.cardboardpowered.bridge.server.level.ServerChunkCacheBridge)
+				(Object) this.world.getChunkSource())
+				.cardboard$setSpawnSettings(allowMonsters, allowAnimals);
 	}
 
 	@Override
@@ -3562,9 +3564,7 @@ this.world.getServer().execute(cb);
     // 26.2: new on World
     @Override
     public void setAllowMonsterSpawning(boolean allow) {
-        // Routed through the existing spawn-flag API so both share one code path.
-        // NOTE: setSpawnFlags/getAllowMonsters are unimplemented in Cardboard (pre-existing).
-        this.setSpawnFlags(allow, this.getAllowAnimals());
+        this.world.getChunkSource().setSpawnSettings(allow);
     }
 
 }
