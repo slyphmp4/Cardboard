@@ -30,9 +30,15 @@ class KostiaFedP1ParityTest {
     @Test
     void dimensionTransferIsNotReportedAsPlayerQuit() throws Exception {
         String source = source("src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java");
+        String region = source("src/main/java/org/bukkit/craftbukkit/CraftRegionAccessor.java");
+        String bridge = source("src/main/java/org/cardboardpowered/bridge/world/entity/EntityBridge.java");
 
-        assertTrue(source.contains("cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN)"));
+        assertTrue(source.contains("bridge.cardboard$isGeneration()"));
+        assertTrue(source.contains("? null"));
+        assertTrue(source.contains(": org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN"));
         assertTrue(source.contains("return ((EntityBridge) this.entity).cardboard$getRemoveEventCause();"));
+        assertTrue(region.contains("cardboard$setGeneration(true)"));
+        assertTrue(bridge.contains("cardboard$isGeneration()"));
         assertFalse(source.contains("case KILLED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH"));
         assertFalse(source.contains("case UNLOADED_WITH_PLAYER -> org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT"));
         assertFalse(source.contains("case CHANGED_DIMENSION ->"));
