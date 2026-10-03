@@ -57,4 +57,9 @@ public interface EntityBridge {
     boolean cardboard$canCollideWithBukkit(Entity entity);
 
     float cardboard$getBukkitYaw();
+
+    org.bukkit.event.entity.EntityRemoveEvent.Cause cardboard$getRemoveEventCause();
+
+    void cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause cause);
+
 }
