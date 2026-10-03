@@ -113,6 +113,10 @@ class KostiaFedP2ParityTest {
         assertTrue(cache.contains("private boolean cardboard$spawnFriendlies = true"));
         assertTrue(cache.contains("getFilteredSpawningCategories"));
         assertTrue(cache.contains("index = 1"));
+
+        String mixins = source("src/main/resources/bukkitfabric.mixins.json");
+        assertTrue(mixins.contains("\"server.level.ServerChunkCacheMixin\""));
+        assertTrue(mixins.contains("\"world.damagesource.CombatTrackerMixin\""));
     }
 
 }
