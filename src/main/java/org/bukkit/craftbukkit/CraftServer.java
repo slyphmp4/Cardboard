@@ -146,6 +146,7 @@ import org.bukkit.craftbukkit.scoreboard.CraftCriteria;
 import org.bukkit.craftbukkit.util.CraftChatMessage;
 import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
+import org.bukkit.craftbukkit.util.CraftSpawnCategory;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityFactory;
 import org.bukkit.entity.Player;
@@ -1124,14 +1125,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getAmbientSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.AMBIENT);
     }
 
     @Override
     public int getAnimalSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.ANIMAL);
     }
 
     @Override
@@ -1229,9 +1228,14 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public LootTable getLootTable(NamespacedKey arg0) {
-        // TODO Auto-generated method stub
-        return null;
+    public LootTable getLootTable(NamespacedKey key) {
+        Preconditions.checkArgument(key != null, "NamespacedKey key cannot be null");
+
+        var registry = this.getServer().reloadableRegistries();
+        return registry.lookup().lookup(Registries.LOOT_TABLE)
+                .flatMap((lookup) -> lookup.get(CraftLootTable.bukkitKeyToMinecraft(key)))
+                .map((holder) -> new CraftLootTable(key, holder.value()))
+                .orElse(null);
     }
 
     @Override
@@ -1260,8 +1264,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMonsterSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.MONSTER);
     }
 
     @Override
@@ -1564,8 +1567,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getWaterAnimalSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.WATER_ANIMAL);
     }
 
     @Override
@@ -1744,9 +1746,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public void setSpawnRadius(int arg0) {
-        // TODO Auto-generated method stub
-        // server.getProperties().spawnProtection = arg0;
+    public void setSpawnRadius(int value) {
+        this.getServer().setSpawnProtectionRadius(value);
     }
 
     @Override
@@ -1936,7 +1937,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public int getWaterAmbientSpawnLimit() {
-        return 0; // TODO
+        return this.getSpawnLimit(SpawnCategory.WATER_AMBIENT);
     }
 
     private final Spigot spigot = new Server.Spigot(){
@@ -1972,8 +1973,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getTicksPerWaterAmbientSpawns() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getTicksPerSpawns(SpawnCategory.WATER_AMBIENT);
     }
 
     @Override
@@ -2160,8 +2160,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public void setMaxPlayers(int arg0) {
-        // TODO Auto-generated method stub
+    public void setMaxPlayers(int maxPlayers) {
+        Preconditions.checkArgument(maxPlayers >= 0, "maxPlayers must be >= 0");
+        this.console.setMaxPlayers(maxPlayers);
     }
 
     @Override
@@ -2173,34 +2174,56 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NonNull Iterable<? extends Audience> audiences() {
-        // TODO Auto-generated method stub
-        return null;
+        return Iterables.concat(Collections.singleton(this.getConsoleSender()), this.getOnlinePlayers());
     }
 
     @Override
-    public int broadcast(@NotNull Component arg0) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int broadcast(@NotNull Component message) {
+        return this.broadcast(message, BROADCAST_CHANNEL_USERS);
     }
 
     @Override
-    public int broadcast(@NotNull Component arg0, @NotNull String arg1) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int broadcast(@NotNull Component message, @NotNull String permission) {
+        Preconditions.checkArgument(message != null, "message cannot be null");
+        Preconditions.checkArgument(permission != null, "permission cannot be null");
+
+        Set<CommandSender> recipients = new HashSet<>();
+        for (Permissible permissible : this.getPluginManager().getPermissionSubscriptions(permission)) {
+            if (permissible instanceof CommandSender sender
+                    && !(permissible instanceof org.bukkit.command.BlockCommandSender)
+                    && permissible.hasPermission(permission)) {
+                recipients.add(sender);
+            }
+        }
+
+        BroadcastMessageEvent event = new BroadcastMessageEvent(!Bukkit.isPrimaryThread(), message, recipients);
+        if (!event.callEvent()) {
+            return 0;
+        }
+
+        Component eventMessage = event.message();
+        for (CommandSender recipient : recipients) {
+            recipient.sendMessage(eventMessage);
+        }
+        return recipients.size();
     }
 
     @Override
-    public @NotNull Inventory createInventory(@Nullable InventoryHolder arg0, @NotNull InventoryType arg1,
-            @NotNull Component arg2) {
-        // TODO Auto-generated method stub
-        return null;
+    public @NotNull Inventory createInventory(@Nullable InventoryHolder owner, @NotNull InventoryType type,
+            @NotNull Component title) {
+        Preconditions.checkArgument(type != null, "InventoryType cannot be null");
+        Preconditions.checkArgument(type.isCreatable(), "InventoryType.%s cannot be used to create an inventory", type);
+        Preconditions.checkArgument(title != null, "title cannot be null");
+        return CraftInventoryCreator.INSTANCE.createInventory(owner, type, title);
     }
 
     @Override
-    public @NotNull Inventory createInventory(@Nullable InventoryHolder arg0, int arg1, @NotNull Component arg2)
+    public @NotNull Inventory createInventory(@Nullable InventoryHolder owner, int size, @NotNull Component title)
             throws IllegalArgumentException {
-        // TODO Auto-generated method stub
-        return null;
+        Preconditions.checkArgument(9 <= size && size <= 54 && size % 9 == 0,
+                "Size for custom inventory must be a multiple of 9 between 9 and 54 slots (got %s)", size);
+        Preconditions.checkArgument(title != null, "title cannot be null");
+        return CraftInventoryCreator.INSTANCE.createInventory(owner, size, title);
     }
 
     @Override
@@ -2229,14 +2252,13 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NotNull Component motd() {
-        // TODO Auto-generated method stub
-        return null;
+        return LegacyComponentSerializer.legacySection().deserialize(this.getMotd());
     }
 
     @Override
     public @Nullable Component shutdownMessage() {
-        // TODO Auto-generated method stub
-        return null;
+        String message = this.getShutdownMessage();
+        return message != null ? LegacyComponentSerializer.legacySection().deserialize(message) : null;
     }
 
     @Override
@@ -2302,14 +2324,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getTicksPerWaterUndergroundCreatureSpawns() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getTicksPerSpawns(SpawnCategory.WATER_UNDERGROUND_CREATURE);
     }
 
     @Override
     public int getWaterUndergroundCreatureSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.WATER_UNDERGROUND_CREATURE);
     }
 
     @Override
@@ -2344,10 +2364,20 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 	}
 
 	@Override
-	public com.destroystokyo.paper.profile.@NotNull PlayerProfile createProfileExact(@Nullable UUID arg0,
-			@Nullable String arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public com.destroystokyo.paper.profile.@NotNull PlayerProfile createProfileExact(@Nullable UUID uuid,
+			@Nullable String name) {
+        Player player = uuid != null ? Bukkit.getPlayer(uuid) : (name != null ? Bukkit.getPlayerExact(name) : null);
+        if (player == null) {
+            return new CraftPlayerProfile(uuid, name);
+        }
+
+        if (java.util.Objects.equals(uuid, player.getUniqueId()) && java.util.Objects.equals(name, player.getName())) {
+            return new CraftPlayerProfile((CraftPlayer) player);
+        }
+
+        CraftPlayerProfile profile = new CraftPlayerProfile(uuid, name);
+        profile.getGameProfile().properties().putAll(((CraftPlayer) player).getHandle().getGameProfile().properties());
+        return profile;
 	}
 
     @Override
@@ -2364,8 +2394,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public boolean getHideOnlinePlayers() {
-		// TODO Auto-generated method stub
-		return false;
+        return this.console.hidesOnlinePlayers();
 	}
 
 	@Override
@@ -2376,38 +2405,46 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull String getResourcePack() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::url)
+                .orElse("");
 	}
 
 	@Override
 	public @NotNull String getResourcePackHash() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::hash)
+                .orElse("")
+                .toUpperCase(Locale.ROOT);
 	}
 
 	@Override
 	public @NotNull String getResourcePackPrompt() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::prompt)
+                .map(CraftChatMessage::fromComponent)
+                .orElse("");
 	}
 
 	@Override
 	public int getSimulationDistance() {
-		// TODO Auto-generated method stub
-		return 8;
+        return this.console.simulationDistance();
 	}
 
 	@Override
-	public int getSpawnLimit(@NotNull SpawnCategory arg0) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getSpawnLimit(@NotNull SpawnCategory spawnCategory) {
+        Preconditions.checkArgument(spawnCategory != null, "SpawnCategory cannot be null");
+        Preconditions.checkArgument(CraftSpawnCategory.isValidForLimits(spawnCategory),
+                "SpawnCategory.%s does not have a spawn limit.", spawnCategory);
+        return this.configuration.getInt(CraftSpawnCategory.getConfigNameSpawnLimit(spawnCategory));
 	}
 
 	@Override
-	public int getTicksPerSpawns(@NotNull SpawnCategory arg0) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getTicksPerSpawns(@NotNull SpawnCategory spawnCategory) {
+        Preconditions.checkArgument(spawnCategory != null, "SpawnCategory cannot be null");
+        Preconditions.checkArgument(CraftSpawnCategory.isValidForLimits(spawnCategory),
+                "SpawnCategory.%s are not supported", spawnCategory);
+        return this.configuration.getInt(CraftSpawnCategory.getConfigNameTicksPerSpawn(spawnCategory));
 	}
 
 	@Override
@@ -2469,14 +2506,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull List<String> getInitialDisabledPacks() {
-		// TODO Auto-generated method stub
-		return null;
+        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getDisabled());
 	}
 
 	@Override
 	public @NotNull List<String> getInitialEnabledPacks() {
-		// TODO Auto-generated method stub
-		return null;
+        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getEnabled());
 	}
 
     public void setMotd(String motd) {
@@ -2540,8 +2575,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public void motd(@NotNull Component motd) {
-		// TODO Auto-generated method stub
-
+        Preconditions.checkArgument(motd != null, "motd cannot be null");
+        this.setMotd(LegacyComponentSerializer.legacySection().serialize(motd));
 	}
 
 	// 1.20.2 API:
@@ -2677,8 +2712,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull Merchant createMerchant() {
-		// TODO Auto-generated method stub
-		return null;
+        return new CraftMerchantCustom();
 	}
 
 	@Override
