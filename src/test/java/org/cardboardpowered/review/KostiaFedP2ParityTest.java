@@ -130,13 +130,16 @@ class KostiaFedP2ParityTest {
         assertTrue(world.contains("this.world.getChunkSource().setSpawnSettings(allow);"));
         assertFalse(world.contains("setSpawnFlags(boolean arg0, boolean arg1)"));
         assertTrue(cache.contains("private boolean cardboard$spawnFriendlies = true"));
-        assertTrue(cache.contains("getFilteredSpawningCategories(Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZ)"));
-        assertTrue(cache.contains("cardboard$filterFriendlySpawns"));
-        assertTrue(cache.contains(".filter(category -> !category.isFriendly())"));
-        assertFalse(cache.contains("SpawnState;ZZZ"));
+        assertFalse(cache.contains("getFilteredSpawningCategories"));
+        String natural = source("src/main/java/org/cardboardpowered/mixin/world/level/NaturalSpawnerMixin.java");
+        assertTrue(natural.contains("@Inject(method = \"spawnCategoryForChunk\", at = @At(\"HEAD\"), cancellable = true)"));
+        assertTrue(natural.contains("category.isFriendly()"));
+        assertTrue(natural.contains("cardboard$getSpawnFriendlies()"));
+        assertTrue(natural.contains("ci.cancel()"));
 
         String mixins = source("src/main/resources/bukkitfabric.mixins.json");
         assertTrue(mixins.contains("\"server.level.ServerChunkCacheMixin\""));
+        assertTrue(mixins.contains("\"world.level.NaturalSpawnerMixin\""));
         assertTrue(mixins.contains("\"world.damagesource.CombatTrackerMixin\""));
     }
 
