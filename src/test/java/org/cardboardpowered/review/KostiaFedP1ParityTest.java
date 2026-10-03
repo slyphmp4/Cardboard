@@ -92,12 +92,19 @@ class KostiaFedP1ParityTest {
     void cubeWanderStateIsPersistentAndAffectsGoals() throws Exception {
         String bridge = source("src/main/java/org/cardboardpowered/bridge/world/entity/monster/SlimeBridge.java");
         String mixin = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/SlimeMixin.java");
-        String goals = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/CubeMobWanderGoalMixin.java");
+        String attackGoal = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/CubeMobAttackGoalMixin.java");
+        String floatGoal = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/CubeMobFloatGoalMixin.java");
+        String randomGoal = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/CubeMobRandomDirectionGoalMixin.java");
+        String jumpingGoal = source("src/main/java/org/cardboardpowered/mixin/world/entity/monster/CubeMobKeepOnJumpingGoalMixin.java");
         String sulfur = source("src/main/java/org/bukkit/craftbukkit/entity/CraftSulfurCube.java");
 
         assertTrue(bridge.contains("cardboard$canWander()"));
         assertTrue(mixin.contains("\"Paper.canWander\""));
-        assertTrue(goals.contains("cardboard$canWander()"));
+        assertTrue(attackGoal.contains("cardboard$canWander()"));
+        assertTrue(floatGoal.contains("cardboard$canWander()"));
+        assertTrue(randomGoal.contains("cardboard$canWander()"));
+        assertTrue(jumpingGoal.contains("cardboard$canWander()"));
+        assertTrue(attackGoal.contains("canContinueToUse"));
         assertTrue(sulfur.contains("cardboard$setWander(canWander)"));
     }
 
