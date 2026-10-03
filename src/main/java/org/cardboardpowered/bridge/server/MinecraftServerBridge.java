@@ -89,5 +89,7 @@ public interface MinecraftServerBridge {
 
     boolean cardboard$isDebugging();
 
+    boolean cardboard$isIteratingOverLevels();
+
 	void cardboard$worldLoaderContext(DataLoadContext value);
 }
