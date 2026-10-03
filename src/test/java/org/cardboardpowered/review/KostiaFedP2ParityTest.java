@@ -42,6 +42,7 @@ class KostiaFedP2ParityTest {
         assertTrue(bridge.contains("new org.bukkit.craftbukkit.damage.CraftDamageSourceBuilder(damageType)"));
         assertTrue(bridge.contains("CraftEntityType.bukkitToMinecraft(entityType).getDescriptionId()"));
         assertTrue(bridge.contains("ComponentUtils.resolve("));
+        assertTrue(bridge.contains("withMaximumPermission(net.minecraft.server.permissions.PermissionSet.ALL_PERMISSIONS)"));
         assertTrue(bridge.contains("VersionFetcher.DummyVersionFetcher()"));
 
         assertFalse(magic.contains("public DamageSource.Builder createDamageSourceBuilder("));
@@ -117,6 +118,21 @@ class KostiaFedP2ParityTest {
         String mixins = source("src/main/resources/bukkitfabric.mixins.json");
         assertTrue(mixins.contains("\"server.level.ServerChunkCacheMixin\""));
         assertTrue(mixins.contains("\"world.damagesource.CombatTrackerMixin\""));
+    }
+
+    @Test
+    void rawSerializationUsesCardboardBridgesForPaperPatchedNms() throws Exception {
+        String magic = source("src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java");
+        String entity = source("src/main/java/org/cardboardpowered/mixin/world/entity/EntityMixin.java");
+        String custom = source("src/main/java/org/cardboardpowered/mixin/world/item/component/CustomDataMixin.java");
+
+        assertTrue(magic.contains("CustomDataSerialization.setSerializeAsSnbt(true)"));
+        assertTrue(magic.contains("cardboard$saveAsPassenger(output, includeNonSaveable, forceSerialization)"));
+        assertTrue(entity.contains("Temporarily detach them and recurse through this bridge"));
+        assertTrue(entity.contains("passengerOutputs.addChild()"));
+        assertTrue(custom.contains("Codec.either(CompoundTag.CODEC, TagParser.FLATTENED_CODEC)"));
+        assertFalse(magic.contains("CustomData.SERIALIZE_CUSTOM_AS_SNBT"));
+        assertFalse(magic.contains("saveAsPassenger(output, true, includeNonSaveable, forceSerialization)"));
     }
 
 }

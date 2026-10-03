@@ -532,7 +532,7 @@ public final class CraftItemStack extends ItemStack {
     }
 
     @Override
-    public @NotNull @org.jetbrains.annotations.Unmodifiable java.util.List<Component> computeTooltipLines(
+    public @NotNull java.util.List<Component> computeTooltipLines(
             final io.papermc.paper.inventory.tooltip.TooltipContext tooltipContext,
             final org.bukkit.entity.Player player) {
         Preconditions.checkArgument(tooltipContext != null, "tooltipContext cannot be null");

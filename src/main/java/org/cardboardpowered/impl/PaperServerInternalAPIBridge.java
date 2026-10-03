@@ -184,12 +184,10 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
     public Component resolveWithContext(Component component, org.bukkit.command.@Nullable CommandSender context,
                                         org.bukkit.entity.@Nullable Entity scoreboardSubject,
                                         boolean bypassPermissions) throws java.io.IOException {
-        final net.minecraft.commands.CommandSourceStack source =
+        net.minecraft.commands.CommandSourceStack source =
                 context != null ? org.bukkit.craftbukkit.command.VanillaCommandWrapper.getListener(context) : null;
-        Boolean previous = null;
         if (source != null && bypassPermissions) {
-            previous = source.bypassSelectorPermissions;
-            source.bypassSelectorPermissions = true;
+            source = source.withMaximumPermission(net.minecraft.server.permissions.PermissionSet.ALL_PERMISSIONS);
         }
 
         try {
@@ -208,10 +206,6 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
                             io.papermc.paper.adventure.PaperAdventure.asVanilla(component)));
         } catch (final com.mojang.brigadier.exceptions.CommandSyntaxException ex) {
             throw new java.io.IOException(ex);
-        } finally {
-            if (previous != null) {
-                source.bypassSelectorPermissions = previous;
-            }
         }
     }
 

@@ -62,6 +62,11 @@ public interface EntityBridge {
 
     void cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause cause);
 
+    boolean cardboard$saveAsPassenger(
+            net.minecraft.world.level.storage.ValueOutput output,
+            boolean includeNonSaveable,
+            boolean forceSerialization);
+
     boolean cardboard$hasFixedPose();
 
     void cardboard$setFixedPose(boolean fixed);

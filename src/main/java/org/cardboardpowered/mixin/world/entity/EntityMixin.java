@@ -124,6 +124,12 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     @Shadow
     private EntityDimensions dimensions;
 
+    @Shadow
+    private java.util.List<Entity> passengers;
+
+    @Shadow
+    private Entity.RemovalReason removalReason;
+
     public EntityMixin() {
     }
 
@@ -417,12 +423,54 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     	((Entity) (Object) this).igniteForSeconds(seconds);
     }
     
-    public boolean saveAsPassenger(ValueOutput valueOutput, boolean includeAll, boolean includeNonSaveable, boolean forceSerialization) {
-    	return ((Entity) (Object) this).saveAsPassenger(valueOutput);
-    }
-    
-    public void saveWithoutId(ValueOutput valueOutput, boolean includeAll, boolean includeNonSaveable, boolean forceSerialization) {
-    	((Entity) (Object) this).saveWithoutId(valueOutput);
+    @Override
+    public boolean cardboard$saveAsPassenger(
+            ValueOutput output,
+            boolean includeNonSaveable,
+            boolean forceSerialization) {
+        if (this.removalReason != null && !this.removalReason.shouldSave() && !forceSerialization) {
+            return false;
+        }
+
+        final Entity self = (Entity) (Object) this;
+        if (!includeNonSaveable && !self.getType().canSerialize()) {
+            return false;
+        }
+
+        final net.minecraft.resources.Identifier id =
+                net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
+        if (id == null) {
+            return false;
+        }
+
+        output.putString("id", id.toString());
+
+        // Vanilla saveWithoutId recursively serializes passengers with vanilla rules.
+        // Temporarily detach them and recurse through this bridge so PLAYER/MISC/FORCE
+        // flags apply to the complete passenger tree as Paper's overload does.
+        final java.util.List<Entity> originalPassengers = this.passengers;
+        this.passengers = com.google.common.collect.ImmutableList.of();
+        try {
+            self.saveWithoutId(output);
+        } finally {
+            this.passengers = originalPassengers;
+        }
+
+        if (!originalPassengers.isEmpty()) {
+            ValueOutput.ValueOutputList passengerOutputs = output.childrenList("Passengers");
+            for (Entity passenger : originalPassengers) {
+                ValueOutput passengerOutput = passengerOutputs.addChild();
+                if (!((EntityBridge) (Object) passenger)
+                        .cardboard$saveAsPassenger(passengerOutput, includeNonSaveable, forceSerialization)) {
+                    passengerOutputs.discardLast();
+                }
+            }
+            if (passengerOutputs.isEmpty()) {
+                output.discard("Passengers");
+            }
+        }
+
+        return true;
     }
     
     private final CommandSource commandSource = new CommandSource() {
