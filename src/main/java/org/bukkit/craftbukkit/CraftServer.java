@@ -149,6 +149,7 @@ import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.craftbukkit.entity.CraftEntityFactory;
 import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.craftbukkit.packs.CraftDataPackManager;
+import org.bukkit.craftbukkit.map.CraftMapCursor;
 import org.bukkit.craftbukkit.packs.CraftResourcePack;
 import org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager;
 import org.bukkit.craftbukkit.scoreboard.CraftCriteria;
@@ -2587,8 +2588,37 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 	public @Nullable ItemStack createExplorerMap(@NotNull World world, @NotNull Location location,
 			org.bukkit.generator.structure.@NotNull StructureType structureType,
 			org.bukkit.map.MapCursor.@NotNull Type mapIcon, int radius, boolean findUnexplored) {
-		// TODO Auto-generated method stub
-		return null;
+        Preconditions.checkArgument(world != null, "World cannot be null");
+        Preconditions.checkArgument(location != null, "Location cannot be null");
+        Preconditions.checkArgument(structureType != null, "structureType cannot be null");
+        Preconditions.checkArgument(mapIcon != null, "mapIcon cannot be null");
+
+        final org.bukkit.util.StructureSearchResult result =
+                world.locateNearestStructure(location, structureType, radius, findUnexplored);
+        if (result == null) {
+            return null;
+        }
+
+        Location structureLocation = result.getLocation();
+        BlockPos structurePos = new BlockPos(
+                structureLocation.getBlockX(),
+                structureLocation.getBlockY(),
+                structureLocation.getBlockZ()
+        );
+        ServerLevel level = ((CraftWorld) world).getHandle();
+
+        net.minecraft.world.item.ItemStack stack =
+                MapItem.create(level, structurePos.getX(), structurePos.getZ(),
+                        MapView.Scale.NORMAL.getValue(), true, true);
+        MapItem.renderBiomePreviewMap(level, stack);
+        MapItemSavedData.addTargetDecoration(
+                stack,
+                structurePos,
+                "+",
+                CraftMapCursor.CraftType.bukkitToMinecraftHolder(mapIcon)
+        );
+
+        return CraftItemStack.asBukkitCopy(stack);
 	}
 
 	@Override
