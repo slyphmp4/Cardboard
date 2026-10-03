@@ -376,7 +376,7 @@ public abstract class ServerLoginPacketListenerImplMixin implements ServerLoginP
     @Shadow
     private void finishLoginAndWaitForClient(GameProfile profile) {
         this.state = State.PROTOCOL_SWITCHING;
-        this.connection.send(new ClientboundLoginFinishedPacket(profile, java.util.UUID.randomUUID()));
+        this.connection.send(new ClientboundLoginFinishedPacket(profile, this.server.getConnection().getSessionId()));
     }
 
 	@Inject(at = @At("TAIL"), method = "handleHello")
