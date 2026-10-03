@@ -61,6 +61,29 @@ public final class CraftChatMessage {
         return ChatColor.getByChar(format.code);
     }
 
+    public static ChatFormatting toLegacyFormat(final TextColor color) {
+        // RGB values of the named text colors mapped to the legacy formatting enum.
+        return switch (color.getValue()) {
+            case 0 -> ChatFormatting.BLACK;
+            case 170 -> ChatFormatting.DARK_BLUE;
+            case 43520 -> ChatFormatting.DARK_GREEN;
+            case 43690 -> ChatFormatting.DARK_AQUA;
+            case 11141120 -> ChatFormatting.DARK_RED;
+            case 11141290 -> ChatFormatting.DARK_PURPLE;
+            case 16755200 -> ChatFormatting.GOLD;
+            case 11184810 -> ChatFormatting.GRAY;
+            case 5592405 -> ChatFormatting.DARK_GRAY;
+            case 5592575 -> ChatFormatting.BLUE;
+            case 5635925 -> ChatFormatting.GREEN;
+            case 5636095 -> ChatFormatting.AQUA;
+            case 16733525 -> ChatFormatting.RED;
+            case 16733695 -> ChatFormatting.LIGHT_PURPLE;
+            case 16777045 -> ChatFormatting.YELLOW;
+            case 16777215 -> ChatFormatting.WHITE;
+            default -> null;
+        };
+    }
+
     private static final class StringMessage {
         private static final Pattern INCREMENTAL_PATTERN = Pattern.compile("(" + String.valueOf(org.bukkit.ChatColor.COLOR_CHAR) + "[0-9a-fk-orx])|((?:(?:https?):\\/\\/)?(?:[-\\w_\\.]{2,}\\.[a-z]{2,4}.*?(?=[\\.\\?!,;:]?(?:[" + String.valueOf(org.bukkit.ChatColor.COLOR_CHAR) + " \\n]|$))))|(\\n)", Pattern.CASE_INSENSITIVE);
         // Separate pattern with no group 3, new lines are part of previous string

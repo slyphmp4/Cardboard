@@ -379,8 +379,7 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
     public <T extends org.bukkit.entity.Entity> T createEntity(Location location, Class<T> clazz) throws IllegalArgumentException {
         Entity entity = this.createEntity(location, clazz, true);
         if (!this.isNormalWorld()) {
-            // TODO
-        	// entity.generation = true;
+            ((EntityBridge) entity).cardboard$setGeneration(true);
         }
         return (T)((EntityBridge)entity).getBukkitEntity();
     }
@@ -427,7 +426,7 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
             ((Mob)entity).finalizeSpawn(this.getHandle(), this.getHandle().getCurrentDifficultyAt(entity.blockPosition()), EntitySpawnReason.COMMAND, null);
         }
         if (!this.isNormalWorld()) {
-            // TODO entity.generation = true;
+            ((EntityBridge) entity).cardboard$setGeneration(true);
         }
         if (function != null) {
             function.accept((T) ((EntityBridge)entity).getBukkitEntity());

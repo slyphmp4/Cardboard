@@ -504,22 +504,23 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
             return;
         }
 
+        EntityBridge bridge = (EntityBridge) this.entity;
+        org.bukkit.event.entity.EntityRemoveEvent.Cause cause =
+                bridge.cardboard$isGeneration()
+                        ? null
+                        : org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN;
+        bridge.cardboard$setRemoveEventCause(cause);
+
         me.isaiah.common.cmixin.IMixinEntity common =
                 (me.isaiah.common.cmixin.IMixinEntity) this.entity;
 
         common.Iremove(IRemoveReason.DISCARDED);
 
-        /*
-         * Bukkit Entity#remove() is a plugin removal on Paper.
-         * Cardboard currently has no NMS EntityRemoveEvent cause
-         * pipeline, so bridge the API operation here.
-         */
-        this.server.getPluginManager().callEvent(
-                new org.bukkit.event.entity.EntityRemoveEvent(
-                        this,
-                        org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN
-                )
-        );
+        if (cause != null) {
+            this.server.getPluginManager().callEvent(
+                    new org.bukkit.event.entity.EntityRemoveEvent(this, cause)
+            );
+        }
     }
 
     @Override
@@ -1061,15 +1062,15 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     public void setPose0(net.minecraft.world.entity.Pose pose, boolean fixed) {
         final Entity handle = this.getHandle();
-        //handle.fixedPose = false; // TODO
+        final EntityBridge bridge = (EntityBridge) handle;
+        bridge.cardboard$setFixedPose(false);
         handle.setPose(pose);
-        //handle.fixedPose = fixed; // TODO
+        bridge.cardboard$setFixedPose(fixed);
     }
 
     @Override
     public boolean hasFixedPose() {
-        //return this.getHandle().fixedPose; // TODO
-        return false;
+        return ((EntityBridge) this.getHandle()).cardboard$hasFixedPose();
     }
 
     @Override
@@ -1462,15 +1463,9 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public org.bukkit.event.entity.EntityRemoveEvent.Cause getRemoveEventCause() {
-        final net.minecraft.world.entity.Entity.RemovalReason reason = this.entity.getRemovalReason();
-        if (reason == null) return null;
-        return switch (reason) {
-            case KILLED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH;
-            case DISCARDED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD;
-            case UNLOADED_TO_CHUNK -> org.bukkit.event.entity.EntityRemoveEvent.Cause.UNLOAD;
-            case UNLOADED_WITH_PLAYER, CHANGED_DIMENSION ->
-                    org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT;
-        };
+        // Match Paper: this is the explicitly supplied Bukkit removal cause,
+        // not an inference from the vanilla removal reason.
+        return ((EntityBridge) this.entity).cardboard$getRemoveEventCause();
     }
 
 }

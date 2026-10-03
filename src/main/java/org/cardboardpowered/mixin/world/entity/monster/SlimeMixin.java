@@ -4,9 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import net.minecraft.world.entity.monster.cubemob.AbstractCubeMob;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.cardboardpowered.mixin.world.entity.EntityMixin;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.cardboardpowered.bridge.world.entity.monster.SlimeBridge;
 
 // 26.2: getSize/setSize moved from Slime to AbstractCubeMob (shared with MagmaCube)
@@ -16,9 +22,32 @@ public class SlimeMixin extends EntityMixin implements SlimeBridge {
     @Shadow public int getSize() {return 0;}
     @Shadow public void setSize(int i, boolean flag) {}
 
+    @Unique
+    private boolean cardboard$canWander = true;
+
     @Override
     public void setSizeBF(int i, boolean flag) {
         setSize(i, flag);
+    }
+
+    @Override
+    public boolean cardboard$canWander() {
+        return this.cardboard$canWander;
+    }
+
+    @Override
+    public void cardboard$setWander(boolean canWander) {
+        this.cardboard$canWander = canWander;
+    }
+
+    @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
+    private void cardboard$saveWander(ValueOutput output, CallbackInfo ci) {
+        output.putBoolean("Paper.canWander", this.cardboard$canWander);
+    }
+
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    private void cardboard$loadWander(ValueInput input, CallbackInfo ci) {
+        this.cardboard$canWander = input.getBooleanOr("Paper.canWander", true);
     }
 
     private boolean cancelRemove_B;

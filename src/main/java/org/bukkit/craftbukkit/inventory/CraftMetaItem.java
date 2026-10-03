@@ -2493,6 +2493,21 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
     }
     // Paper end - improve checking handled data component types
 
+    protected boolean isEmptyEntityTag(CompoundTag tag, net.minecraft.world.entity.EntityType<?> type) {
+        if (tag.isEmpty()) {
+            return true;
+        }
+
+        if (tag.size() > 1) {
+            return false;
+        }
+
+        String expectedId = net.minecraft.world.entity.EntityType.getKey(type).toString();
+        return tag.getString(net.minecraft.world.entity.Entity.TAG_ID)
+                .filter(id -> id.equals(expectedId))
+                .isPresent();
+    }
+
     protected static <T> Optional<? extends T> getOrEmpty(DataComponentPatch tag, ItemMetaKeyType<T> type) {
         return getOrEmpty(tag, type.TYPE);
     }

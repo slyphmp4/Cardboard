@@ -78,9 +78,9 @@ public record PaperCombatTrackerWrapper(net.minecraft.world.damagesource.CombatT
     }
 
     public void addCombatEntry(CombatEntry combatEntry) {
-        net.minecraft.world.damagesource.CombatEntry entry = ((PaperCombatEntryWrapper)combatEntry).handle();
-        // TODO
-        // this.handle.recordDamageAndCheckCombatState(entry);
+        net.minecraft.world.damagesource.CombatEntry entry = ((PaperCombatEntryWrapper) combatEntry).handle();
+        ((org.cardboardpowered.bridge.world.damagesource.CombatTrackerBridge) (Object) this.handle)
+                .cardboard$recordDamageAndCheckCombatState(entry);
     }
 
     public Component getDeathMessage() {
@@ -88,8 +88,8 @@ public record PaperCombatTrackerWrapper(net.minecraft.world.damagesource.CombatT
     }
 
     public void resetCombatState() {
-        // TODO
-    	// this.handle.resetCombatState();
+        ((org.cardboardpowered.bridge.world.damagesource.CombatTrackerBridge) (Object) this.handle)
+                .cardboard$resetCombatState();
     }
 
     public FallLocationType calculateFallLocationType() {
@@ -117,7 +117,7 @@ public record PaperCombatTrackerWrapper(net.minecraft.world.damagesource.CombatT
     // 26.2: new on CombatTracker
     @Override
     public int getLastDamageTime() {
-        return this.handle.lastDamageTime;
+        return this.handle.mob.tickCount - this.handle.lastDamageTime;
     }
 
 }

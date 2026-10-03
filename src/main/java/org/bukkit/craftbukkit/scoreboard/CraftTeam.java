@@ -74,30 +74,22 @@ final class CraftTeam extends CraftScoreboardComponent implements Team {
     @Override
     public boolean hasColor() {
         this.checkState();
-        // 26.2: PlayerTeam#getColor is now Optional<TeamColor>
         return this.team.getColor().isPresent();
     }
 
     @Override
     public net.kyori.adventure.text.format.TextColor color() throws IllegalStateException {
-        Preconditions.checkState(this.team.getColor().isPresent(), "Team colors must have hex values");
         this.checkState();
-
-        net.kyori.adventure.text.format.TextColor color = net.kyori.adventure.text.format.TextColor.color(
-                this.team.getColor().orElseThrow().rgb());
-        if (!(color instanceof net.kyori.adventure.text.format.NamedTextColor)) {
-            throw new IllegalStateException("Team doesn't have a NamedTextColor");
-        }
-        return color;
+        return this.team.getColor()
+                .map(io.papermc.paper.adventure.PaperAdventure::asAdventure)
+                .orElseThrow(() -> new IllegalStateException("Team does not have a color!"));
     }
 
     @Override
     public void color(net.kyori.adventure.text.format.NamedTextColor color) {
         this.checkState();
-        // 26.2: PlayerTeam#setColor takes Optional<TeamColor> instead of ChatFormatting
-        this.team.setColor(color == null ? java.util.Optional.empty()
-                : java.util.Optional.ofNullable(net.minecraft.world.scores.TeamColor.byName(
-                        net.kyori.adventure.text.format.NamedTextColor.NAMES.key(color))));
+        this.team.setColor(java.util.Optional.ofNullable(color)
+                .map(io.papermc.paper.adventure.PaperAdventure::asVanilla));
     }
 
     @Override
@@ -149,9 +141,10 @@ final class CraftTeam extends CraftScoreboardComponent implements Team {
     public ChatColor getColor() {
         this.checkState();
 
-        // 26.2: map Optional<TeamColor> back to a Bukkit ChatColor
         return this.team.getColor()
-                .map(tc -> CraftChatMessage.getColor(net.minecraft.ChatFormatting.valueOf(tc.name())))
+                .map(net.minecraft.world.scores.TeamColor::textColor)
+                .map(CraftChatMessage::toLegacyFormat)
+                .map(CraftChatMessage::getColor)
                 .orElse(ChatColor.RESET);
     }
 
@@ -161,8 +154,14 @@ final class CraftTeam extends CraftScoreboardComponent implements Team {
         Preconditions.checkArgument(!color.isFormat(), "Color must be a color not a format");
         this.checkState();
 
-        this.team.setColor(java.util.Optional.ofNullable(
-                net.minecraft.world.scores.TeamColor.byName(CraftChatMessage.getColor(color).name())));
+        this.team.setColor(
+                java.util.Optional.of(color)
+                        .filter(c -> c != ChatColor.RESET)
+                        .map(CraftChatMessage::getColor)
+                        .map(net.minecraft.network.chat.TextColor::fromLegacyFormat)
+                        .map(net.minecraft.network.chat.TextColor::serialize)
+                        .map(net.minecraft.world.scores.TeamColor::byName)
+        );
     }
 
     @Override
