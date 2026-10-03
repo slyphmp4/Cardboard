@@ -505,24 +505,22 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
         }
 
         EntityBridge bridge = (EntityBridge) this.entity;
-        bridge.cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN);
+        org.bukkit.event.entity.EntityRemoveEvent.Cause cause =
+                bridge.cardboard$isGeneration()
+                        ? null
+                        : org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN;
+        bridge.cardboard$setRemoveEventCause(cause);
 
         me.isaiah.common.cmixin.IMixinEntity common =
                 (me.isaiah.common.cmixin.IMixinEntity) this.entity;
 
         common.Iremove(IRemoveReason.DISCARDED);
 
-        /*
-         * Bukkit Entity#remove() is a plugin removal on Paper.
-         * Cardboard currently has no NMS EntityRemoveEvent cause
-         * pipeline, so bridge the API operation here.
-         */
-        this.server.getPluginManager().callEvent(
-                new org.bukkit.event.entity.EntityRemoveEvent(
-                        this,
-                        org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN
-                )
-        );
+        if (cause != null) {
+            this.server.getPluginManager().callEvent(
+                    new org.bukkit.event.entity.EntityRemoveEvent(this, cause)
+            );
+        }
     }
 
     @Override
