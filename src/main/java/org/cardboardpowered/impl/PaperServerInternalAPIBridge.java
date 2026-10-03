@@ -143,12 +143,12 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
 
     @Override
     public DamageSource.Builder createDamageSourceBuilder(org.bukkit.damage.DamageType damageType) {
-        return MN.createDamageSourceBuilder(damageType);
+        return new org.bukkit.craftbukkit.damage.CraftDamageSourceBuilder(damageType);
     }
 
     @Override
     public String getTranslationKey(org.bukkit.entity.EntityType entityType) {
-        return MN.getTranslationKey(entityType);
+        return org.bukkit.craftbukkit.entity.CraftEntityType.bukkitToMinecraft(entityType).getDescriptionId();
     }
 
     @Override
@@ -193,7 +193,40 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
     public Component resolveWithContext(Component component, org.bukkit.command.@Nullable CommandSender context,
                                         org.bukkit.entity.@Nullable Entity scoreboardSubject,
                                         boolean bypassPermissions) throws java.io.IOException {
-        return MN.resolveWithContext(component, context, scoreboardSubject, bypassPermissions);
+        final net.minecraft.commands.CommandSourceStack source =
+                context != null ? org.bukkit.craftbukkit.command.VanillaCommandWrapper.getListener(context) : null;
+        Boolean previous = null;
+        if (source != null && bypassPermissions) {
+            previous = source.bypassSelectorPermissions;
+            source.bypassSelectorPermissions = true;
+        }
+
+        try {
+            final net.minecraft.network.chat.ResolutionContext.Builder builder =
+                    net.minecraft.network.chat.ResolutionContext.builder();
+            if (source != null) {
+                builder.withSource(source);
+            }
+            if (scoreboardSubject != null) {
+                builder.withEntityOverride(
+                        ((org.bukkit.craftbukkit.entity.CraftEntity) scoreboardSubject).getHandle());
+            }
+            return io.papermc.paper.adventure.PaperAdventure.asAdventure(
+                    net.minecraft.network.chat.ComponentUtils.resolve(
+                            builder.build(),
+                            io.papermc.paper.adventure.PaperAdventure.asVanilla(component)));
+        } catch (final com.mojang.brigadier.exceptions.CommandSyntaxException ex) {
+            throw new java.io.IOException(ex);
+        } finally {
+            if (previous != null) {
+                source.bypassSelectorPermissions = previous;
+            }
+        }
+    }
+
+    @Override
+    public com.destroystokyo.paper.util.VersionFetcher getVersionFetcher() {
+        return new com.destroystokyo.paper.util.VersionFetcher.DummyVersionFetcher();
     }
 
 }

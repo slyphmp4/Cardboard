@@ -516,6 +516,50 @@ public final class CraftItemStack extends ItemStack {
     }
 
     @Override
+    public @NotNull String translationKey() {
+        if (this.handle == null) {
+            return net.minecraft.world.item.Items.AIR.getDescriptionId();
+        }
+        return this.handle.getItem().getDescriptionId();
+    }
+
+    @Override
+    public boolean isRepairableBy(@NotNull final ItemStack repairMaterial) {
+        if (this.handle == null) {
+            return false;
+        }
+        return this.handle.isValidRepairItem(CraftItemStack.unwrap(repairMaterial));
+    }
+
+    @Override
+    public @NotNull @org.jetbrains.annotations.Unmodifiable java.util.List<Component> computeTooltipLines(
+            final io.papermc.paper.inventory.tooltip.TooltipContext tooltipContext,
+            final org.bukkit.entity.Player player) {
+        Preconditions.checkArgument(tooltipContext != null, "tooltipContext cannot be null");
+        net.minecraft.world.item.ItemStack item =
+                this.handle == null ? net.minecraft.world.item.ItemStack.EMPTY : this.handle;
+        net.minecraft.world.item.TooltipFlag.Default flag =
+                tooltipContext.isAdvanced()
+                        ? net.minecraft.world.item.TooltipFlag.ADVANCED
+                        : net.minecraft.world.item.TooltipFlag.NORMAL;
+        if (tooltipContext.isCreative()) {
+            flag = flag.asCreative();
+        }
+
+        final java.util.List<net.minecraft.network.chat.Component> lines = item.getTooltipLines(
+                net.minecraft.world.item.Item.TooltipContext.of(
+                        player == null
+                                ? CraftRegistry.getMinecraftRegistry()
+                                : ((org.bukkit.craftbukkit.entity.CraftPlayer) player)
+                                        .getHandle().level().registryAccess()),
+                player == null
+                        ? null
+                        : ((org.bukkit.craftbukkit.entity.CraftPlayer) player).getHandle(),
+                flag);
+        return lines.stream().map(PaperAdventure::asAdventure).toList();
+    }
+
+    @Override
     public @NotNull Component effectiveName() {
         return this.handle == null ? Component.empty() : PaperAdventure.asAdventure(this.handle.getStyledHoverName());
     }

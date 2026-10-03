@@ -120,41 +120,6 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
     public Block IgetBlock(Material m) {
         return CraftMagicNumbers.getBlock(m);
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.flattener.ComponentFlattener componentFlattener() {
-        return io.papermc.paper.adventure.PaperAdventure.FLATTENER;
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.serializer.gson.GsonComponentSerializer colorDownsamplingGsonComponentSerializer() {
-        return net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.colorDownsamplingGson();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.serializer.gson.GsonComponentSerializer gsonComponentSerializer() {
-        return net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    // 26.2: removed - Adventure 5 deleted PlainComponentSerializer
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer plainTextSerializer() {
-        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer legacyComponentSerializer() {
-        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public net.kyori.adventure.text.Component resolveWithContext(final net.kyori.adventure.text.Component component, final org.bukkit.command.CommandSender context, final org.bukkit.entity.Entity scoreboardSubject, final boolean bypassPermissions) throws IOException {
-        //return io.papermc.paper.adventure.PaperAdventure.resolveWithContext(component, context, scoreboardSubject, bypassPermissions);
-        return component; // TODO
-    }
-
     public static BlockState getBlock(MaterialData material) {
         return CraftMagicNumbers.getBlock(material.getItemType(), material.getData());
     }
@@ -427,46 +392,6 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
 
         return clazz;
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(Material material, EquipmentSlot slot) {
-        // Paper start - delegate to method on ItemType
-        final org.bukkit.inventory.ItemType item = material.asItemType();
-        Preconditions.checkArgument(item != null, material + " is not an item and does not have default attributes");
-        return item.getDefaultAttributeModifiers(slot);
-        // Paper end - delegate to method on ItemType
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public CreativeCategory getCreativeCategory(Material material) {
-        return material.getCreativeCategory();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public String getBlockTranslationKey(Material material) {
-        return material.getBlockTranslationKey();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public String getItemTranslationKey(Material material) {
-        return material.getItemTranslationKey();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public String getTranslationKey(EntityType entityType) {
-        Preconditions.checkArgument(entityType.getName() != null, "Invalid name of EntityType %s for translation key", entityType);
-        // 26.2: EntityType.byString was removed; resolve via the registry
-        return net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
-                .getOptional(net.minecraft.resources.Identifier.parse(entityType.getName()))
-                .map(net.minecraft.world.entity.EntityType::getDescriptionId).orElseThrow();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public String getTranslationKey(ItemStack itemStack) {
-        net.minecraft.world.item.ItemStack nmsItemStack = CraftItemStack.asNMSCopy(itemStack);
-        return nmsItemStack.getItem().getDescriptionId();
-    }
-
     @Override
     public boolean isSupportedApiVersion(String apiVersion) {
         if (apiVersion == null) return false;
@@ -475,12 +400,6 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
 
         return !toCheck.isNewerThan(ApiVersion.CURRENT) && !toCheck.isOlderThan(minimumVersion);
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public String getTranslationKey(final Attribute attribute) {
-        return attribute.getTranslationKey();
-    }
-
     @Override
     public PotionType.InternalPotionData getInternalPotionData(NamespacedKey namespacedKey) {
         Potion potionRegistry = CraftRegistry.getMinecraftRegistry(Registries.POTION)
@@ -488,12 +407,6 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
 
         return new CraftPotionType(namespacedKey, potionRegistry);
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public DamageSource.Builder createDamageSourceBuilder(DamageType damageType) {
-        return new CraftDamageSourceBuilder(damageType);
-    }
-
     @Override
     public String get(Class<?> aClass, String s) {
         if (aClass == Enchantment.class) {
@@ -508,37 +421,7 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
         // We currently do not have any version-dependent remapping, so we can use current version
         return CraftRegistry.get(registry, namespacedKey, ApiVersion.CURRENT);
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public com.destroystokyo.paper.util.VersionFetcher getVersionFetcher() {
-        //return new com.destroystokyo.paper.PaperVersionFetcher(); // TODO
-        return new com.destroystokyo.paper.util.VersionFetcher() {
-            @Override
-            public long getCacheTime() {
-                return 0;
-            }
-
-            @Override
-            public Component getVersionMessage() {
-                return Component.text("TODO");
-            }
-        };
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public byte[] serializeItem(ItemStack item) {
-        Preconditions.checkNotNull(item, "null cannot be serialized");
-        Preconditions.checkArgument(!item.isEmpty(), "Empty itemstack cannot be serialized");
-
-        return serializeNbtToBytes(
-                (CompoundTag) net.minecraft.world.item.ItemStack.CODEC.encodeStart(
-                        CraftServer.INSTANCE.getServer().registryAccess().createSerializationContext(NbtOps.INSTANCE),
-                        CraftItemStack.unwrap(item)
-                ).getOrThrow()
-        );
-    }
-
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public ItemStack deserializeItem(byte[] data) {
         Preconditions.checkNotNull(data, "null cannot be deserialized");
         Preconditions.checkArgument(data.length > 0, "cannot deserialize nothing");
@@ -567,47 +450,6 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
     public CompoundTag platformhooks$convertNBT(DSL.TypeReference type, DataFixer dataFixer, CompoundTag nbt, int fromVersion, int toVersion) {
         return (CompoundTag)dataFixer.update(type, new Dynamic<>(NbtOps.INSTANCE, nbt), fromVersion, toVersion).getValue();
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public @org.jetbrains.annotations.NotNull Map<String, Object> serializeStack(final ItemStack itemStack) {
-        if (itemStack.isEmpty()) {
-            return Map.of("id", "minecraft:air", SharedConstants.DATA_VERSION_TAG, this.getDataVersion(), "schema_version", 1);
-        }
-        final CompoundTag tag = (CompoundTag) net.minecraft.world.item.ItemStack.CODEC.encodeStart(
-                CraftRegistry.getMinecraftRegistry().createSerializationContext(NbtOps.INSTANCE),
-                CraftItemStack.asNMSCopy(itemStack)
-        ).getOrThrow();
-        NbtUtils.addCurrentDataVersion(tag);
-
-        final Map<String, Object> ret = new LinkedHashMap<>();
-        tag.asCompound().get().forEach((key, value) -> {
-            switch (key) {
-                case "id" -> {
-                    ret.put("id", value.asString().get());
-                }
-                case "count" -> {
-                    ret.put("count", value.asInt().get());
-                }
-                case "components" -> {
-                    final Map<String, Object> components = new LinkedHashMap<>();
-                    value.asCompound().ifPresent((compoundTag) -> {
-                        compoundTag.forEach((componentKey, componentTag) -> {
-                            final String serializedComponent = componentTag.toString();
-                            components.put(componentKey, serializedComponent);
-                        });
-                    });
-                    ret.put("components", components);
-                }
-                case SharedConstants.DATA_VERSION_TAG -> {
-                    ret.put(SharedConstants.DATA_VERSION_TAG, value.asInt().get());
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + key);
-            }
-        });
-        ret.put("schema_version", 1);
-        return ret;
-    }
-
     private static final TagParser<Tag> SNBT_REGISTRY_UNAWARE_PARSER = TagParser.create(NbtOps.INSTANCE);
     @Override
     public @org.jetbrains.annotations.NotNull ItemStack deserializeStack(@org.jetbrains.annotations.NotNull final Map<String, Object> args) {
@@ -828,10 +670,9 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
         return compound;
     }
 
-    // 26.2: no longer declared by the Paper supertype
-    public int nextEntityId(org.bukkit.World world) {
-        //return net.minecraft.world.entity.Entity.nextEntityId(); // TODO
-        return 0;
+    @Override
+    public int nextEntityId(final org.bukkit.World world) {
+        return ((CraftWorld) world).getHandle().getNextEntityId();
     }
 
     @Override
@@ -843,81 +684,28 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
     public int getProtocolVersion() {
         return net.minecraft.SharedConstants.getCurrentVersion().protocolVersion();
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public boolean isValidRepairItemStack(org.bukkit.inventory.ItemStack itemToBeRepaired, org.bukkit.inventory.ItemStack repairMaterial) {
-        if (!itemToBeRepaired.getType().isItem() || !repairMaterial.getType().isItem()) {
-            return false;
-        }
-        return CraftItemStack.unwrap(itemToBeRepaired).isValidRepairItem(CraftItemStack.unwrap(repairMaterial));
-    }
-
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public boolean hasDefaultEntityAttributes(NamespacedKey entityKey) {
         return net.minecraft.world.entity.ai.attributes.DefaultAttributes.hasSupplier(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(CraftNamespacedKey.toMinecraft(entityKey)));
     }
 
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public org.bukkit.attribute.Attributable getDefaultEntityAttributes(NamespacedKey entityKey) {
         Preconditions.checkArgument(hasDefaultEntityAttributes(entityKey), entityKey + " doesn't have default attributes");
         var supplier = net.minecraft.world.entity.ai.attributes.DefaultAttributes.getSupplier((net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.LivingEntity>) net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(CraftNamespacedKey.toMinecraft(entityKey)));
         return new io.papermc.paper.attribute.UnmodifiableAttributeMap(supplier);
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public org.bukkit.NamespacedKey getBiomeKey(org.bukkit.RegionAccessor accessor, int x, int y, int z) {
-        return accessor.getBiome(x, y, z).getKey();
-    }
-
-    // 26.2: no longer declared by the Paper supertype
-    public void setBiomeKey(org.bukkit.RegionAccessor accessor, int x, int y, int z, org.bukkit.NamespacedKey biomeKey) {
-        accessor.setBiome(x, y, z, org.bukkit.Registry.BIOME.getOrThrow(biomeKey));
-    }
-
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public String getStatisticCriteriaKey(org.bukkit.Statistic statistic) {
         if (statistic.getType() != org.bukkit.Statistic.Type.UNTYPED) return "minecraft.custom:minecraft." + statistic.getKey().getKey();
         return org.bukkit.craftbukkit.CraftStatistic.getNMSStatistic(statistic).getName();
     }
-
-    // 26.2: no longer declared by the Paper supertype
-    public List<net.kyori.adventure.text.Component> computeTooltipLines(final ItemStack itemStack, final io.papermc.paper.inventory.tooltip.TooltipContext tooltipContext, final org.bukkit.entity.Player player) {
-        Preconditions.checkArgument(tooltipContext != null, "tooltipContext cannot be null");
-        net.minecraft.world.item.TooltipFlag.Default flag = tooltipContext.isAdvanced() ? net.minecraft.world.item.TooltipFlag.ADVANCED : net.minecraft.world.item.TooltipFlag.NORMAL;
-        if (tooltipContext.isCreative()) {
-            flag = flag.asCreative();
-        }
-        final List<net.minecraft.network.chat.Component> lines = CraftItemStack.asNMSCopy(itemStack).getTooltipLines(
-                net.minecraft.world.item.Item.TooltipContext.of(player == null ? CraftRegistry.getMinecraftRegistry() : ((org.bukkit.craftbukkit.entity.CraftPlayer) player).getHandle().level().registryAccess()),
-                player == null ? null : ((org.bukkit.craftbukkit.entity.CraftPlayer) player).getHandle(), flag);
-        return lines.stream().map(io.papermc.paper.adventure.PaperAdventure::asAdventure).toList();
-    }
-    // Paper end
-
-    // 26.2: no longer declared by the Paper supertype
-    public org.bukkit.Color getSpawnEggLayerColor(final EntityType entityType, final int layer) {
-        final net.minecraft.world.entity.EntityType<?> nmsType = org.bukkit.craftbukkit.entity.CraftEntityType.bukkitToMinecraft(entityType);
-        
-        
-        final Optional<Holder<Item>> eggItemQ = net.minecraft.world.item.SpawnEggItem.byId(nmsType);
-        
-        if (eggItemQ.isEmpty()) {
-        	return null;
-		}
-        
-        // final net.minecraft.world.item.SpawnEggItem eggItem = eggItemQ.get();
-        if (eggItemQ != null && eggItemQ.isPresent()) {
-            throw new UnsupportedOperationException();
-        }
-        return null;
-    }
-
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager<org.bukkit.plugin.Plugin> createPluginLifecycleEventManager(final org.bukkit.plugin.java.JavaPlugin plugin, final java.util.function.BooleanSupplier registrationCheck) {
         return new io.papermc.paper.plugin.lifecycle.event.PaperLifecycleEventManager<>(plugin, registrationCheck);
     }
 
-    // 26.2: no longer declared by the Paper supertype
+    // 26.2: implementation target for InternalAPIBridge
     public org.bukkit.inventory.ItemStack createEmptyStack() {
         return CraftItemStack.asCraftMirror(null);
     }
