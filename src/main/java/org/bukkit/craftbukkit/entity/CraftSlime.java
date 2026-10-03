@@ -27,12 +27,11 @@ public class CraftSlime extends CraftMob implements Slime, Enemy {  // 26.2: Abs
 
     @Override
     public boolean canWander() {
-        //return this.getHandle().canWander(); // TODO
-        return true;
+        return ((org.cardboardpowered.bridge.world.entity.monster.SlimeBridge) this.getHandle()).cardboard$canWander();
     }
 
     @Override
     public void setWander(boolean canWander) {
-        //this.getHandle().setWander(canWander); // TODO
+        ((org.cardboardpowered.bridge.world.entity.monster.SlimeBridge) this.getHandle()).cardboard$setWander(canWander);
     }
 }

@@ -67,6 +67,9 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     public org.bukkit.projectiles.ProjectileSource projectileSource;
     private ArrayList<org.bukkit.inventory.ItemStack> drops = new ArrayList<org.bukkit.inventory.ItemStack>();
     private boolean forceDrops;
+    private org.bukkit.event.entity.EntityRemoveEvent.Cause cardboard$removeEventCause;
+    private boolean cardboard$generation;
+    private boolean cardboard$fixedPose;
 
     @Override
     public ArrayList<org.bukkit.inventory.ItemStack> cardboard_getDrops() {
@@ -89,6 +92,36 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     @Override
     public void cardboard_setForceDrops(boolean forceDrops) {
         this.forceDrops = forceDrops;
+    }
+
+    @Override
+    public org.bukkit.event.entity.EntityRemoveEvent.Cause cardboard$getRemoveEventCause() {
+        return this.cardboard$removeEventCause;
+    }
+
+    @Override
+    public void cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause cause) {
+        this.cardboard$removeEventCause = cause;
+    }
+
+    @Override
+    public boolean cardboard$isGeneration() {
+        return this.cardboard$generation;
+    }
+
+    @Override
+    public void cardboard$setGeneration(boolean generation) {
+        this.cardboard$generation = generation;
+    }
+
+    @Override
+    public boolean cardboard$hasFixedPose() {
+        return this.cardboard$fixedPose;
+    }
+
+    @Override
+    public void cardboard$setFixedPose(boolean fixed) {
+        this.cardboard$fixedPose = fixed;
     }
 
     @Shadow
@@ -214,6 +247,10 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
 
     @Inject(at = @At("HEAD"), method = "setPose(Lnet/minecraft/world/entity/Pose;)V", cancellable = true)
     public void setPoseBF(net.minecraft.world.entity.Pose entitypose, CallbackInfo ci) {
+        if (this.cardboard$fixedPose) {
+            ci.cancel();
+            return;
+        }
         if (entitypose == ((Entity)(Object)this).getPose()) {
             ci.cancel();
             return;

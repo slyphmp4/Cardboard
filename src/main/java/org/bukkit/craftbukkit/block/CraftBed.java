@@ -1,7 +1,5 @@
 package org.bukkit.craftbukkit.block;
 
-import net.minecraft.world.level.block.entity.BlockEntityTypes;
-
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -11,10 +9,6 @@ import org.bukkit.block.Block;
 // 26.2: beds no longer have a BlockEntity (BlockEntityTypes.BED was removed),
 // so this is now a plain CraftBlockState registered per bed Material.
 public class CraftBed extends CraftBlockState implements Bed {
-
-    private final org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer persistentDataContainer =
-            new org.bukkit.craftbukkit.persistence.CraftPersistentDataContainer(
-                    new org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry());
 
     public CraftBed(Block block) {
         super(block);
@@ -66,9 +60,9 @@ public class CraftBed extends CraftBlockState implements Bed {
 
     @Override
     public org.bukkit.persistence.PersistentDataContainer getPersistentDataContainer() {
-        // Beds have no BlockEntity in 26.2, so there is nothing to persist to.
-        // The container is real but not backed by storage; writes will not survive.
-        return this.persistentDataContainer;
+        throw new UnsupportedOperationException(
+                "Beds no longer have persistent block-entity data in Minecraft 26.2"
+        );
     }
 
     @Override

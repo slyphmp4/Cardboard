@@ -957,3 +957,9 @@ accessible	field	net/minecraft/world/level/block/entity/CreakingHeartBlockEntity
 accessible	field	net/minecraft/world/damagesource/CombatTracker	lastDamageTime	I
 # 26.2: expose SulfurCube fuse setter for the Bukkit SulfurCube API
 accessible	method	net/minecraft/world/entity/monster/cubemob/SulfurCube	setFuse	(I)V
+
+# 26.2: expose cube mob goal classes so wander-state mixins remap safely in production
+accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobAttackGoal
+accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobFloatGoal
+accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobRandomDirectionGoal
+accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobKeepOnJumpingGoal
