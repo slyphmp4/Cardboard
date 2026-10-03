@@ -26,6 +26,8 @@ final class JdbcDriverInitializationTest {
         assertTrue(source.contains("getLauncher().getTargetClassLoader()"),
                 "Drivers must be loaded through Fabric\'s target classloader");
         assertTrue(build.contains("runtimeOnly \"org.xerial:sqlite-jdbc:3.53.4.0\""));
-        assertTrue(build.contains("runtimeOnly \"com.mysql:mysql-connector-j:8.0.32\""));
+        assertTrue(build.contains("runtimeOnly \"com.mysql:mysql-connector-j:26.7.0\""));
+        assertTrue(source.contains("Library.of(\"org.xerial\", \"sqlite-jdbc\", \"3.53.4.0\")"));
+        assertTrue(source.contains("Library.of(\"com.mysql\", \"mysql-connector-j\", \"26.7.0\")"));
     }
 }
