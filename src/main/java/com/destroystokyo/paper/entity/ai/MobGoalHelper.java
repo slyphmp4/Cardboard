@@ -212,11 +212,23 @@ public class MobGoalHelper {
     public static EnumSet<GoalType> vanillaToPaper(Goal goal) {
         EnumSet<GoalType> goals = EnumSet.noneOf(GoalType.class);
         for (GoalType type : GoalType.values()) {
-            if (goal.hasFlag(paperToVanilla(type))) {
+            if (hasType(goal, type)) {
                 goals.add(type);
             }
         }
         return goals;
+    }
+
+    /**
+     * Paper's patched server has an UNKNOWN_BEHAVIOR vanilla flag. The Fabric
+     * compile surface does not, so Cardboard represents the same API state as
+     * a goal with no vanilla flags.
+     */
+    public static boolean hasType(Goal goal, GoalType type) {
+        if (type == GoalType.UNKNOWN_BEHAVIOR) {
+            return goal.getFlags().isEmpty();
+        }
+        return goal.getFlags().contains(paperToVanilla(type));
     }
 
     public static GoalType vanillaToPaper(Goal.Flag type) {
@@ -224,7 +236,6 @@ public class MobGoalHelper {
             case MOVE -> GoalType.MOVE;
             case LOOK -> GoalType.LOOK;
             case JUMP -> GoalType.JUMP;
-            case UNKNOWN_BEHAVIOR -> GoalType.UNKNOWN_BEHAVIOR;
             case TARGET -> GoalType.TARGET;
         };
     }
@@ -232,7 +243,9 @@ public class MobGoalHelper {
     public static EnumSet<Goal.Flag> paperToVanilla(EnumSet<GoalType> types) {
         EnumSet<Goal.Flag> goals = EnumSet.noneOf(Goal.Flag.class);
         for (GoalType type : types) {
-            goals.add(paperToVanilla(type));
+            if (type != GoalType.UNKNOWN_BEHAVIOR) {
+                goals.add(paperToVanilla(type));
+            }
         }
         return goals;
     }
@@ -242,7 +255,7 @@ public class MobGoalHelper {
             case MOVE -> Goal.Flag.MOVE;
             case LOOK -> Goal.Flag.LOOK;
             case JUMP -> Goal.Flag.JUMP;
-            case UNKNOWN_BEHAVIOR -> Goal.Flag.UNKNOWN_BEHAVIOR;
+            case UNKNOWN_BEHAVIOR -> throw new IllegalArgumentException("UNKNOWN_BEHAVIOR has no vanilla Fabric flag");
             case TARGET -> Goal.Flag.TARGET;
         };
     }
