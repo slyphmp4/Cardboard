@@ -126,6 +126,7 @@
     "world.entity.item.ItemEntityMixin",
     "world.entity.item.PrimedTntMixin",
     "world.entity.monster.CreeperMixin",
+    "world.entity.monster.CubeMobWanderGoalMixin",
     "world.entity.monster.SlimeMixin",
     "world.entity.monster.piglin.PiglinAiMixin",
     "world.entity.npc.villager.AbstractVillagerMixin",
