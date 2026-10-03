@@ -148,6 +148,10 @@ public final class MinecraftCommandWrapper extends BukkitCommand {
     public static CommandSourceStack getCommandSource(
             CommandSender sender
     ) {
+        if (sender instanceof io.papermc.paper.commands.FeedbackForwardingSender feedbackSender) {
+            return feedbackSender.asVanilla();
+        }
+
         if (sender instanceof CraftPlayer player) {
             return player
                     .getHandle()
