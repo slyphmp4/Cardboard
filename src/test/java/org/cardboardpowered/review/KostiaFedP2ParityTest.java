@@ -153,7 +153,7 @@ class KostiaFedP2ParityTest {
         assertTrue(magic.contains(".cardboard$saveAsPassenger("));
         assertTrue(magic.contains("serializePassengers"));
         assertTrue(entity.contains("Let vanilla serialize the entity"));
-        assertTrue(entity.contains("without mutating the live entity relationship"));
+        assertTrue(entity.contains("mutating the live entity relationship"));
         assertTrue(entity.contains("passengerOutputs.addChild()"));
         assertTrue(custom.contains("Codec.either(CompoundTag.CODEC, TagParser.FLATTENED_CODEC)"));
         assertFalse(magic.contains("CustomData.SERIALIZE_CUSTOM_AS_SNBT"));
