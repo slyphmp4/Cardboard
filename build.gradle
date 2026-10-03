@@ -221,7 +221,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	
-	implementation("net.md-5:bungeecord-chat:1.21-R0.4")
+	implementation("net.md-5:bungeecord-chat:1.21-R0.2-deprecated+build.21")
 	implementation("net.kyori:adventure-api:5.2.0")
 	implementation("net.kyori:adventure-text-serializer-gson:5.2.0")
 	implementation("net.kyori:adventure-text-serializer-legacy:5.2.0")
