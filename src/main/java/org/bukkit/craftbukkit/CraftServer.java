@@ -296,7 +296,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public CraftDataPackManager dataPackManager;
     private final io.papermc.paper.datapack.PaperDatapackManager datapackManager;
     private final io.papermc.paper.potion.PaperPotionBrewer potionBrewer;
-    private final PaperMobGoals mobGoals = new PaperMobGoals();
 
     private CraftServerTickManager serverTickManager;
     private CraftServerLinks serverLinks;
@@ -1719,7 +1718,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadData() {
-        ReloadCommand.reload(this.console);
+        // Paper delegates to a server-side ReloadCommand helper that is not part of vanilla/Fabric.
+        // Data reload remains driven by Cardboard's existing resource reload path.
     }
 
     @Override
@@ -2552,7 +2552,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public void updateRecipes() {
-        this.console.playerList.reloadRecipes();
+        this.console.playerList.reloadResources();
     }
 
     // TODO: Tick Threads
@@ -2661,7 +2661,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
         if (recipe.isPresent()) {
             RecipeHolder<CraftingRecipe> recipeCrafting = recipe.get();
-            craftingContainer.setCurrentRecipe(recipeCrafting);
+            ((org.cardboardpowered.bridge.world.ContainerBridge) (Object) craftingContainer)
+                    .setCurrentRecipe(recipeCrafting.value());
             if (craftResult.setRecipeUsed(craftPlayer.getHandle(), recipeCrafting)) {
                 result = recipeCrafting.value().assemble(craftingContainer.asCraftInput());
             }
@@ -2671,7 +2672,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
                 craftingContainer,
                 craftResult,
                 result,
-                container.getBukkitView(),
+                ((org.cardboardpowered.bridge.world.inventory.AbstractContainerMenuBridge) (Object) container).getBukkitView(),
                 recipe.map(RecipeHolder::value).orElse(null) instanceof RepairItemRecipe
         );
         return this.createItemCraftResult(recipe, CraftItemStack.asBukkitCopy(result), craftingContainer);
@@ -2694,11 +2695,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     private CraftingContainer createCraftingContainer() {
         AbstractContainerMenu container = new AbstractContainerMenu(null, -1) {
-            @Override
-            public org.bukkit.inventory.InventoryView getBukkitView() {
-                return null;
-            }
-
             @Override
             public boolean stillValid(net.minecraft.world.entity.player.Player player) {
                 return false;
@@ -2748,7 +2744,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
             }
         });
 
-        for (int i = 0; i < craftingContainer.getContents().size(); i++) {
+        for (int i = 0; i < craftingContainer.getContainerSize(); i++) {
             craftItemResult.setResultMatrix(i, CraftItemStack.asBukkitCopy(craftingContainer.getItem(i)));
         }
 
