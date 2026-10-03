@@ -125,9 +125,6 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     private EntityDimensions dimensions;
 
     @Shadow
-    private java.util.List<Entity> passengers;
-
-    @Shadow
     private Entity.RemovalReason removalReason;
 
     public EntityMixin() {
@@ -427,7 +424,8 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     public boolean cardboard$saveAsPassenger(
             ValueOutput output,
             boolean includeNonSaveable,
-            boolean forceSerialization) {
+            boolean forceSerialization,
+            boolean includePassengers) {
         if (this.removalReason != null && !this.removalReason.shouldSave() && !forceSerialization) {
             return false;
         }
@@ -445,23 +443,23 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
 
         output.putString("id", id.toString());
 
-        // Vanilla saveWithoutId recursively serializes passengers with vanilla rules.
-        // Temporarily detach them and recurse through this bridge so PLAYER/MISC/FORCE
-        // flags apply to the complete passenger tree as Paper's overload does.
-        final java.util.List<Entity> originalPassengers = this.passengers;
-        this.passengers = com.google.common.collect.ImmutableList.of();
-        try {
-            self.saveWithoutId(output);
-        } finally {
-            this.passengers = originalPassengers;
-        }
+        // Let vanilla serialize the entity, then replace its passenger tree with a
+        // Cardboard-controlled one so PLAYER/MISC/FORCE apply recursively without
+        // mutating the live entity relationship.
+        final java.util.List<Entity> originalPassengers = self.getPassengers();
+        self.saveWithoutId(output);
+        output.discard("Passengers");
 
-        if (!originalPassengers.isEmpty()) {
+        if (includePassengers && !originalPassengers.isEmpty()) {
             ValueOutput.ValueOutputList passengerOutputs = output.childrenList("Passengers");
             for (Entity passenger : originalPassengers) {
                 ValueOutput passengerOutput = passengerOutputs.addChild();
                 if (!((EntityBridge) (Object) passenger)
-                        .cardboard$saveAsPassenger(passengerOutput, includeNonSaveable, forceSerialization)) {
+                        .cardboard$saveAsPassenger(
+                                passengerOutput,
+                                includeNonSaveable,
+                                forceSerialization,
+                                true)) {
                     passengerOutputs.discardLast();
                 }
             }

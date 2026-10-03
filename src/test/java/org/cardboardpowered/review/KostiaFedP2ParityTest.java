@@ -22,6 +22,20 @@ class KostiaFedP2ParityTest {
     }
 
     @Test
+    void entitySerializationDoesNotShadowOrMutatePassengers() throws Exception {
+        String mixin = source("src/main/java/org/cardboardpowered/mixin/world/entity/EntityMixin.java");
+        String bridge = source("src/main/java/org/cardboardpowered/bridge/world/entity/EntityBridge.java");
+        String magic = source("src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java");
+
+        assertFalse(mixin.contains("@Shadow\n    private java.util.List<Entity> passengers"));
+        assertTrue(mixin.contains("final java.util.List<Entity> originalPassengers = self.getPassengers()"));
+        assertTrue(mixin.contains("output.discard(\"Passengers\")"));
+        assertTrue(bridge.contains("boolean includePassengers"));
+        assertTrue(magic.contains("forceSerialization,\n                            serializePassengers"));
+        assertFalse(magic.contains("nmsEntity.passengers ="));
+    }
+
+    @Test
     void itemStackOwnsMovedPaperApis() throws Exception {
         String stack = source("src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java");
         String magic = source("src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java");

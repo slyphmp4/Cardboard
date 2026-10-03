@@ -580,20 +580,13 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
                 () -> "serialiseEntity@" + entity.getUniqueId(), LOGGER
         )) {
             final TagValueOutput output = TagValueOutput.createWithContext(problemReporter, nmsEntity.registryAccess());
-            if (serializePassengers) {
-                if (!((org.cardboardpowered.bridge.world.entity.EntityBridge) (Object) nmsEntity)
-                        .cardboard$saveAsPassenger(output, includeNonSaveable, forceSerialization)) {
-                    throw new IllegalArgumentException("Couldn't serialize entity");
-                }
-            } else {
-                List<net.minecraft.world.entity.Entity> pass = new ArrayList<>(nmsEntity.getPassengers());
-                nmsEntity.passengers = com.google.common.collect.ImmutableList.of();
-                boolean serialized = ((org.cardboardpowered.bridge.world.entity.EntityBridge) (Object) nmsEntity)
-                        .cardboard$saveAsPassenger(output, includeNonSaveable, forceSerialization);
-                nmsEntity.passengers = com.google.common.collect.ImmutableList.copyOf(pass);
-                if (!serialized) {
-                    throw new IllegalArgumentException("Couldn't serialize entity");
-                }
+            if (!((org.cardboardpowered.bridge.world.entity.EntityBridge) (Object) nmsEntity)
+                    .cardboard$saveAsPassenger(
+                            output,
+                            includeNonSaveable,
+                            forceSerialization,
+                            serializePassengers)) {
+                throw new IllegalArgumentException("Couldn't serialize entity");
             }
             return serializeNbtToBytes(output.buildResult());
         }

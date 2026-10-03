@@ -65,7 +65,8 @@ public interface EntityBridge {
     boolean cardboard$saveAsPassenger(
             net.minecraft.world.level.storage.ValueOutput output,
             boolean includeNonSaveable,
-            boolean forceSerialization);
+            boolean forceSerialization,
+            boolean includePassengers);
 
     boolean cardboard$hasFixedPose();
 
