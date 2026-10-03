@@ -109,6 +109,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
 	}
 	
     @Shadow private long nextTickTimeNanos;
+    @Shadow private boolean isIteratingOverLevels;
     @Shadow @Final @Mutable protected WorldData worldData;
     @Shadow public abstract ServerLevel overworld();
 
@@ -175,6 +176,11 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
     @Override
     public boolean cardboard$isDebugging() {
         return false;
+    }
+
+    @Override
+    public boolean cardboard$isIteratingOverLevels() {
+        return this.isIteratingOverLevels;
     }
 
     @TransformAccess(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)
