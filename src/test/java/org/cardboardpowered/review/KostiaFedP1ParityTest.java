@@ -31,10 +31,11 @@ class KostiaFedP1ParityTest {
     void dimensionTransferIsNotReportedAsPlayerQuit() throws Exception {
         String source = source("src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java");
 
-        assertTrue(source.contains("case UNLOADED_WITH_PLAYER -> org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT"));
-        assertTrue(source.contains("case CHANGED_DIMENSION -> null"));
         assertTrue(source.contains("cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause.PLUGIN)"));
-        assertFalse(source.contains("UNLOADED_WITH_PLAYER, CHANGED_DIMENSION"));
+        assertTrue(source.contains("return ((EntityBridge) this.entity).cardboard$getRemoveEventCause();"));
+        assertFalse(source.contains("case KILLED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH"));
+        assertFalse(source.contains("case UNLOADED_WITH_PLAYER -> org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT"));
+        assertFalse(source.contains("case CHANGED_DIMENSION ->"));
     }
 
     @Test
@@ -118,6 +119,9 @@ class KostiaFedP1ParityTest {
         assertTrue(source.contains("return this.pattern != null;"));
         assertTrue(source.contains("return this.baseColor != null;"));
         assertTrue(source.contains("return this.patternColor != null;"));
+        assertTrue(source.contains("this.isEmptyEntityTag(entityTag, net.minecraft.world.entity.EntityTypes.TROPICAL_FISH)"));
+        assertTrue(source.contains("bucketEntityTag.getInt(CraftMetaTropicalFishBucket.VARIANT.NBT).ifPresent"));
+        assertTrue(source.contains("return this.pattern != null && this.baseColor != null && this.patternColor != null;"));
         assertFalse(source.contains("public boolean hasPattern() {\n        return this.hasVariant();"));
     }
 }
