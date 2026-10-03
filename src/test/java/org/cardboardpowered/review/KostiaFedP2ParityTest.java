@@ -150,8 +150,10 @@ class KostiaFedP2ParityTest {
         String custom = source("src/main/java/org/cardboardpowered/mixin/world/item/component/CustomDataMixin.java");
 
         assertTrue(magic.contains("CustomDataSerialization.setSerializeAsSnbt(true)"));
-        assertTrue(magic.contains("cardboard$saveAsPassenger(output, includeNonSaveable, forceSerialization)"));
-        assertTrue(entity.contains("Temporarily detach them and recurse through this bridge"));
+        assertTrue(magic.contains(".cardboard$saveAsPassenger("));
+        assertTrue(magic.contains("serializePassengers"));
+        assertTrue(entity.contains("Let vanilla serialize the entity"));
+        assertTrue(entity.contains("without mutating the live entity relationship"));
         assertTrue(entity.contains("passengerOutputs.addChild()"));
         assertTrue(custom.contains("Codec.either(CompoundTag.CODEC, TagParser.FLATTENED_CODEC)"));
         assertFalse(magic.contains("CustomData.SERIALIZE_CUSTOM_AS_SNBT"));
