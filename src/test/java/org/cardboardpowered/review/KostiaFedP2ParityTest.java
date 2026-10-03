@@ -130,8 +130,10 @@ class KostiaFedP2ParityTest {
         assertTrue(world.contains("this.world.getChunkSource().setSpawnSettings(allow);"));
         assertFalse(world.contains("setSpawnFlags(boolean arg0, boolean arg1)"));
         assertTrue(cache.contains("private boolean cardboard$spawnFriendlies = true"));
-        assertTrue(cache.contains("getFilteredSpawningCategories"));
-        assertTrue(cache.contains("index = 1"));
+        assertTrue(cache.contains("getFilteredSpawningCategories(Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZ)"));
+        assertTrue(cache.contains("cardboard$filterFriendlySpawns"));
+        assertTrue(cache.contains(".filter(category -> !category.isFriendly())"));
+        assertFalse(cache.contains("SpawnState;ZZZ"));
 
         String mixins = source("src/main/resources/bukkitfabric.mixins.json");
         assertTrue(mixins.contains("\"server.level.ServerChunkCacheMixin\""));
