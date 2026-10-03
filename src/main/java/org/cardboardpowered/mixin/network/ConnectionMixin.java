@@ -22,6 +22,7 @@ public class ConnectionMixin implements ConnectionBridge {
 
     public UUID spoofedUUID;
     public Property[] spoofedProfile;
+    private String cardboard$clientBrand;
     public boolean preparing = true;
 
     @Redirect(
@@ -70,6 +71,16 @@ public class ConnectionMixin implements ConnectionBridge {
     @Override
     public void setSpoofedProfile(Property[] profile) {
         this.spoofedProfile = profile;
+    }
+
+    @Override
+    public String cardboard$getClientBrand() {
+        return this.cardboard$clientBrand;
+    }
+
+    @Override
+    public void cardboard$setClientBrand(String brand) {
+        this.cardboard$clientBrand = brand;
     }
 
 }
