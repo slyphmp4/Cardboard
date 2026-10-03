@@ -6,7 +6,7 @@ import org.cardboardpowered.bridge.server.level.ServerChunkCacheBridge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(ServerChunkCache.class)
 public abstract class ServerChunkCacheMixin implements ServerChunkCacheBridge {
@@ -32,15 +32,25 @@ public abstract class ServerChunkCacheMixin implements ServerChunkCacheBridge {
         this.cardboard$spawnFriendlies = spawnFriendlies;
     }
 
-    @ModifyArg(
+    @Redirect(
             method = "tickChunks",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/NaturalSpawner;getFilteredSpawningCategories(Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZZ)Ljava/util/List;"
-            ),
-            index = 1
+                    target = "Lnet/minecraft/world/level/NaturalSpawner;getFilteredSpawningCategories(Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZ)Ljava/util/List;"
+            )
     )
-    private boolean cardboard$useFriendlySpawnSetting(boolean vanillaAlwaysTrue) {
-        return this.cardboard$spawnFriendlies;
+    private java.util.List<net.minecraft.world.entity.MobCategory> cardboard$filterFriendlySpawns(
+            NaturalSpawner.SpawnState state,
+            boolean spawnEnemies,
+            boolean spawnPersistent) {
+        final java.util.List<net.minecraft.world.entity.MobCategory> categories =
+                NaturalSpawner.getFilteredSpawningCategories(state, spawnEnemies, spawnPersistent);
+        if (this.cardboard$spawnFriendlies) {
+            return categories;
+        }
+
+        return categories.stream()
+                .filter(category -> !category.isFriendly())
+                .toList();
     }
 }
