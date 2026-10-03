@@ -109,7 +109,9 @@ class KostiaFedP2ParityTest {
         assertTrue(potion.contains("CraftAttributeInstance.convert(attributeModifier.create(0))"));
         assertTrue(potion.contains("case BENEFICIAL -> Category.BENEFICIAL"));
         assertTrue(potion.contains("return this.getHandle().getDescriptionId();"));
+        assertTrue(potion.contains("return CraftRegistry.bukkitToMinecraftHolder(type);"));
         assertFalse(potion.contains("getEffectAttributes() {\n\t\t// TODO Auto-generated method stub\n\t\treturn null;"));
+        assertFalse(potion.contains("Optional<Reference<MobEffect>>"));
         assertFalse(potion.contains("getAttributeModifierAmount(@NotNull Attribute arg0, int arg1)"));
 
         assertTrue(bridge.contains("new PaperSkinParts.Mutable(Mannequin.ALL_LAYERS)"));
