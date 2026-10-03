@@ -3,6 +3,7 @@ package org.cardboardpowered.mixin.world.entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.level.Level;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.cardboardpowered.bridge.world.entity.MobBridge;
@@ -23,6 +24,13 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
     public LivingEntity target;
 
     @Shadow
+    protected GoalSelector goalSelector;
+
+    @Shadow
+    protected GoalSelector targetSelector;
+
+
+    @Shadow
     public abstract @Nullable LivingEntity getTargetUnchecked();
 
     @Shadow
@@ -30,6 +38,16 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
 
     protected MobMixin(EntityType<? extends LivingEntity> entityType, Level level) {
         super(entityType, level);
+    }
+
+    @Override
+    public GoalSelector cardboard$getGoalSelector() {
+        return this.goalSelector;
+    }
+
+    @Override
+    public GoalSelector cardboard$getTargetSelector() {
+        return this.targetSelector;
     }
 
     @org.spongepowered.asm.mixin.Unique
