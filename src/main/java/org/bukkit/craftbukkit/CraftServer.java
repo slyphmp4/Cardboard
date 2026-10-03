@@ -19,6 +19,7 @@
 package org.bukkit.craftbukkit;
 
 import com.destroystokyo.paper.entity.ai.MobGoals;
+import com.destroystokyo.paper.entity.ai.PaperMobGoals;
 import com.destroystokyo.paper.profile.CraftPlayerProfile;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
@@ -292,6 +293,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public CraftDataPackManager dataPackManager;
     private final io.papermc.paper.datapack.PaperDatapackManager datapackManager;
     private final io.papermc.paper.potion.PaperPotionBrewer potionBrewer;
+    private final PaperMobGoals mobGoals = new PaperMobGoals();
 
     private CraftServerTickManager serverTickManager;
     private CraftServerLinks serverLinks;
@@ -2074,8 +2076,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public MobGoals getMobGoals() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.mobGoals;
     }
 
     @Override
