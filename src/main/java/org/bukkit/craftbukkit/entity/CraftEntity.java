@@ -1465,21 +1465,9 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public org.bukkit.event.entity.EntityRemoveEvent.Cause getRemoveEventCause() {
-        final org.bukkit.event.entity.EntityRemoveEvent.Cause explicit =
-                ((EntityBridge) this.entity).cardboard$getRemoveEventCause();
-        if (explicit != null) {
-            return explicit;
-        }
-
-        final net.minecraft.world.entity.Entity.RemovalReason reason = this.entity.getRemovalReason();
-        if (reason == null) return null;
-        return switch (reason) {
-            case KILLED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH;
-            case DISCARDED -> org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD;
-            case UNLOADED_TO_CHUNK -> org.bukkit.event.entity.EntityRemoveEvent.Cause.UNLOAD;
-            case UNLOADED_WITH_PLAYER -> org.bukkit.event.entity.EntityRemoveEvent.Cause.PLAYER_QUIT;
-            case CHANGED_DIMENSION -> null;
-        };
+        // Match Paper: this is the explicitly supplied Bukkit removal cause,
+        // not an inference from the vanilla removal reason.
+        return ((EntityBridge) this.entity).cardboard$getRemoveEventCause();
     }
 
 }
