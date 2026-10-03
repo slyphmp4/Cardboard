@@ -35,7 +35,7 @@ public class Libraries {
         	Library.of("org.xerial", "sqlite-jdbc", "3.41.0.0", "86168d5ae9bfc54dab9c47cd6e1af751c1d15eb3"),
         	Library.of("com.mysql", "mysql-connector-j", "8.0.32", "41ec3f8cdaccf6c46a47d7cd628eeb59a926d9d4"),
         	Library.of("commons-lang", "commons-lang", "2.6", "0ce1edb914c94ebc388f086c6827e8bdeec71ac2"),
-        	Library.of("org.apache.commons", "commons-collections4", "4.4", "62ebe7544cb7164d87e0637a2a6a2bdc981395e8"),
+        	Library.of("org.apache.commons", "commons-collections4", "4.6.0"),
         	Library.of("commons-collections", "commons-collections", "3.2.1", "761ea405b9b37ced573d2df0d1e3a4e0f9edc668"),
         	Library.of("net.md-5", "bungeecord-chat", "1.21-R0.2", "64956ff493786f981a15697ce406fe39a2551692"),
         	// Adventure
