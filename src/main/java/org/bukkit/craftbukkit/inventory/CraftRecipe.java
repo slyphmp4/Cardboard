@@ -4,6 +4,9 @@ import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.set.RegistrySet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -34,6 +37,13 @@ public interface CraftRecipe extends Recipe {
 
         if (bukkit == null) {
             stack = Ingredient.of();
+        } else if (bukkit instanceof RecipeChoice.ItemTypeChoice itemTypeChoice) {
+            stack = Ingredient.of(itemTypeChoice.itemTypes().resolve(org.bukkit.Registry.ITEM).stream()
+                    .map(CraftItemType::bukkitToMinecraftNew));
+        } else if (bukkit instanceof RecipeChoice.PredicateChoice predicateChoice) {
+            stack = IngredientBridge.cb$ofStacks(List.of(CraftItemStack.asNMSCopy(predicateChoice.getItemStack())));
+            ((IngredientBridge) stack).cardboard$setStackPredicate(
+                    nmsStack -> predicateChoice.test(CraftItemStack.asBukkitCopy(nmsStack)));
         } else if (bukkit instanceof RecipeChoice.MaterialChoice) {
             stack = Ingredient.of(((RecipeChoice.MaterialChoice) bukkit).getChoices().stream().map((mat) -> CraftItemType.bukkitToMinecraft(mat)));
         } else if (bukkit instanceof RecipeChoice.ExactChoice) {
@@ -67,6 +77,14 @@ public interface CraftRecipe extends Recipe {
 
         IngredientBridge cblist = (IngredientBridge) list;
 
+        Predicate<net.minecraft.world.item.ItemStack> nmsPredicate = cblist.cardboard$getStackPredicate();
+        if (nmsPredicate != null) {
+            net.minecraft.world.item.ItemStack example = cblist.cb$itemStacks().get(0);
+            Predicate<org.bukkit.inventory.ItemStack> predicate =
+                    bukkitStack -> nmsPredicate.test(CraftItemStack.asNMSCopy(bukkitStack));
+            return RecipeChoice.predicateChoice(predicate, CraftItemStack.asBukkitCopy(example));
+        }
+
         if (cblist.cb$isExact()) {
             List<org.bukkit.inventory.ItemStack> choices = new ArrayList<>(cblist.cb$itemStacks().size());
             for (net.minecraft.world.item.ItemStack i : cblist.cb$itemStacks()) {
@@ -75,9 +93,10 @@ public interface CraftRecipe extends Recipe {
 
             return new RecipeChoice.ExactChoice(choices);
         } else {
-            List<org.bukkit.Material> choices = list.items().map((i) -> CraftItemType.minecraftToBukkit(i.value())).toList();
-
-            return new RecipeChoice.MaterialChoice(choices);
+            List<org.bukkit.inventory.ItemType> choices = list.items()
+                    .map((holder) -> CraftItemType.minecraftToBukkitNew(holder.value()))
+                    .toList();
+            return RecipeChoice.itemType(RegistrySet.keySetFromValues(RegistryKey.ITEM, choices));
         }
     }
 
