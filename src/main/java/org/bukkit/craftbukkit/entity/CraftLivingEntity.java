@@ -43,6 +43,7 @@ import org.bukkit.util.Vector;
 import com.destroystokyo.paper.block.TargetBlockInfo;
 import com.destroystokyo.paper.block.TargetBlockInfo.FluidMode;
 import com.destroystokyo.paper.entity.TargetEntityInfo;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import com.javazilla.bukkitfabric.Utils;
 
@@ -994,9 +995,15 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 	}
 
 	@Override
-	public void knockback(double arg0, double arg1, double arg2) {
-		 // 26.2: LivingEntity#knockback(double,double,double) was removed
-		 this.getHandle().push(arg0, arg1, arg2);
+	public void knockback(double strength, double directionX, double directionZ) {
+		Preconditions.checkArgument(strength > 0, "Knockback strength must be > 0");
+		this.getHandle().knockback(
+				strength,
+				directionX,
+				directionZ,
+				this.getHandle().damageSources().generic(),
+				0.0F
+		);
 	}
 	
 	// 1.19.4:
