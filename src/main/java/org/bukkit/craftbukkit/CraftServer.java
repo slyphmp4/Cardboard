@@ -283,6 +283,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     private final Map<Class<?>, org.bukkit.Registry<?>> registries = new HashMap<>();
 
     public CraftDataPackManager dataPackManager;
+    private final io.papermc.paper.datapack.PaperDatapackManager datapackManager;
 
     private CraftServerTickManager serverTickManager;
     private CraftServerLinks serverLinks;
@@ -352,6 +353,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         }));
 
         this.dataPackManager = new CraftDataPackManager(this.getServer().getPackRepository());
+        this.datapackManager = new io.papermc.paper.datapack.PaperDatapackManager(this.getServer().getPackRepository());
         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
         this.serverLinks = new CraftServerLinks(console);
         this.minimumAPI = ApiVersion.getOrCreateVersion(this.configuration.getString("settings.minimum-api"));
@@ -2233,8 +2235,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NotNull DatapackManager getDatapackManager() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.datapackManager;
     }
 
     @Override
