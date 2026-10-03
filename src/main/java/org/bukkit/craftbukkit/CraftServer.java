@@ -275,6 +275,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     private final SimpleHelpMap helpMap = new SimpleHelpMap(this);
     private final StandardMessenger messenger = new StandardMessenger();
+    private final MobGoals mobGoals = new PaperMobGoals();
     private final YamlConfiguration configuration;
 
     public static DedicatedServer console;
