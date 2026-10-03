@@ -3430,20 +3430,18 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
         }
     }
 
-    // 26.2: new on Player
     @Override
     public void unsetFixedPose() {
-        // Paper's fixed-pose support is a server patch with no vanilla equivalent.
-        // Clearing it is a no-op here, but we resync the pose so clients stay consistent.
-        this.getHandle().refreshDimensions();
+        ((org.cardboardpowered.bridge.world.entity.EntityBridge) this.getHandle()).cardboard$setFixedPose(false);
+        ((org.cardboardpowered.bridge.world.entity.player.PlayerBridge) this.getHandle()).cardboard$updatePlayerPose();
     }
 
-
-    // 26.2: new on Player
     @Override
     public void resetFlyingTicks() {
-        // Paper tracks flying ticks in its patched ServerGamePacketListenerImpl;
-        // vanilla has no such counter, so there is nothing to reset.
+        if (this.getHandle().connection == null) {
+            return;
+        }
+        this.getHandle().connection.resetFlyingTicks();
     }
 
 }
