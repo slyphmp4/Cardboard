@@ -20,6 +20,7 @@ class KostiaFedP0ParityTest {
         int end = source.indexOf("// 1.19.4:", start);
         String method = source.substring(start, end);
 
+        assertTrue(method.contains("Preconditions.checkArgument(strength > 0"));
         assertTrue(method.contains("getHandle().knockback("));
         assertTrue(method.contains("damageSources().generic()"));
         assertFalse(method.contains("getHandle().push("));
