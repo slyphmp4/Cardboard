@@ -110,7 +110,7 @@ public final class CraftBlockStates {
             }
         };
         for (Material material : Material.values()) {
-            if (material.name().endsWith("_BED")) {
+            if (material.isBlock() && !material.isLegacy() && material.name().endsWith("_BED")) {
                 register(material, bedFactory);
             }
         }

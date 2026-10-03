@@ -17,4 +17,8 @@ public interface ConnectionBridge {
 
     void setSpoofedProfile(Property[] profile);
 
+    String cardboard$getClientBrand();
+
+    void cardboard$setClientBrand(String brand);
+
 }

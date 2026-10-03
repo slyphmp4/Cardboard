@@ -32,13 +32,12 @@ public class CraftSulfurCube extends CraftAgeable implements SulfurCube {
 
     @Override
     public boolean canWander() {
-        // Cardboard does not expose the wander flag yet; matches CraftSlime.
-        return true;
+        return ((org.cardboardpowered.bridge.world.entity.monster.SlimeBridge) this.getHandle()).cardboard$canWander();
     }
 
     @Override
     public void setWander(boolean canWander) {
-        // Cardboard does not expose the wander flag yet; matches CraftSlime.
+        ((org.cardboardpowered.bridge.world.entity.monster.SlimeBridge) this.getHandle()).cardboard$setWander(canWander);
     }
 
     // --- SulfurCube ---
