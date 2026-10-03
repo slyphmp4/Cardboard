@@ -230,6 +230,7 @@
     "world.level.block.entity.BlockEntityMixin",
     "world.level.block.entity.BrewingStandBlockEntityMixin",
     "world.level.block.entity.ChestBlockEntityMixin",
+    "world.level.block.entity.CreakingHeartBlockEntityAccessor",
     "world.level.block.entity.DispenserBlockEntityMixin",
     "world.level.block.entity.HopperBlockEntityMixin",
     "world.level.block.entity.LecternBlockEntityMixin",
