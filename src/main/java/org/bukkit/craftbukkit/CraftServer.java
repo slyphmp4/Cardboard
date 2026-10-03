@@ -91,6 +91,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.ConsoleInput;
 import net.minecraft.server.bossevents.CustomBossEvent;
+import net.minecraft.server.commands.ReloadCommand;
 import net.minecraft.server.dedicated.DedicatedPlayerList;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
@@ -1161,9 +1162,10 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @Override
     public Set<OfflinePlayer> getBannedPlayers() {
         Set<OfflinePlayer> set = Sets.newHashSet();
-        for (String s : getServer().getPlayerList().getBans().getUserList())
-            set.add(getOfflinePlayer(s));
-        return null;
+        for (String name : getServer().getPlayerList().getBans().getUserList()) {
+            set.add(getOfflinePlayer(name));
+        }
+        return set;
     }
 
     @Override
@@ -1194,6 +1196,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @SuppressWarnings("resource")
     @Override
     public Entity getEntity(UUID uuid) {
+        Preconditions.checkArgument(uuid != null, "uuid cannot be null");
         for (ServerLevel world : getServer().getAllLevels()) {
             net.minecraft.world.entity.Entity entity = world.getEntity(uuid);
             if (entity != null)
@@ -1594,11 +1597,13 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public World getWorld(String name) {
+        Preconditions.checkArgument(name != null, "name cannot be null");
         return worlds.get(name.toLowerCase(Locale.ROOT));
     }
 
     @Override
     public World getWorld(UUID uuid) {
+        Preconditions.checkArgument(uuid != null, "uuid cannot be null");
         for (World world : worlds.values())
             if (world.getUID().equals(uuid))
                 return world;
@@ -1713,7 +1718,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadData() {
-        // TODO Auto-generated method stub
+        ReloadCommand.reload(this.console);
     }
 
     @Override
@@ -2066,8 +2071,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMaxWorldSize() {
-        // TODO Auto-generated method stub
-        return ServerLevel.MAX_LEVEL_SIZE;
+        return this.getProperties().maxWorldSize;
     }
 
     @Override
@@ -2310,14 +2314,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
             }
 
             public net.minecraft.world.item.ItemStack transferSlot(net.minecraft.world.entity.player.Player player, int index) {
-                // TODO Auto-generated method stub
-                return null;
+                return net.minecraft.world.item.ItemStack.EMPTY;
             }
 
 			// 1.19.4 @Override
 			public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player player, int slot) {
-				// TODO Auto-generated method stub
-				return null;
+                return net.minecraft.world.item.ItemStack.EMPTY;
 			}
         };
         TransientCraftingContainer inventoryCrafting = new TransientCraftingContainer(container, 3, 3);
@@ -2503,8 +2505,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public boolean isTickingWorlds() {
-		// TODO Auto-generated method stub
-		return true; // todo: paper api
+        return ((MinecraftServerBridge) (Object) this.getServer()).cardboard$isIteratingOverLevels();
 	}
 
 	@Override
@@ -2550,7 +2551,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public void updateRecipes() {
-    	// TODO this.console.playerManager.reloadRecipeData();
+        this.console.playerList.reloadRecipes();
     }
 
     // TODO: Tick Threads
