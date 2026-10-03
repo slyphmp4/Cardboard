@@ -25,7 +25,7 @@ final class JdbcDriverInitializationTest {
         assertTrue(mysqlDriver > addLibraries, "MySQL must initialize after its jar is available");
         assertTrue(source.contains("getLauncher().getTargetClassLoader()"),
                 "Drivers must be loaded through Fabric\'s target classloader");
-        assertTrue(build.contains("runtimeOnly \"org.xerial:sqlite-jdbc:3.41.0.0\""));
+        assertTrue(build.contains("runtimeOnly \"org.xerial:sqlite-jdbc:3.53.4.0\""));
         assertTrue(build.contains("runtimeOnly \"com.mysql:mysql-connector-j:8.0.32\""));
     }
 }
