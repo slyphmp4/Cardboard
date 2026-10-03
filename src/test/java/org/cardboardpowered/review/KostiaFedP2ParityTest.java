@@ -33,6 +33,8 @@ class KostiaFedP2ParityTest {
         assertTrue(bridge.contains("boolean includePassengers"));
         assertTrue(magic.contains("forceSerialization,\n                            serializePassengers"));
         assertFalse(magic.contains("nmsEntity.passengers ="));
+        assertTrue(magic.contains("e.getType().canSerialize() || allowMiscSerialization"));
+        assertFalse(magic.contains("nmsEntity.getType().canSerialize() || allowMiscSerialization"));
     }
 
     @Test
