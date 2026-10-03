@@ -95,6 +95,7 @@
     "world.CompoundContainerMixin",
     "world.SimpleContainerMixin",
     "world.damagesource.DamageSourceMixin",
+    "world.damagesource.CombatTrackerMixin",
     "world.effect.MobEffectsMixin",
     "world.food.FoodDataMixin",
     "world.entity.EntityMixin",

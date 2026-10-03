@@ -73,4 +73,31 @@ class KostiaFedP2ParityTest {
             assertFalse(magic.contains(dead), dead + " should not remain on CraftMagicNumbers");
         }
     }
+    @Test
+    void combatTrackerAndPotionApisAreNotStubs() throws Exception {
+        String wrapper = source("src/main/java/io/papermc/paper/world/damagesource/PaperCombatTrackerWrapper.java");
+        String mixin = source("src/main/java/org/cardboardpowered/mixin/world/damagesource/CombatTrackerMixin.java");
+        String potion = source("src/main/java/org/cardboardpowered/impl/CardboardPotionEffectType.java");
+        String bridge = source("src/main/java/org/cardboardpowered/impl/PaperServerInternalAPIBridge.java");
+
+        assertTrue(wrapper.contains("cardboard$recordDamageAndCheckCombatState"));
+        assertTrue(wrapper.contains("cardboard$resetCombatState"));
+        assertTrue(wrapper.contains("this.handle.mob.tickCount - this.handle.lastDamageTime"));
+        assertTrue(mixin.contains("this.mob.onEnterCombat()"));
+        assertTrue(mixin.contains("this.mob.onLeaveCombat()"));
+        assertFalse(wrapper.contains("// this.handle.recordDamageAndCheckCombatState"));
+        assertFalse(wrapper.contains("// this.handle.resetCombatState"));
+
+        assertTrue(potion.contains("attributeModifiers.containsKey(nmsAttribute)"));
+        assertTrue(potion.contains("CraftAttributeInstance.convert(attributeModifier.create(0))"));
+        assertTrue(potion.contains("case BENEFICIAL -> Category.BENEFICIAL"));
+        assertTrue(potion.contains("return this.getHandle().getDescriptionId();"));
+        assertFalse(potion.contains("getEffectAttributes() {\n\t\t// TODO Auto-generated method stub\n\t\treturn null;"));
+        assertFalse(potion.contains("getAttributeModifierAmount(@NotNull Attribute arg0, int arg1)"));
+
+        assertTrue(bridge.contains("new PaperSkinParts.Mutable(Mannequin.ALL_LAYERS)"));
+        assertTrue(bridge.contains("PaperAdventure.asAdventure(Mannequin.DEFAULT_DESCRIPTION)"));
+        assertFalse(bridge.contains("MannequinEntity_ALL_MODEL_PARTS"));
+    }
+
 }

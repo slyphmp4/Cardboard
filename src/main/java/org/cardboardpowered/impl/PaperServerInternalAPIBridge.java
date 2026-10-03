@@ -12,7 +12,6 @@ import io.papermc.paper.world.damagesource.PaperCombatEntryWrapper;
 import io.papermc.paper.world.damagesource.PaperCombatTrackerWrapper;
 import io.papermc.paper.entity.poi.PaperPoiType;
 
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,7 +21,6 @@ import net.minecraft.Optionull;
 import net.minecraft.world.damagesource.FallLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.Mannequin;
-import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import org.bukkit.GameRule;
 import org.bukkit.block.Biome;
@@ -92,21 +90,14 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
 		return new PaperResolvableProfile(Mannequin.DEFAULT_PROFILE);
 	}
 
-	// TODO: 1.21.9: Aw
-	public static final byte MannequinEntity_ALL_MODEL_PARTS = (byte)Arrays.stream(PlayerModelPart.values())
-		      .mapToInt(PlayerModelPart::getMask)
-		      .reduce(0, (flagL, flagR) -> flagL | flagR);
-	
 	@Override
 	public Mutable allSkinParts() {
-		return new PaperSkinParts.Mutable(MannequinEntity_ALL_MODEL_PARTS);
+		return new PaperSkinParts.Mutable(Mannequin.ALL_LAYERS);
 	}
 
 	@Override
 	public Component defaultMannequinDescription() {
-		// DEFAULT_DESCRIPTION not visible
-		return PaperAdventure.asAdventure(net.minecraft.network.chat.Component.nullToEmpty("Hello, I'm a Mannequin"));
-		// return PaperAdventure.asAdventure(MannequinEntity.DEFAULT_DESCRIPTION);
+		return PaperAdventure.asAdventure(Mannequin.DEFAULT_DESCRIPTION);
 	}
 
 	@Override

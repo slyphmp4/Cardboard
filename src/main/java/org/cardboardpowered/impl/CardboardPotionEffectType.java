@@ -169,21 +169,39 @@ public class CardboardPotionEffectType extends PotionEffectType implements Handl
 	}
 
 	@Override
-	public double getAttributeModifierAmount(@NotNull Attribute arg0, int arg1) {
-		// TODO Auto-generated method stub
-		return 0;
+	public double getAttributeModifierAmount(@NotNull Attribute attribute, int effectAmplifier) {
+		com.google.common.base.Preconditions.checkArgument(
+				effectAmplifier >= 0,
+				"effectAmplifier must be greater than or equal to 0"
+		);
+		net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> nmsAttribute =
+				org.bukkit.craftbukkit.attribute.CraftAttribute.bukkitToMinecraftHolder(attribute);
+		com.google.common.base.Preconditions.checkArgument(
+				this.getHandle().attributeModifiers.containsKey(nmsAttribute),
+				attribute + " is not present on " + this.getKey()
+		);
+		return this.getHandle().attributeModifiers.get(nmsAttribute).create(effectAmplifier).amount();
 	}
 
 	@Override
 	public @NotNull Map<Attribute, AttributeModifier> getEffectAttributes() {
-		// TODO Auto-generated method stub
-		return null;
+		final Map<Attribute, AttributeModifier> attributeMap = new java.util.HashMap<>();
+		this.getHandle().attributeModifiers.forEach((attribute, attributeModifier) ->
+				attributeMap.put(
+						org.bukkit.craftbukkit.attribute.CraftAttribute.minecraftHolderToBukkit(attribute),
+						org.bukkit.craftbukkit.attribute.CraftAttributeInstance.convert(attributeModifier.create(0))
+				)
+		);
+		return Map.copyOf(attributeMap);
 	}
 
 	@Override
 	public @NotNull Category getEffectCategory() {
-		// TODO Auto-generated method stub
-		return null;
+		return switch (this.getHandle().getCategory()) {
+			case BENEFICIAL -> Category.BENEFICIAL;
+			case HARMFUL -> Category.HARMFUL;
+			case NEUTRAL -> Category.NEUTRAL;
+		};
 	}
 	
 	// 1.20.3 API:
@@ -206,8 +224,7 @@ public class CardboardPotionEffectType extends PotionEffectType implements Handl
 
 	@Override
 	public @NotNull String getTranslationKey() {
-		// TODO Auto-generated method stub
-		return this.key.toString();
+		return this.getHandle().getDescriptionId();
 	}
 
 	@Override
