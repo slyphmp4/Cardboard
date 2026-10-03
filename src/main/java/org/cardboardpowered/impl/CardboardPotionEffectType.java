@@ -16,9 +16,7 @@ import org.bukkit.potion.PotionEffectTypeCategory;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
-import java.util.Optional;
 import net.minecraft.core.Holder;
-import net.minecraft.core.Holder.Reference;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
@@ -26,15 +24,7 @@ import net.minecraft.world.effect.MobEffect;
 public class CardboardPotionEffectType extends PotionEffectType implements Handleable<MobEffect> {
 
 	public static Holder<MobEffect> bukkitToMinecraftHolder(PotionEffectType type) {
-		// TODO Auto-generated method stub
-		// return CraftRegistry.bukkitToMinecraftHolder(..);
-
-		Optional<Reference<MobEffect>> opt = BuiltInRegistries.MOB_EFFECT.get(type.getId());
-		
-		if (opt.isPresent()) {
-			return opt.get();
-		}
-		return null;
+		return CraftRegistry.bukkitToMinecraftHolder(type);
 	}
 	
     public static PotionEffectType minecraftHolderToBukkit(Holder<MobEffect> minecraft) {
