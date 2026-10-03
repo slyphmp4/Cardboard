@@ -29,6 +29,7 @@ public class Library implements Comparable<Library> {
 
 	public Optional<String> repository;
 	public HashFunction checksumType;
+	public String checksumExtension;
 
 	public String checksumValue;
 	public String fileHash;
@@ -45,6 +46,7 @@ public class Library implements Comparable<Library> {
 		this.version = version;
 		this.repository = repository;
 		this.checksumType = checksumType;
+		this.checksumExtension = "sha1";
 		this.checksumValue = checksumValue;
 		this.fileHash = null;
 	}
@@ -59,6 +61,14 @@ public class Library implements Comparable<Library> {
 
 	public Library withSha1(String sha) {
 		this.checksumType = Hashing.sha1();
+		this.checksumExtension = "sha1";
+		this.checksumValue = sha;
+		return this;
+	}
+
+	public Library withSha256(String sha) {
+		this.checksumType = Hashing.sha256();
+		this.checksumExtension = "sha256";
 		this.checksumValue = sha;
 		return this;
 	}
@@ -125,7 +135,7 @@ public class Library implements Comparable<Library> {
 	}
 
 	public String readChecksumFromRepo(String repository) throws IOException {
-		final String checksumUrl = this.getUrl(repository) + ".sha1";
+		final String checksumUrl = this.getUrl(repository) + "." + this.checksumExtension;
 
 		try {
 			URL url = URI.create(checksumUrl).toURL();

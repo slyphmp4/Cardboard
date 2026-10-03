@@ -3,6 +3,7 @@ package org.bukkit.craftbukkit.entity;
 import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.SulfurCube;
+import org.bukkit.inventory.ItemStack;
 
 // 26.2: SulfurCube is a new cube mob. Bukkit models it as
 // AbstractCubeMob + Shearable + Bucketable + Ageable (notably not a Slime).
@@ -60,6 +61,11 @@ public class CraftSulfurCube extends CraftAgeable implements SulfurCube {
     @Override
     public boolean ignite(boolean force) {
         return this.getHandle().primeTime(force);
+    }
+
+    @Override
+    public boolean swallow(ItemStack itemStack) {
+        return this.getHandle().equipItem(CraftItemStack.asNMSCopy(itemStack));
     }
 
     // --- Shearable ---
