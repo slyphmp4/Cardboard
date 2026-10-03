@@ -100,15 +100,20 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.item.MapItem;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.RepairItemRecipe;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.Fluid;
@@ -139,6 +144,7 @@ import org.bukkit.conversations.Conversable;
 import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.craftbukkit.entity.CraftEntityFactory;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.craftbukkit.packs.CraftDataPackManager;
 import org.bukkit.craftbukkit.packs.CraftResourcePack;
 import org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager;
@@ -2283,8 +2289,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NotNull ItemStack craftItem(ItemStack[] craftingMatrix, World world, Player player) {
-        // TODO Auto-generated method stub
-        return null;
+        return this.craftItemResult(craftingMatrix, world, player).getResult();
     }
 
     @Override
@@ -2319,7 +2324,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         return ((RecipeHolderBridge)(Object) opt.get()).toBukkitRecipe();
     }
 
-    private Optional<RecipeHolder<CraftingRecipe>> getNMSRecipe(ItemStack[] craftingMatrix, TransientCraftingContainer inventoryCrafting, CraftWorld world) {
+    private Optional<RecipeHolder<CraftingRecipe>> getNMSRecipe(ItemStack[] craftingMatrix, CraftingContainer inventoryCrafting, CraftWorld world) {
         Preconditions.checkArgument(craftingMatrix != null, "craftingMatrix must not be null");
         Preconditions.checkArgument(craftingMatrix.length == 9, "craftingMatrix must be an array of length 9");
         Preconditions.checkArgument(world != null, "world must not be null");
@@ -2607,41 +2612,113 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
     public ItemCraftResult craftItemResult(ItemStack[] craftingMatrix, World world, Player player) {
-        /*
-		CraftWorld craftWorld = (CraftWorld)world;
-        CraftPlayer craftPlayer = (CraftPlayer)player;
-        CraftingScreenHandler container = new CraftingScreenHandler(-1, craftPlayer.getHandle().getInventory());
-        CraftingInventory inventoryCrafting = container.craftSlots;
-        CraftingResultInventory craftResult = container.result;
-        Optional<RecipeEntry<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, inventoryCrafting, craftWorld);
-        net.minecraft.item.ItemStack itemstack = net.minecraft.item.ItemStack.EMPTY;
+        Preconditions.checkArgument(world != null, "world cannot be null");
+        Preconditions.checkArgument(player != null, "player cannot be null");
+
+        CraftWorld craftWorld = (CraftWorld) world;
+        CraftPlayer craftPlayer = (CraftPlayer) player;
+
+        CraftingMenu container = new CraftingMenu(-1, craftPlayer.getHandle().getInventory());
+        CraftingContainer craftingContainer = container.craftSlots;
+        ResultContainer craftResult = container.resultSlots;
+
+        Optional<RecipeHolder<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, craftingContainer, craftWorld);
+        net.minecraft.world.item.ItemStack result = net.minecraft.world.item.ItemStack.EMPTY;
+
         if (recipe.isPresent()) {
-            RecipeEntry<CraftingRecipe> recipeCrafting = recipe.get();
-            if (craftResult.shouldCraftRecipe(craftWorld.getHandle(), craftPlayer.getHandle(), recipeCrafting)) {
-                itemstack = recipeCrafting.value().craft(inventoryCrafting, craftWorld.getHandle().getRegistryManager());
+            RecipeHolder<CraftingRecipe> recipeCrafting = recipe.get();
+            craftingContainer.setCurrentRecipe(recipeCrafting);
+            if (craftResult.setRecipeUsed(craftPlayer.getHandle(), recipeCrafting)) {
+                result = recipeCrafting.value().assemble(craftingContainer.asCraftInput());
             }
         }
-        net.minecraft.item.ItemStack result = CraftEventFactory.callPreCraftEvent(inventoryCrafting, craftResult, itemstack, container.getBukkitView(), recipe.map(RecipeEntry::value).orElse(null) instanceof RepairItemRecipe);
-        return this.createItemCraftResult(CraftItemStack.asBukkitCopy(result), inventoryCrafting, craftWorld.getHandle());
-    	*/
-		return null;
+
+        result = CraftEventFactory.callPreCraftEvent(
+                craftingContainer,
+                craftResult,
+                result,
+                container.getBukkitView(),
+                recipe.map(RecipeHolder::value).orElse(null) instanceof RepairItemRecipe
+        );
+        return this.createItemCraftResult(recipe, CraftItemStack.asBukkitCopy(result), craftingContainer);
     }
 
 	@Override
     public ItemCraftResult craftItemResult(ItemStack[] craftingMatrix, World world) {
-        /*
-		Preconditions.checkArgument((world != null ? 1 : 0) != 0, (Object)"world must not be null");
-        CraftWorld craftWorld = (CraftWorld)world;
+        Preconditions.checkArgument(world != null, "world must not be null");
 
-        RecipeInputInventory inventoryCrafting = this.createInventoryCrafting();
-        Optional<RecipeEntry<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, inventoryCrafting, craftWorld);
-        net.minecraft.item.ItemStack itemStack = net.minecraft.item.ItemStack.EMPTY;
-        if (recipe.isPresent()) {
-            itemStack = recipe.get().value().craft(inventoryCrafting, craftWorld.getHandle().getRegistryManager());
+        CraftWorld craftWorld = (CraftWorld) world;
+        CraftingContainer craftingContainer = this.createCraftingContainer();
+        Optional<RecipeHolder<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, craftingContainer, craftWorld);
+
+        final ItemStack result = recipe
+                .map(holder -> CraftItemStack.asBukkitCopy(holder.value().assemble(craftingContainer.asCraftInput())))
+                .orElseGet(ItemStack::empty);
+
+        return this.createItemCraftResult(recipe, result, craftingContainer);
+    }
+
+    private CraftingContainer createCraftingContainer() {
+        AbstractContainerMenu container = new AbstractContainerMenu(null, -1) {
+            @Override
+            public org.bukkit.inventory.InventoryView getBukkitView() {
+                return null;
+            }
+
+            @Override
+            public boolean stillValid(net.minecraft.world.entity.player.Player player) {
+                return false;
+            }
+
+            @Override
+            public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player player, int slot) {
+                return net.minecraft.world.item.ItemStack.EMPTY;
+            }
+        };
+
+        return new TransientCraftingContainer(container, 3, 3);
+    }
+
+    private CraftItemCraftResult createItemCraftResult(Optional<RecipeHolder<CraftingRecipe>> recipe, ItemStack result, CraftingContainer craftingContainer) {
+        CraftItemCraftResult craftItemResult = new CraftItemCraftResult(result);
+        final CraftingInput.Positioned positionedCraftInput = craftingContainer.asPositionedCraftInput();
+        final CraftingInput craftingInput = positionedCraftInput.input();
+
+        recipe.map(holder -> holder.value().getRemainingItems(craftingInput)).ifPresent(remainingItems -> {
+            for (int height = 0; height < craftingInput.height(); height++) {
+                for (int width = 0; width < craftingInput.width(); width++) {
+                    final int inventorySlot =
+                            width + positionedCraftInput.left()
+                                    + (height + positionedCraftInput.top()) * craftingContainer.getWidth();
+
+                    net.minecraft.world.item.ItemStack itemInMenu = craftingContainer.getItem(inventorySlot);
+                    net.minecraft.world.item.ItemStack remainingItem =
+                            remainingItems.get(width + height * craftingInput.width());
+
+                    if (!itemInMenu.isEmpty()) {
+                        craftingContainer.removeItem(inventorySlot, 1);
+                        itemInMenu = craftingContainer.getItem(inventorySlot);
+                    }
+
+                    if (!remainingItem.isEmpty()) {
+                        if (itemInMenu.isEmpty()) {
+                            craftingContainer.setItem(inventorySlot, remainingItem);
+                        } else if (net.minecraft.world.item.ItemStack.isSameItemSameComponents(itemInMenu, remainingItem)) {
+                            remainingItem.grow(itemInMenu.getCount());
+                            craftingContainer.setItem(inventorySlot, remainingItem);
+                        } else {
+                            craftItemResult.getOverflowItems().add(CraftItemStack.asBukkitCopy(remainingItem));
+                        }
+                    }
+                }
+            }
+        });
+
+        for (int i = 0; i < craftingContainer.getContents().size(); i++) {
+            craftItemResult.setResultMatrix(i, CraftItemStack.asBukkitCopy(craftingContainer.getItem(i)));
         }
-        return this.createItemCraftResult(CraftItemStack.asBukkitCopy(itemStack), inventoryCrafting, craftWorld.getHandle());
-        */
-        return null;
+
+        return craftItemResult;
     }
 
 	// 1.20.4 API:
