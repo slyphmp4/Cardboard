@@ -32,12 +32,14 @@ public class Libraries {
         List<Library> libraries = List.of(
         	paperApi,
         	// Paper API Libraries
-        	Library.of("org.xerial", "sqlite-jdbc", "3.41.0.0", "86168d5ae9bfc54dab9c47cd6e1af751c1d15eb3"),
-        	Library.of("com.mysql", "mysql-connector-j", "8.0.32", "41ec3f8cdaccf6c46a47d7cd628eeb59a926d9d4"),
+        	Library.of("org.xerial", "sqlite-jdbc", "3.53.4.0"),
+        	Library.of("com.mysql", "mysql-connector-j", "26.7.0"),
+        	Library.of("com.google.protobuf", "protobuf-java", "4.31.1"),
         	Library.of("commons-lang", "commons-lang", "2.6", "0ce1edb914c94ebc388f086c6827e8bdeec71ac2"),
         	Library.of("org.apache.commons", "commons-collections4", "4.6.0"),
         	Library.of("commons-collections", "commons-collections", "3.2.1", "761ea405b9b37ced573d2df0d1e3a4e0f9edc668"),
-        	Library.of("net.md-5", "bungeecord-chat", "1.21-R0.2", "64956ff493786f981a15697ce406fe39a2551692"),
+        	Library.of("net.md-5", "bungeecord-chat", "1.21-R0.2-deprecated+build.21")
+                    .overrideRepo("https://repo.papermc.io/repository/maven-public/"),
         	// Adventure
         	Library.of("net.kyori", "adventure-api", adventureVersion, "3e2ef126f3e3c3456995643aa49767af3b39ac34"),
         	Library.of("net.kyori", "adventure-key", adventureVersion, "32cf2afc230c0a932c71c30a86762246f23f345d") ,
@@ -51,23 +53,23 @@ public class Libraries {
         	Library.of("net.kyori", "option", "1.1.0", "593fecb9c42688eebc7d8da5d6ea127f4d4c92a2"),
         	
         	// Complete Maven & Resolver Stack
-        	Library.of("org.apache.maven", "maven-artifact", "3.9.6", "fb0979832c10c1a25d038a33ca862bef055fcdc8"),
-        	Library.of("org.apache.maven", "maven-builder-support", "3.9.6", "bcfc9d8175eaba21111edf21e0355a8523461abc"),
-        	Library.of("org.apache.maven", "maven-model", "3.9.6", "ac9a1c8a8cfa36f3a5489837e653ec0cd530d576"),
-        	Library.of("org.apache.maven", "maven-model-builder", "3.9.6", "983ce00d50a9f78ad1b805e21e4fd71807fa6ebf"),
-        	Library.of("org.apache.maven", "maven-resolver-provider", "3.9.6", "848c45d334f6cc5c8dd602b0e58fd4482964eddc"),
-		Library.of("org.apache.maven", "maven-repository-metadata", "3.9.6"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-api", "1.9.18", "0cd5174d6e80175398debe4869d484169c0abbf8"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-connector-basic", "1.9.18", "baac1ca4eb5e5fbdd2df554262a1b97f84ae3cec"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-impl", "1.9.18", "e928b128d1e52e6299f94431ce3df74647bc8c26"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-named-locks", "1.9.18", "31f948d89dcb3d9739e70d5e1000ebd68eb4405d"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-spi", "1.9.18", "7fa176b3353ef6d78d02db39e025f3c27a983158"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-supplier", "1.9.18", "c1df8c4468f08dc237f49a7b4a08401d6d57b208"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-transport-file", "1.9.18", "f7d4e607e0f245647f2ba59245de24ecba8a9946"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-transport-http", "1.9.18", "61a5512ff44502a5b22800f097f43281cb934a72"),
-        	Library.of("org.apache.maven.resolver", "maven-resolver-util", "1.9.18", "5ae9406f188ae4a999c353fce3fd77273797a216"),
-        	Library.of("org.codehaus.plexus", "plexus-interpolation", "1.27", "8dc73f4ff5eafcbb7ec035ba54736e828b272533"),
-        	Library.of("org.codehaus.plexus", "plexus-utils", "3.5.1", "c6bfb17c97ecc8863e88778ea301be742c62b06d")
+        	Library.of("org.apache.maven", "maven-artifact", "3.9.16"),
+        	Library.of("org.apache.maven", "maven-builder-support", "3.9.16"),
+        	Library.of("org.apache.maven", "maven-model", "3.9.16"),
+        	Library.of("org.apache.maven", "maven-model-builder", "3.9.16"),
+        	Library.of("org.apache.maven", "maven-resolver-provider", "3.9.16"),
+		Library.of("org.apache.maven", "maven-repository-metadata", "3.9.16"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-api", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-connector-basic", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-impl", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-named-locks", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-spi", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-supplier", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-transport-file", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-transport-http", "1.9.27"),
+        	Library.of("org.apache.maven.resolver", "maven-resolver-util", "1.9.27"),
+        	Library.of("org.codehaus.plexus", "plexus-interpolation", "1.29"),
+        	Library.of("org.codehaus.plexus", "plexus-utils", "3.6.1")
         );
 
         // Set WorldEdit adapter class name here
