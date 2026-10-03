@@ -26,6 +26,7 @@ import net.kyori.adventure.text.TranslationArgument;
 import net.kyori.adventure.text.event.DataComponentValue;
 import net.kyori.adventure.text.event.DataComponentValueConverterRegistry;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.ComponentSerializer;
@@ -440,13 +441,28 @@ public final class PaperAdventure {
 
     // Colors
 
-    // 26.2: ChatFormatting no longer carries colour data; net.minecraft.world.scores.TeamColor does.
+    public static @Nullable NamedTextColor asAdventure(final net.minecraft.world.scores.TeamColor teamColor) {
+        return NamedTextColor.NAMES.value(teamColor.getSerializedName());
+    }
+
+    public static @Nullable net.minecraft.world.scores.TeamColor asVanilla(final NamedTextColor color) {
+        return net.minecraft.world.scores.TeamColor.byName(color.toString());
+    }
+
+    // Legacy ChatFormatting bridge retained for older Cardboard callers.
     public static @NotNull TextColor asAdventure(final ChatFormatting formatting) {
+        final net.minecraft.network.chat.TextColor vanillaColor =
+                net.minecraft.network.chat.TextColor.fromLegacyFormat(formatting);
+        if (vanillaColor == null) {
+            throw new IllegalArgumentException("Not a valid color");
+        }
+
         final net.minecraft.world.scores.TeamColor teamColor =
-                net.minecraft.world.scores.TeamColor.byName(formatting.name());
+                net.minecraft.world.scores.TeamColor.byName(vanillaColor.serialize());
         if (teamColor == null) {
             throw new IllegalArgumentException("Not a valid color");
         }
+
         return TextColor.color(teamColor.rgb());
     }
 
@@ -459,9 +475,15 @@ public final class PaperAdventure {
     @org.jspecify.annotations.Nullable
     public static ChatFormatting getByHexValue(int color) {
         for (ChatFormatting value : ChatFormatting.values()) {
-            final net.minecraft.world.scores.TeamColor tc =
-                    net.minecraft.world.scores.TeamColor.byName(value.name());
-            if (tc != null && tc.rgb() == color) {
+            final net.minecraft.network.chat.TextColor vanillaColor =
+                    net.minecraft.network.chat.TextColor.fromLegacyFormat(value);
+            if (vanillaColor == null) {
+                continue;
+            }
+
+            final net.minecraft.world.scores.TeamColor teamColor =
+                    net.minecraft.world.scores.TeamColor.byName(vanillaColor.serialize());
+            if (teamColor != null && teamColor.rgb() == color) {
                 return value;
             }
         }
