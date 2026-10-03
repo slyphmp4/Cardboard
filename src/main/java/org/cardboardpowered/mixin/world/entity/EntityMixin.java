@@ -135,6 +135,9 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     @Shadow
     private EntityDimensions dimensions;
 
+    @Shadow
+    private Entity.RemovalReason removalReason;
+
     public EntityMixin() {
     }
 
@@ -428,12 +431,55 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     	((Entity) (Object) this).igniteForSeconds(seconds);
     }
     
-    public boolean saveAsPassenger(ValueOutput valueOutput, boolean includeAll, boolean includeNonSaveable, boolean forceSerialization) {
-    	return ((Entity) (Object) this).saveAsPassenger(valueOutput);
-    }
-    
-    public void saveWithoutId(ValueOutput valueOutput, boolean includeAll, boolean includeNonSaveable, boolean forceSerialization) {
-    	((Entity) (Object) this).saveWithoutId(valueOutput);
+    @Override
+    public boolean cardboard$saveAsPassenger(
+            ValueOutput output,
+            boolean includeNonSaveable,
+            boolean forceSerialization,
+            boolean includePassengers) {
+        if (this.removalReason != null && !this.removalReason.shouldSave() && !forceSerialization) {
+            return false;
+        }
+
+        final Entity self = (Entity) (Object) this;
+        if (!includeNonSaveable && !self.getType().canSerialize()) {
+            return false;
+        }
+
+        final net.minecraft.resources.Identifier id =
+                net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
+        if (id == null) {
+            return false;
+        }
+
+        output.putString("id", id.toString());
+
+        // Let vanilla serialize the entity, then replace its passenger tree with a
+        // Cardboard-controlled one so PLAYER/MISC/FORCE apply recursively without
+        // mutating the live entity relationship.
+        final java.util.List<Entity> originalPassengers = self.getPassengers();
+        self.saveWithoutId(output);
+        output.discard("Passengers");
+
+        if (includePassengers && !originalPassengers.isEmpty()) {
+            ValueOutput.ValueOutputList passengerOutputs = output.childrenList("Passengers");
+            for (Entity passenger : originalPassengers) {
+                ValueOutput passengerOutput = passengerOutputs.addChild();
+                if (!((EntityBridge) (Object) passenger)
+                        .cardboard$saveAsPassenger(
+                                passengerOutput,
+                                includeNonSaveable,
+                                forceSerialization,
+                                true)) {
+                    passengerOutputs.discardLast();
+                }
+            }
+            if (passengerOutputs.isEmpty()) {
+                output.discard("Passengers");
+            }
+        }
+
+        return true;
     }
     
     private final CommandSource commandSource = new CommandSource() {

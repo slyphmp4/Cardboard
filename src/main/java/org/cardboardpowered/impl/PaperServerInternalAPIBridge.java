@@ -12,7 +12,6 @@ import io.papermc.paper.world.damagesource.PaperCombatEntryWrapper;
 import io.papermc.paper.world.damagesource.PaperCombatTrackerWrapper;
 import io.papermc.paper.entity.poi.PaperPoiType;
 
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,7 +21,6 @@ import net.minecraft.Optionull;
 import net.minecraft.world.damagesource.FallLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.Mannequin;
-import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import org.bukkit.GameRule;
 import org.bukkit.block.Biome;
@@ -92,21 +90,14 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
 		return new PaperResolvableProfile(Mannequin.DEFAULT_PROFILE);
 	}
 
-	// TODO: 1.21.9: Aw
-	public static final byte MannequinEntity_ALL_MODEL_PARTS = (byte)Arrays.stream(PlayerModelPart.values())
-		      .mapToInt(PlayerModelPart::getMask)
-		      .reduce(0, (flagL, flagR) -> flagL | flagR);
-	
 	@Override
 	public Mutable allSkinParts() {
-		return new PaperSkinParts.Mutable(MannequinEntity_ALL_MODEL_PARTS);
+		return new PaperSkinParts.Mutable(Mannequin.ALL_LAYERS);
 	}
 
 	@Override
 	public Component defaultMannequinDescription() {
-		// DEFAULT_DESCRIPTION not visible
-		return PaperAdventure.asAdventure(net.minecraft.network.chat.Component.nullToEmpty("Hello, I'm a Mannequin"));
-		// return PaperAdventure.asAdventure(MannequinEntity.DEFAULT_DESCRIPTION);
+		return PaperAdventure.asAdventure(Mannequin.DEFAULT_DESCRIPTION);
 	}
 
 	@Override
@@ -143,12 +134,12 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
 
     @Override
     public DamageSource.Builder createDamageSourceBuilder(org.bukkit.damage.DamageType damageType) {
-        return MN.createDamageSourceBuilder(damageType);
+        return new org.bukkit.craftbukkit.damage.CraftDamageSourceBuilder(damageType);
     }
 
     @Override
     public String getTranslationKey(org.bukkit.entity.EntityType entityType) {
-        return MN.getTranslationKey(entityType);
+        return org.bukkit.craftbukkit.entity.CraftEntityType.bukkitToMinecraft(entityType).getDescriptionId();
     }
 
     @Override
@@ -193,7 +184,34 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
     public Component resolveWithContext(Component component, org.bukkit.command.@Nullable CommandSender context,
                                         org.bukkit.entity.@Nullable Entity scoreboardSubject,
                                         boolean bypassPermissions) throws java.io.IOException {
-        return MN.resolveWithContext(component, context, scoreboardSubject, bypassPermissions);
+        net.minecraft.commands.CommandSourceStack source =
+                context != null ? org.bukkit.craftbukkit.command.VanillaCommandWrapper.getListener(context) : null;
+        if (source != null && bypassPermissions) {
+            source = source.withMaximumPermission(net.minecraft.server.permissions.PermissionSet.ALL_PERMISSIONS);
+        }
+
+        try {
+            final net.minecraft.network.chat.ResolutionContext.Builder builder =
+                    net.minecraft.network.chat.ResolutionContext.builder();
+            if (source != null) {
+                builder.withSource(source);
+            }
+            if (scoreboardSubject != null) {
+                builder.withEntityOverride(
+                        ((org.bukkit.craftbukkit.entity.CraftEntity) scoreboardSubject).getHandle());
+            }
+            return io.papermc.paper.adventure.PaperAdventure.asAdventure(
+                    net.minecraft.network.chat.ComponentUtils.resolve(
+                            builder.build(),
+                            io.papermc.paper.adventure.PaperAdventure.asVanilla(component)));
+        } catch (final com.mojang.brigadier.exceptions.CommandSyntaxException ex) {
+            throw new java.io.IOException(ex);
+        }
+    }
+
+    @Override
+    public com.destroystokyo.paper.util.VersionFetcher getVersionFetcher() {
+        return new com.destroystokyo.paper.util.VersionFetcher.DummyVersionFetcher();
     }
 
 }
