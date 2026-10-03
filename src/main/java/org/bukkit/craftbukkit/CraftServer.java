@@ -2363,9 +2363,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
 	@Override
-	public @NotNull CommandSender createCommandSender(@NotNull Consumer<? super Component> arg0) {
-		// TODO Auto-generated method stub
-		return null;
+	public @NotNull CommandSender createCommandSender(@NotNull Consumer<? super Component> feedback) {
+        Preconditions.checkArgument(feedback != null, "feedback cannot be null");
+        return new io.papermc.paper.commands.FeedbackForwardingSender(feedback, this);
 	}
 
 	@Override
