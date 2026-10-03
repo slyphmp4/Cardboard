@@ -62,4 +62,8 @@ public interface EntityBridge {
 
     void cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause cause);
 
+    boolean cardboard$hasFixedPose();
+
+    void cardboard$setFixedPose(boolean fixed);
+
 }
