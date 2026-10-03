@@ -5,6 +5,7 @@
 package org.cardboardpowered.bridge.world.item.crafting;
 
 import java.util.List;
+import java.util.function.Predicate;
 import net.minecraft.core.HolderSet;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,5 +30,9 @@ public interface IngredientBridge {
 	HolderSet<Item> cb$entries();
 
 	List<ItemStack> cb$itemStacks();
+
+	Predicate<ItemStack> cardboard$getStackPredicate();
+
+	void cardboard$setStackPredicate(Predicate<ItemStack> predicate);
 
 }

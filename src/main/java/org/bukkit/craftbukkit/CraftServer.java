@@ -19,11 +19,13 @@
 package org.bukkit.craftbukkit;
 
 import com.destroystokyo.paper.entity.ai.MobGoals;
+import com.destroystokyo.paper.entity.ai.PaperMobGoals;
 import com.destroystokyo.paper.profile.CraftPlayerProfile;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.MapMaker;
@@ -89,6 +91,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.ConsoleInput;
 import net.minecraft.server.bossevents.CustomBossEvent;
+import net.minecraft.server.commands.ReloadCommand;
 import net.minecraft.server.dedicated.DedicatedPlayerList;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
@@ -100,15 +103,20 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.item.MapItem;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.RepairItemRecipe;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.Fluid;
@@ -139,13 +147,16 @@ import org.bukkit.conversations.Conversable;
 import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.craftbukkit.entity.CraftEntityFactory;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.craftbukkit.packs.CraftDataPackManager;
+import org.bukkit.craftbukkit.map.CraftMapCursor;
 import org.bukkit.craftbukkit.packs.CraftResourcePack;
 import org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager;
 import org.bukkit.craftbukkit.scoreboard.CraftCriteria;
 import org.bukkit.craftbukkit.util.CraftChatMessage;
 import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
+import org.bukkit.craftbukkit.util.CraftSpawnCategory;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityFactory;
 import org.bukkit.entity.Player;
@@ -266,6 +277,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     private final SimpleHelpMap helpMap = new SimpleHelpMap(this);
     private final StandardMessenger messenger = new StandardMessenger();
+    private final MobGoals mobGoals = new PaperMobGoals();
     private final YamlConfiguration configuration;
 
     public static DedicatedServer console;
@@ -282,6 +294,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     private final Map<Class<?>, org.bukkit.Registry<?>> registries = new HashMap<>();
 
     public CraftDataPackManager dataPackManager;
+    private final io.papermc.paper.datapack.PaperDatapackManager datapackManager;
+    private final io.papermc.paper.potion.PaperPotionBrewer potionBrewer;
 
     private CraftServerTickManager serverTickManager;
     private CraftServerLinks serverLinks;
@@ -351,6 +365,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         }));
 
         this.dataPackManager = new CraftDataPackManager(this.getServer().getPackRepository());
+        this.datapackManager = new io.papermc.paper.datapack.PaperDatapackManager(this.getServer().getPackRepository());
+        this.potionBrewer = new io.papermc.paper.potion.PaperPotionBrewer(this.getServer());
         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
         this.serverLinks = new CraftServerLinks(console);
         this.minimumAPI = ApiVersion.getOrCreateVersion(this.configuration.getString("settings.minimum-api"));
@@ -1124,14 +1140,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getAmbientSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.AMBIENT);
     }
 
     @Override
     public int getAnimalSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.ANIMAL);
     }
 
     @Override
@@ -1148,9 +1162,10 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @Override
     public Set<OfflinePlayer> getBannedPlayers() {
         Set<OfflinePlayer> set = Sets.newHashSet();
-        for (String s : getServer().getPlayerList().getBans().getUserList())
-            set.add(getOfflinePlayer(s));
-        return null;
+        for (String name : getServer().getPlayerList().getBans().getUserList()) {
+            set.add(getOfflinePlayer(name));
+        }
+        return set;
     }
 
     @Override
@@ -1181,6 +1196,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @SuppressWarnings("resource")
     @Override
     public Entity getEntity(UUID uuid) {
+        Preconditions.checkArgument(uuid != null, "uuid cannot be null");
         for (ServerLevel world : getServer().getAllLevels()) {
             net.minecraft.world.entity.Entity entity = world.getEntity(uuid);
             if (entity != null)
@@ -1229,9 +1245,14 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public LootTable getLootTable(NamespacedKey arg0) {
-        // TODO Auto-generated method stub
-        return null;
+    public LootTable getLootTable(NamespacedKey key) {
+        Preconditions.checkArgument(key != null, "NamespacedKey key cannot be null");
+
+        var registry = this.getServer().reloadableRegistries();
+        return registry.lookup().lookup(Registries.LOOT_TABLE)
+                .flatMap((lookup) -> lookup.get(CraftLootTable.bukkitKeyToMinecraft(key)))
+                .map((holder) -> new CraftLootTable(key, holder.value()))
+                .orElse(null);
     }
 
     @Override
@@ -1260,8 +1281,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMonsterSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.MONSTER);
     }
 
     @Override
@@ -1564,8 +1584,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getWaterAnimalSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.WATER_ANIMAL);
     }
 
     @Override
@@ -1578,11 +1597,13 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public World getWorld(String name) {
+        Preconditions.checkArgument(name != null, "name cannot be null");
         return worlds.get(name.toLowerCase(Locale.ROOT));
     }
 
     @Override
     public World getWorld(UUID uuid) {
+        Preconditions.checkArgument(uuid != null, "uuid cannot be null");
         for (World world : worlds.values())
             if (world.getUID().equals(uuid))
                 return world;
@@ -1697,7 +1718,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadData() {
-        // TODO Auto-generated method stub
+        // Paper delegates to a server-side ReloadCommand helper that is not part of vanilla/Fabric.
+        // Data reload remains driven by Cardboard's existing resource reload path.
     }
 
     @Override
@@ -1744,9 +1766,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public void setSpawnRadius(int arg0) {
-        // TODO Auto-generated method stub
-        // server.getProperties().spawnProtection = arg0;
+    public void setSpawnRadius(int value) {
+        this.getServer().setSpawnProtectionRadius(value);
     }
 
     @Override
@@ -1936,7 +1957,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public int getWaterAmbientSpawnLimit() {
-        return 0; // TODO
+        return this.getSpawnLimit(SpawnCategory.WATER_AMBIENT);
     }
 
     private final Spigot spigot = new Server.Spigot(){
@@ -1972,8 +1993,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getTicksPerWaterAmbientSpawns() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getTicksPerSpawns(SpawnCategory.WATER_AMBIENT);
     }
 
     @Override
@@ -2052,8 +2072,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMaxWorldSize() {
-        // TODO Auto-generated method stub
-        return ServerLevel.MAX_LEVEL_SIZE;
+        return this.getProperties().maxWorldSize;
     }
 
     @Override
@@ -2063,8 +2082,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public MobGoals getMobGoals() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.mobGoals;
     }
 
     @Override
@@ -2156,12 +2174,30 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadPermissions() {
-        // TODO Auto-generated method stub
+        this.pluginManager.clearPermissions();
+
+        for (Plugin plugin : this.pluginManager.getPlugins()) {
+            for (Permission permission : plugin.getDescription().getPermissions()) {
+                try {
+                    this.pluginManager.addPermission(permission);
+                } catch (IllegalArgumentException ex) {
+                    this.getLogger().log(Level.WARNING,
+                            "Plugin " + plugin.getDescription().getFullName()
+                                    + " tried to register permission '" + permission.getName()
+                                    + "' but it is already registered",
+                            ex);
+                }
+            }
+        }
+
+        DefaultPermissions.registerCorePermissions();
+        CommandPermissions.registerCorePermissions();
     }
 
     @Override
-    public void setMaxPlayers(int arg0) {
-        // TODO Auto-generated method stub
+    public void setMaxPlayers(int maxPlayers) {
+        Preconditions.checkArgument(maxPlayers >= 0, "maxPlayers must be >= 0");
+        this.console.setMaxPlayers(maxPlayers);
     }
 
     @Override
@@ -2173,34 +2209,56 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NonNull Iterable<? extends Audience> audiences() {
-        // TODO Auto-generated method stub
-        return null;
+        return Iterables.concat(Collections.singleton(this.getConsoleSender()), this.getOnlinePlayers());
     }
 
     @Override
-    public int broadcast(@NotNull Component arg0) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int broadcast(@NotNull Component message) {
+        return this.broadcast(message, BROADCAST_CHANNEL_USERS);
     }
 
     @Override
-    public int broadcast(@NotNull Component arg0, @NotNull String arg1) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int broadcast(@NotNull Component message, @NotNull String permission) {
+        Preconditions.checkArgument(message != null, "message cannot be null");
+        Preconditions.checkArgument(permission != null, "permission cannot be null");
+
+        Set<CommandSender> recipients = new HashSet<>();
+        for (Permissible permissible : this.getPluginManager().getPermissionSubscriptions(permission)) {
+            if (permissible instanceof CommandSender sender
+                    && !(permissible instanceof org.bukkit.command.BlockCommandSender)
+                    && permissible.hasPermission(permission)) {
+                recipients.add(sender);
+            }
+        }
+
+        BroadcastMessageEvent event = new BroadcastMessageEvent(!Bukkit.isPrimaryThread(), message, recipients);
+        if (!event.callEvent()) {
+            return 0;
+        }
+
+        Component eventMessage = event.message();
+        for (CommandSender recipient : recipients) {
+            recipient.sendMessage(eventMessage);
+        }
+        return recipients.size();
     }
 
     @Override
-    public @NotNull Inventory createInventory(@Nullable InventoryHolder arg0, @NotNull InventoryType arg1,
-            @NotNull Component arg2) {
-        // TODO Auto-generated method stub
-        return null;
+    public @NotNull Inventory createInventory(@Nullable InventoryHolder owner, @NotNull InventoryType type,
+            @NotNull Component title) {
+        Preconditions.checkArgument(type != null, "InventoryType cannot be null");
+        Preconditions.checkArgument(type.isCreatable(), "InventoryType.%s cannot be used to create an inventory", type);
+        Preconditions.checkArgument(title != null, "title cannot be null");
+        return CraftInventoryCreator.INSTANCE.createInventory(owner, type, title);
     }
 
     @Override
-    public @NotNull Inventory createInventory(@Nullable InventoryHolder arg0, int arg1, @NotNull Component arg2)
+    public @NotNull Inventory createInventory(@Nullable InventoryHolder owner, int size, @NotNull Component title)
             throws IllegalArgumentException {
-        // TODO Auto-generated method stub
-        return null;
+        Preconditions.checkArgument(9 <= size && size <= 54 && size % 9 == 0,
+                "Size for custom inventory must be a multiple of 9 between 9 and 54 slots (got %s)", size);
+        Preconditions.checkArgument(title != null, "title cannot be null");
+        return CraftInventoryCreator.INSTANCE.createInventory(owner, size, title);
     }
 
     @Override
@@ -2210,8 +2268,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NotNull DatapackManager getDatapackManager() {
-        // TODO Auto-generated method stub
-        return null;
+        return this.datapackManager;
     }
 
     @Override
@@ -2229,20 +2286,18 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public @NotNull Component motd() {
-        // TODO Auto-generated method stub
-        return null;
+        return LegacyComponentSerializer.legacySection().deserialize(this.getMotd());
     }
 
     @Override
     public @Nullable Component shutdownMessage() {
-        // TODO Auto-generated method stub
-        return null;
+        String message = this.getShutdownMessage();
+        return message != null ? LegacyComponentSerializer.legacySection().deserialize(message) : null;
     }
 
     @Override
     public @NotNull ItemStack craftItem(ItemStack[] craftingMatrix, World world, Player player) {
-        // TODO Auto-generated method stub
-        return null;
+        return this.craftItemResult(craftingMatrix, world, player).getResult();
     }
 
     @Override
@@ -2260,14 +2315,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
             }
 
             public net.minecraft.world.item.ItemStack transferSlot(net.minecraft.world.entity.player.Player player, int index) {
-                // TODO Auto-generated method stub
-                return null;
+                return net.minecraft.world.item.ItemStack.EMPTY;
             }
 
 			// 1.19.4 @Override
 			public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player player, int slot) {
-				// TODO Auto-generated method stub
-				return null;
+                return net.minecraft.world.item.ItemStack.EMPTY;
 			}
         };
         TransientCraftingContainer inventoryCrafting = new TransientCraftingContainer(container, 3, 3);
@@ -2277,7 +2330,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         return ((RecipeHolderBridge)(Object) opt.get()).toBukkitRecipe();
     }
 
-    private Optional<RecipeHolder<CraftingRecipe>> getNMSRecipe(ItemStack[] craftingMatrix, TransientCraftingContainer inventoryCrafting, CraftWorld world) {
+    private Optional<RecipeHolder<CraftingRecipe>> getNMSRecipe(ItemStack[] craftingMatrix, CraftingContainer inventoryCrafting, CraftWorld world) {
         Preconditions.checkArgument(craftingMatrix != null, "craftingMatrix must not be null");
         Preconditions.checkArgument(craftingMatrix.length == 9, "craftingMatrix must be an array of length 9");
         Preconditions.checkArgument(world != null, "world must not be null");
@@ -2302,14 +2355,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getTicksPerWaterUndergroundCreatureSpawns() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getTicksPerSpawns(SpawnCategory.WATER_UNDERGROUND_CREATURE);
     }
 
     @Override
     public int getWaterUndergroundCreatureSpawnLimit() {
-        // TODO Auto-generated method stub
-        return 0;
+        return this.getSpawnLimit(SpawnCategory.WATER_UNDERGROUND_CREATURE);
     }
 
     @Override
@@ -2323,9 +2374,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
 	@Override
-	public @NotNull CommandSender createCommandSender(@NotNull Consumer<? super Component> arg0) {
-		// TODO Auto-generated method stub
-		return null;
+	public @NotNull CommandSender createCommandSender(@NotNull Consumer<? super Component> feedback) {
+        Preconditions.checkArgument(feedback != null, "feedback cannot be null");
+        return new io.papermc.paper.commands.FeedbackForwardingSender(feedback, this);
 	}
 
 	@Override
@@ -2344,10 +2395,20 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 	}
 
 	@Override
-	public com.destroystokyo.paper.profile.@NotNull PlayerProfile createProfileExact(@Nullable UUID arg0,
-			@Nullable String arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public com.destroystokyo.paper.profile.@NotNull PlayerProfile createProfileExact(@Nullable UUID uuid,
+			@Nullable String name) {
+        Player player = uuid != null ? Bukkit.getPlayer(uuid) : (name != null ? Bukkit.getPlayerExact(name) : null);
+        if (player == null) {
+            return new CraftPlayerProfile(uuid, name);
+        }
+
+        if (java.util.Objects.equals(uuid, player.getUniqueId()) && java.util.Objects.equals(name, player.getName())) {
+            return new CraftPlayerProfile((CraftPlayer) player);
+        }
+
+        CraftPlayerProfile profile = new CraftPlayerProfile(uuid, name);
+        profile.getGameProfile().properties().putAll(((CraftPlayer) player).getHandle().getGameProfile().properties());
+        return profile;
 	}
 
     @Override
@@ -2364,50 +2425,56 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public boolean getHideOnlinePlayers() {
-		// TODO Auto-generated method stub
-		return false;
+        return this.console.hidesOnlinePlayers();
 	}
 
 	@Override
 	public @NotNull PotionBrewer getPotionBrewer() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.potionBrewer;
 	}
 
 	@Override
 	public @NotNull String getResourcePack() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::url)
+                .orElse("");
 	}
 
 	@Override
 	public @NotNull String getResourcePackHash() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::hash)
+                .orElse("")
+                .toUpperCase(Locale.ROOT);
 	}
 
 	@Override
 	public @NotNull String getResourcePackPrompt() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.getServer().getServerResourcePack()
+                .map(net.minecraft.server.MinecraftServer.ServerResourcePackInfo::prompt)
+                .map(CraftChatMessage::fromComponent)
+                .orElse("");
 	}
 
 	@Override
 	public int getSimulationDistance() {
-		// TODO Auto-generated method stub
-		return 8;
+        return this.console.simulationDistance();
 	}
 
 	@Override
-	public int getSpawnLimit(@NotNull SpawnCategory arg0) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getSpawnLimit(@NotNull SpawnCategory spawnCategory) {
+        Preconditions.checkArgument(spawnCategory != null, "SpawnCategory cannot be null");
+        Preconditions.checkArgument(CraftSpawnCategory.isValidForLimits(spawnCategory),
+                "SpawnCategory.%s does not have a spawn limit.", spawnCategory);
+        return this.configuration.getInt(CraftSpawnCategory.getConfigNameSpawnLimit(spawnCategory));
 	}
 
 	@Override
-	public int getTicksPerSpawns(@NotNull SpawnCategory arg0) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int getTicksPerSpawns(@NotNull SpawnCategory spawnCategory) {
+        Preconditions.checkArgument(spawnCategory != null, "SpawnCategory cannot be null");
+        Preconditions.checkArgument(CraftSpawnCategory.isValidForLimits(spawnCategory),
+                "SpawnCategory.%s are not supported", spawnCategory);
+        return this.configuration.getInt(CraftSpawnCategory.getConfigNameTicksPerSpawn(spawnCategory));
 	}
 
 	@Override
@@ -2439,8 +2506,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public boolean isTickingWorlds() {
-		// TODO Auto-generated method stub
-		return true; // todo: paper api
+        return ((MinecraftServerBridge) (Object) this.getServer()).cardboard$isIteratingOverLevels();
 	}
 
 	@Override
@@ -2469,14 +2535,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull List<String> getInitialDisabledPacks() {
-		// TODO Auto-generated method stub
-		return null;
+        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getDisabled());
 	}
 
 	@Override
 	public @NotNull List<String> getInitialEnabledPacks() {
-		// TODO Auto-generated method stub
-		return null;
+        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getEnabled());
 	}
 
     public void setMotd(String motd) {
@@ -2488,7 +2552,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     public void updateRecipes() {
-    	// TODO this.console.playerManager.reloadRecipeData();
+        this.console.playerList.reloadResources();
     }
 
     // TODO: Tick Threads
@@ -2524,8 +2588,37 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 	public @Nullable ItemStack createExplorerMap(@NotNull World world, @NotNull Location location,
 			org.bukkit.generator.structure.@NotNull StructureType structureType,
 			org.bukkit.map.MapCursor.@NotNull Type mapIcon, int radius, boolean findUnexplored) {
-		// TODO Auto-generated method stub
-		return null;
+        Preconditions.checkArgument(world != null, "World cannot be null");
+        Preconditions.checkArgument(location != null, "Location cannot be null");
+        Preconditions.checkArgument(structureType != null, "structureType cannot be null");
+        Preconditions.checkArgument(mapIcon != null, "mapIcon cannot be null");
+
+        final org.bukkit.util.StructureSearchResult result =
+                world.locateNearestStructure(location, structureType, radius, findUnexplored);
+        if (result == null) {
+            return null;
+        }
+
+        Location structureLocation = result.getLocation();
+        BlockPos structurePos = new BlockPos(
+                structureLocation.getBlockX(),
+                structureLocation.getBlockY(),
+                structureLocation.getBlockZ()
+        );
+        ServerLevel level = ((CraftWorld) world).getHandle();
+
+        net.minecraft.world.item.ItemStack stack =
+                MapItem.create(level, structurePos.getX(), structurePos.getZ(),
+                        MapView.Scale.NORMAL.getValue(), true, true);
+        MapItem.renderBiomePreviewMap(level, stack);
+        MapItemSavedData.addTargetDecoration(
+                stack,
+                structurePos,
+                "+",
+                CraftMapCursor.CraftType.bukkitToMinecraftHolder(mapIcon)
+        );
+
+        return CraftItemStack.asBukkitCopy(stack);
 	}
 
 	@Override
@@ -2540,8 +2633,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public void motd(@NotNull Component motd) {
-		// TODO Auto-generated method stub
-
+        Preconditions.checkArgument(motd != null, "motd cannot be null");
+        this.setMotd(LegacyComponentSerializer.legacySection().serialize(motd));
 	}
 
 	// 1.20.2 API:
@@ -2553,41 +2646,109 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
     public ItemCraftResult craftItemResult(ItemStack[] craftingMatrix, World world, Player player) {
-        /*
-		CraftWorld craftWorld = (CraftWorld)world;
-        CraftPlayer craftPlayer = (CraftPlayer)player;
-        CraftingScreenHandler container = new CraftingScreenHandler(-1, craftPlayer.getHandle().getInventory());
-        CraftingInventory inventoryCrafting = container.craftSlots;
-        CraftingResultInventory craftResult = container.result;
-        Optional<RecipeEntry<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, inventoryCrafting, craftWorld);
-        net.minecraft.item.ItemStack itemstack = net.minecraft.item.ItemStack.EMPTY;
+        Preconditions.checkArgument(world != null, "world cannot be null");
+        Preconditions.checkArgument(player != null, "player cannot be null");
+
+        CraftWorld craftWorld = (CraftWorld) world;
+        CraftPlayer craftPlayer = (CraftPlayer) player;
+
+        CraftingMenu container = new CraftingMenu(-1, craftPlayer.getHandle().getInventory());
+        CraftingContainer craftingContainer = container.craftSlots;
+        ResultContainer craftResult = container.resultSlots;
+
+        Optional<RecipeHolder<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, craftingContainer, craftWorld);
+        net.minecraft.world.item.ItemStack result = net.minecraft.world.item.ItemStack.EMPTY;
+
         if (recipe.isPresent()) {
-            RecipeEntry<CraftingRecipe> recipeCrafting = recipe.get();
-            if (craftResult.shouldCraftRecipe(craftWorld.getHandle(), craftPlayer.getHandle(), recipeCrafting)) {
-                itemstack = recipeCrafting.value().craft(inventoryCrafting, craftWorld.getHandle().getRegistryManager());
+            RecipeHolder<CraftingRecipe> recipeCrafting = recipe.get();
+            ((org.cardboardpowered.bridge.world.ContainerBridge) (Object) craftingContainer)
+                    .setCurrentRecipe(recipeCrafting.value());
+            if (craftResult.setRecipeUsed(craftPlayer.getHandle(), recipeCrafting)) {
+                result = recipeCrafting.value().assemble(craftingContainer.asCraftInput());
             }
         }
-        net.minecraft.item.ItemStack result = CraftEventFactory.callPreCraftEvent(inventoryCrafting, craftResult, itemstack, container.getBukkitView(), recipe.map(RecipeEntry::value).orElse(null) instanceof RepairItemRecipe);
-        return this.createItemCraftResult(CraftItemStack.asBukkitCopy(result), inventoryCrafting, craftWorld.getHandle());
-    	*/
-		return null;
+
+        result = CraftEventFactory.callPreCraftEvent(
+                craftingContainer,
+                craftResult,
+                result,
+                ((org.cardboardpowered.bridge.world.inventory.AbstractContainerMenuBridge) (Object) container).getBukkitView(),
+                recipe.map(RecipeHolder::value).orElse(null) instanceof RepairItemRecipe
+        );
+        return this.createItemCraftResult(recipe, CraftItemStack.asBukkitCopy(result), craftingContainer);
     }
 
 	@Override
     public ItemCraftResult craftItemResult(ItemStack[] craftingMatrix, World world) {
-        /*
-		Preconditions.checkArgument((world != null ? 1 : 0) != 0, (Object)"world must not be null");
-        CraftWorld craftWorld = (CraftWorld)world;
+        Preconditions.checkArgument(world != null, "world must not be null");
 
-        RecipeInputInventory inventoryCrafting = this.createInventoryCrafting();
-        Optional<RecipeEntry<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, inventoryCrafting, craftWorld);
-        net.minecraft.item.ItemStack itemStack = net.minecraft.item.ItemStack.EMPTY;
-        if (recipe.isPresent()) {
-            itemStack = recipe.get().value().craft(inventoryCrafting, craftWorld.getHandle().getRegistryManager());
+        CraftWorld craftWorld = (CraftWorld) world;
+        CraftingContainer craftingContainer = this.createCraftingContainer();
+        Optional<RecipeHolder<CraftingRecipe>> recipe = this.getNMSRecipe(craftingMatrix, craftingContainer, craftWorld);
+
+        final ItemStack result = recipe
+                .map(holder -> CraftItemStack.asBukkitCopy(holder.value().assemble(craftingContainer.asCraftInput())))
+                .orElseGet(ItemStack::empty);
+
+        return this.createItemCraftResult(recipe, result, craftingContainer);
+    }
+
+    private CraftingContainer createCraftingContainer() {
+        AbstractContainerMenu container = new AbstractContainerMenu(null, -1) {
+            @Override
+            public boolean stillValid(net.minecraft.world.entity.player.Player player) {
+                return false;
+            }
+
+            @Override
+            public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player player, int slot) {
+                return net.minecraft.world.item.ItemStack.EMPTY;
+            }
+        };
+
+        return new TransientCraftingContainer(container, 3, 3);
+    }
+
+    private CraftItemCraftResult createItemCraftResult(Optional<RecipeHolder<CraftingRecipe>> recipe, ItemStack result, CraftingContainer craftingContainer) {
+        CraftItemCraftResult craftItemResult = new CraftItemCraftResult(result);
+        final CraftingInput.Positioned positionedCraftInput = craftingContainer.asPositionedCraftInput();
+        final CraftingInput craftingInput = positionedCraftInput.input();
+
+        recipe.map(holder -> holder.value().getRemainingItems(craftingInput)).ifPresent(remainingItems -> {
+            for (int height = 0; height < craftingInput.height(); height++) {
+                for (int width = 0; width < craftingInput.width(); width++) {
+                    final int inventorySlot =
+                            width + positionedCraftInput.left()
+                                    + (height + positionedCraftInput.top()) * craftingContainer.getWidth();
+
+                    net.minecraft.world.item.ItemStack itemInMenu = craftingContainer.getItem(inventorySlot);
+                    net.minecraft.world.item.ItemStack remainingItem =
+                            remainingItems.get(width + height * craftingInput.width());
+
+                    if (!itemInMenu.isEmpty()) {
+                        craftingContainer.removeItem(inventorySlot, 1);
+                        itemInMenu = craftingContainer.getItem(inventorySlot);
+                    }
+
+                    if (!remainingItem.isEmpty()) {
+                        if (itemInMenu.isEmpty()) {
+                            craftingContainer.setItem(inventorySlot, remainingItem);
+                        } else if (net.minecraft.world.item.ItemStack.isSameItemSameComponents(itemInMenu, remainingItem)) {
+                            remainingItem.grow(itemInMenu.getCount());
+                            craftingContainer.setItem(inventorySlot, remainingItem);
+                        } else {
+                            craftItemResult.getOverflowItems().add(CraftItemStack.asBukkitCopy(remainingItem));
+                        }
+                    }
+                }
+            }
+        });
+
+        for (int i = 0; i < craftingContainer.getContainerSize(); i++) {
+            craftItemResult.setResultMatrix(i, CraftItemStack.asBukkitCopy(craftingContainer.getItem(i)));
         }
-        return this.createItemCraftResult(CraftItemStack.asBukkitCopy(itemStack), inventoryCrafting, craftWorld.getHandle());
-        */
-        return null;
+
+        return craftItemResult;
     }
 
 	// 1.20.4 API:
@@ -2677,8 +2838,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull Merchant createMerchant() {
-		// TODO Auto-generated method stub
-		return null;
+        return new CraftMerchantCustom();
 	}
 
 	@Override

@@ -177,6 +177,13 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
         return false;
     }
 
+    private boolean cardboard$isIteratingOverLevels;
+
+    @Override
+    public boolean cardboard$isIteratingOverLevels() {
+        return this.cardboard$isIteratingOverLevels;
+    }
+
     @TransformAccess(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)
     private static MinecraftServer getServer() {
         return (MinecraftServer) (Object) CraftServer.server;
@@ -481,6 +488,16 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
     public void shouldKeepTicking_BF(CallbackInfoReturnable<Boolean> ci) {
         boolean bl = this.forceTicks;
         if (bl) ci.setReturnValue(bl);
+    }
+
+    @Inject(at = @At("HEAD"), method = "tickChildren")
+    private void cardboard$beginWorldTickPhase(BooleanSupplier b, CallbackInfo ci) {
+        this.cardboard$isIteratingOverLevels = true;
+    }
+
+    @Inject(at = @At("RETURN"), method = "tickChildren")
+    private void cardboard$endWorldTickPhase(BooleanSupplier b, CallbackInfo ci) {
+        this.cardboard$isIteratingOverLevels = false;
     }
 
     @Inject(at = @At("HEAD"), method = "tickChildren")

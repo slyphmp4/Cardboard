@@ -1,6 +1,7 @@
 package org.cardboardpowered.mixin.world.item.crafting;
 
 import java.util.Objects;
+import java.util.function.Predicate;
 import net.minecraft.core.HolderSet;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -25,6 +26,9 @@ public class IngredientMixin implements IngredientBridge {
 	}
 	
 	private java.util.List<ItemStack> itemStacks;
+
+	@org.spongepowered.asm.mixin.Unique
+	private Predicate<ItemStack> cardboard$stackPredicate;
 	
 	@Override
 	public boolean cb$isExact() {
@@ -34,6 +38,16 @@ public class IngredientMixin implements IngredientBridge {
 	@Override
 	public java.util.List<ItemStack> cb$itemStacks() {
 		return this.itemStacks;
+	}
+
+	@Override
+	public Predicate<ItemStack> cardboard$getStackPredicate() {
+		return this.cardboard$stackPredicate;
+	}
+
+	@Override
+	public void cardboard$setStackPredicate(Predicate<ItemStack> predicate) {
+		this.cardboard$stackPredicate = predicate;
 	}
 	
 	@Override
@@ -69,6 +83,11 @@ public class IngredientMixin implements IngredientBridge {
             at = @At("HEAD"),
             cancellable = true)
     private void banner$test(ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
+
+        if (this.cardboard$stackPredicate != null) {
+            cir.setReturnValue(this.cardboard$stackPredicate.test(stack));
+            return;
+        }
 
     	if (exact_BF || this.cb$isExact()) {
     		for (ItemStack itemstack1 : this.cb$itemStacks()) {
