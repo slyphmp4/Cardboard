@@ -67,6 +67,7 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     public org.bukkit.projectiles.ProjectileSource projectileSource;
     private ArrayList<org.bukkit.inventory.ItemStack> drops = new ArrayList<org.bukkit.inventory.ItemStack>();
     private boolean forceDrops;
+    private org.bukkit.event.entity.EntityRemoveEvent.Cause cardboard$removeEventCause;
 
     @Override
     public ArrayList<org.bukkit.inventory.ItemStack> cardboard_getDrops() {
@@ -89,6 +90,16 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     @Override
     public void cardboard_setForceDrops(boolean forceDrops) {
         this.forceDrops = forceDrops;
+    }
+
+    @Override
+    public org.bukkit.event.entity.EntityRemoveEvent.Cause cardboard$getRemoveEventCause() {
+        return this.cardboard$removeEventCause;
+    }
+
+    @Override
+    public void cardboard$setRemoveEventCause(org.bukkit.event.entity.EntityRemoveEvent.Cause cause) {
+        this.cardboard$removeEventCause = cause;
     }
 
     @Shadow
