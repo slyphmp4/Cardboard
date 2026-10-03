@@ -284,6 +284,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     public CraftDataPackManager dataPackManager;
     private final io.papermc.paper.datapack.PaperDatapackManager datapackManager;
+    private final io.papermc.paper.potion.PaperPotionBrewer potionBrewer;
 
     private CraftServerTickManager serverTickManager;
     private CraftServerLinks serverLinks;
@@ -354,6 +355,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
         this.dataPackManager = new CraftDataPackManager(this.getServer().getPackRepository());
         this.datapackManager = new io.papermc.paper.datapack.PaperDatapackManager(this.getServer().getPackRepository());
+        this.potionBrewer = new io.papermc.paper.potion.PaperPotionBrewer(this.getServer());
         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
         this.serverLinks = new CraftServerLinks(console);
         this.minimumAPI = ApiVersion.getOrCreateVersion(this.configuration.getString("settings.minimum-api"));
@@ -2417,8 +2419,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull PotionBrewer getPotionBrewer() {
-		// TODO Auto-generated method stub
-		return null;
+        return this.potionBrewer;
 	}
 
 	@Override
