@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.command.CommandSender;
 import org.bukkit.craftbukkit.CraftServer;
+import org.cardboardpowered.bridge.commands.CommandSourceBridge;
 import org.cardboardpowered.impl.command.CardboardConsoleCommandSender;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -74,7 +75,7 @@ public final class FeedbackForwardingSender extends CardboardConsoleCommandSende
         );
     }
 
-    private record Source(FeedbackForwardingSender sender) implements CommandSource {
+    private record Source(FeedbackForwardingSender sender) implements CommandSource, CommandSourceBridge {
         @Override
         public void sendSystemMessage(final net.minecraft.network.chat.Component message) {
             this.sender.sendMessage(PaperAdventure.asAdventure(message));
