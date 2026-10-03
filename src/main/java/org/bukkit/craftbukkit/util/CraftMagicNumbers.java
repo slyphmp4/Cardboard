@@ -515,11 +515,11 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
         com.mojang.serialization.DynamicOps<com.google.gson.JsonElement> ops = reg.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
         com.google.gson.JsonObject item;
         // Serialize as SNBT to preserve exact NBT types; vanilla codecs already can handle such deserialization.
-        //net.minecraft.world.item.component.CustomData.SERIALIZE_CUSTOM_AS_SNBT.set(true); // TODO
+        net.minecraft.world.item.component.CustomData.SERIALIZE_CUSTOM_AS_SNBT.set(true);
         try {
             item = net.minecraft.world.item.ItemStack.CODEC.encodeStart(ops, CraftItemStack.unwrap(itemStack)).getOrThrow().getAsJsonObject();
         } finally {
-           // net.minecraft.world.item.component.CustomData.SERIALIZE_CUSTOM_AS_SNBT.set(false); // TODO
+            net.minecraft.world.item.component.CustomData.SERIALIZE_CUSTOM_AS_SNBT.set(false);
         }
         item.addProperty("DataVersion", this.getDataVersion());
         return item;
@@ -581,13 +581,13 @@ public final class CraftMagicNumbers implements UnsafeValues, IMagicNumbers {
         )) {
             final TagValueOutput output = TagValueOutput.createWithContext(problemReporter, nmsEntity.registryAccess());
             if (serializePassengers) {
-                if (!nmsEntity.saveAsPassenger(output)) {//, true, includeNonSaveable, forceSerialization)) { // TODO
+                if (!nmsEntity.saveAsPassenger(output, true, includeNonSaveable, forceSerialization)) {
                     throw new IllegalArgumentException("Couldn't serialize entity");
                 }
             } else {
                 List<net.minecraft.world.entity.Entity> pass = new ArrayList<>(nmsEntity.getPassengers());
                 nmsEntity.passengers = com.google.common.collect.ImmutableList.of();
-                boolean serialized = nmsEntity.saveAsPassenger(output);//, true, includeNonSaveable, forceSerialization); // TODO
+                boolean serialized = nmsEntity.saveAsPassenger(output, true, includeNonSaveable, forceSerialization);
                 nmsEntity.passengers = com.google.common.collect.ImmutableList.copyOf(pass);
                 if (!serialized) {
                     throw new IllegalArgumentException("Couldn't serialize entity");
