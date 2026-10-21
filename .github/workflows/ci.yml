@@ -63,7 +63,7 @@ jobs:
           retention-days: 7
 
   integrated-lan-luckperms:
-    name: Two-client LAN + real LuckPerms-Fabric smoke
+    name: Two-client LAN + dedicated LuckPerms-Fabric smoke
     needs: cardboard
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -89,7 +89,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 libflite1 xcursor-themes
       - name: Prepare two clients and real LuckPerms
         run: ./gradlew -PintegratedSmoke -PlanSmoke prepareIntegratedLanSmoke --no-daemon --max-workers=2 --stacktrace
-      - name: Join both LAN worlds and verify LuckPerms grant, denial and revocation
+      - name: Join both LAN worlds, then verify LuckPerms on its dedicated server
         run: timeout 960s xvfb-run -a python3 tools/integrated-smoke/run_lan.py
       - name: Upload both client logs
         if: always()
@@ -100,8 +100,10 @@ jobs:
             integrated-lan-*.log
             run-integrated-smoke/logs/**
             run-integrated-guest/logs/**
+            run-luckperms-smoke/logs/**
             run-integrated-smoke/crash-reports/**
             run-integrated-guest/crash-reports/**
+            run-luckperms-smoke/crash-reports/**
             build/integrated-lan-exchange/**
           if-no-files-found: ignore
           retention-days: 7

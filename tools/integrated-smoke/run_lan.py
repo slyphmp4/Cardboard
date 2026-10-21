@@ -1,4 +1,4 @@
-"""Run two prepared Loom client commands concurrently, requiring normal exit from both."""
+"""Run two Minecraft clients and a dedicated LuckPerms server; require successful exits."""
 import json
 import os
 from pathlib import Path
@@ -10,7 +10,7 @@ launches = json.loads((root / 'build/integrated-lan-launch.json').read_text())
 exchange = root / 'build/integrated-lan-exchange'
 if exchange.exists() or (root / 'run-integrated-smoke/integrated-smoke.success').exists():
     raise SystemExit('Use fresh disposable run directories for this smoke')
-logs = [root / 'integrated-lan-host.log', root / 'integrated-lan-guest.log']
+logs = [root / 'integrated-lan-host.log', root / 'integrated-lan-guest.log', root / 'integrated-lan-luckperms-server.log']
 processes = []
 handles = []
 try:
@@ -30,15 +30,17 @@ try:
         raise RuntimeError(f'Client exit codes: {[process.returncode for process in processes]}')
     host = logs[0].read_text(errors='replace')
     guest = logs[1].read_text(errors='replace')
-    for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2',
-                   'LUCKPERMS_FABRIC_PASS SmokeOwner', 'LUCKPERMS_FABRIC_PASS SmokeGuest']:
+    for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2']:
         if marker not in host:
             raise AssertionError(f'Missing host marker: {marker}')
     if 'INTEGRATED_LAN_GUEST_PASS' not in guest:
         raise AssertionError('Missing guest PASS marker')
-    if not (exchange / 'guest.success').is_file() or not (root / 'run-integrated-smoke/integrated-smoke.success').is_file():
+    dedicated = logs[2].read_text(errors='replace')
+    if 'LUCKPERMS_FABRIC_PASS SmokeGuest' not in dedicated or 'DEDICATED_LUCKPERMS_PASS' not in dedicated:
+        raise AssertionError('Missing dedicated LuckPerms PASS markers')
+    if not (exchange / 'guest.success').is_file() or not (exchange / 'dedicated.success').is_file() or not (root / 'run-integrated-smoke/integrated-smoke.success').is_file():
         raise AssertionError('Missing client success files')
-    print('INTEGRATED_LAN_LUCKPERMS_PASS: both clients exited normally', flush=True)
+    print('INTEGRATED_LAN_LUCKPERMS_PASS: both clients and dedicated server exited normally', flush=True)
 finally:
     for process in processes:
         if process.poll() is None:

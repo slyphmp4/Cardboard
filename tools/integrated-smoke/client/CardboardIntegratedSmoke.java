@@ -151,7 +151,6 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
             require(guest.hasPermission("cardboard.smoke.fabric"), "Guest Fabric permission grant was lost");
             require(!guest.hasPermission("cardboard.smoke.denied"), "Guest Fabric denial was lost");
-            LuckPermsSmoke.verify(guest);
             System.out.println("INTEGRATED_LAN_HOST_PASS " + world + " guest=" + id);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(error);
@@ -190,7 +189,6 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");
-            if (LAN) LuckPermsSmoke.verify(player);
             // Exercise property-backed API methods against an IntegratedServer.
             Bukkit.getServer().getViewDistance();
             Bukkit.getServer().getSimulationDistance();

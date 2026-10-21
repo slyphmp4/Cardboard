@@ -471,6 +471,13 @@ if (project.hasProperty('integratedSmoke')) {
                     vmArg '-Dcardboard.smoke.guest=true'
                     vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
                 }
+                luckPermsServer {
+                    server()
+                    runDir 'run-luckperms-smoke'
+                    programArg 'nogui'
+                    vmArg '-Dcardboard.smoke.dedicated=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
             }
         }
     }
@@ -500,24 +507,29 @@ if (project.hasProperty('integratedSmoke')) {
     }
     if (project.hasProperty('lanSmoke')) {
         tasks.named('runSmokeGuest') { classpath sourceSets.integratedSmoke.output }
+        tasks.named('runLuckPermsServer') { classpath sourceSets.integratedSmoke.output }
         tasks.register('prepareIntegratedLanSmoke') {
             // Resolve the same Loom prerequisites without running either blocking JavaExec task.
-            dependsOn { ['runClient', 'runSmokeGuest'].collectMany { tasks.named(it).get().taskDependencies.getDependencies(tasks.named(it).get()) } }
+            dependsOn { ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].collectMany { tasks.named(it).get().taskDependencies.getDependencies(tasks.named(it).get()) } }
             dependsOn fixtureJar, bootstrapFixtureJar, tasks.named('integratedSmokeClasses')
             doLast {
                 def hostDir = file('run-integrated-smoke')
                 def guestDir = file('run-integrated-guest')
+                def serverDir = file('run-luckperms-smoke')
                 [hostDir, guestDir].each { dir ->
                     dir.mkdirs()
                     new File(dir, 'options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:15\nenableVsync:false\nonboardAccessibility:false\n'
                 }
                 copy { from fixtureJar; from bootstrapFixtureJar; into new File(hostDir, 'plugins') }
-                def launches = ['runClient', 'runSmokeGuest'].withIndex().collect { name, i ->
+                copy { from fixtureJar; into new File(serverDir, 'plugins') }
+                new File(serverDir, 'eula.txt').text = 'eula=true\n'
+                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\n'
+                def launches = ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].withIndex().collect { name, i ->
                     def run = tasks.named(name).get()
                     run.maxHeapSize = '2G'
                     def args = [run.javaLauncher.get().executablePath.asFile.absolutePath] + run.allJvmArgs + [run.mainClass.get()] + run.args
                     run.argumentProviders.each { args.addAll(it.asArguments()) }
-                    [command: args, cwd: (i == 0 ? hostDir : guestDir).absolutePath]
+                    [command: args, cwd: [hostDir, guestDir, serverDir][i].absolutePath]
                 }
                 def target = layout.buildDirectory.file('integrated-lan-launch.json').get().asFile
                 target.parentFile.mkdirs()

@@ -26,9 +26,10 @@ final class IntegratedLanGuest implements ClientModInitializer {
     private void tick(Minecraft client) {
         try {
             require(System.nanoTime() < deadline, "Guest timeout at world " + world + " stage " + stage);
+            String ready = world == 3 ? "dedicated-ready" : "ready-" + world;
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null
-                    && Files.exists(exchange.resolve("ready-" + world))) {
-                String address = "127.0.0.1:" + Files.readString(exchange.resolve("ready-" + world)).trim();
+                    && Files.exists(exchange.resolve(ready))) {
+                String address = "127.0.0.1:" + Files.readString(exchange.resolve(ready)).trim();
                 ConnectScreen.startConnecting(new TitleScreen(), client, ServerAddress.parseString(address),
                         new ServerData("Cardboard LAN smoke", address, ServerData.Type.LAN), false, null);
                 stage = 1;
@@ -36,13 +37,13 @@ final class IntegratedLanGuest implements ClientModInitializer {
                 require(client.getSingleplayerServer() == null && org.bukkit.Bukkit.getServer() == null,
                         "Guest unexpectedly has a local Bukkit server");
                 CardboardIntegratedSmoke.exerciseClientCopies(client);
-                Files.writeString(exchange.resolve("joined-" + world), "PASS");
+                Files.writeString(exchange.resolve(world == 3 ? "dedicated-joined" : "joined-" + world), "PASS");
                 stage = 2;
-            } else if (stage == 2 && Files.exists(exchange.resolve("verified-" + world))) {
+            } else if (stage == 2 && Files.exists(exchange.resolve(world == 3 ? "dedicated-verified" : "verified-" + world))) {
                 client.disconnect(new TitleScreen(), false);
-                Files.writeString(exchange.resolve("left-" + world), "PASS");
+                Files.writeString(exchange.resolve(world == 3 ? "dedicated-left" : "left-" + world), "PASS");
                 System.out.println("INTEGRATED_LAN_GUEST_WORLD_PASS " + world);
-                if (world++ == 2) {
+                if (world++ == 3) {
                     Files.writeString(exchange.resolve("guest.success"), "PASS");
                     System.out.println("INTEGRATED_LAN_GUEST_PASS");
                     stage = 3;
