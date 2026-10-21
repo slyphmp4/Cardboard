@@ -145,7 +145,17 @@ jobs:
           printf 'setblock 0 100 0 dirtnt:sand_tnt\n' >&3
           printf 'execute if block 0 100 0 dirtnt:sand_tnt run say ISSUE30_DIRTNT_BLOCK_PRESENT\n' >&3
           printf 'summon dirtnt:sand_tnt 0.5 101 0.5\n' >&3
-          sleep 3
+          # A cold runner may still be generating the forced chunk. Wait for
+          # command acknowledgements rather than sampling the log after 3s.
+          for _ in $(seq 1 45); do
+            if grep -q 'ISSUE30_DIRTNT_BLOCK_PRESENT' "$log" && grep -qF 'Summoned new entity.dirtnt.sand_tnt' "$log"; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null || grep -q 'Encountered an unexpected exception' "$log"; then
+              break
+            fi
+            sleep 1
+          done
 
           if ! kill -0 "$server_pid" 2>/dev/null; then
             echo '::error::Server crashed while spawning the DirTNT custom entity'
@@ -191,3 +201,4 @@ jobs:
           path: issue30-server.log
           if-no-files-found: ignore
           retention-days: 7
+

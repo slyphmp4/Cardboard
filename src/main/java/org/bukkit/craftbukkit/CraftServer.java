@@ -2080,7 +2080,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMaxWorldSize() {
-        return this.console.getAbsoluteMaxWorldSize();
+        return getProperties() != null ? getProperties().maxWorldSize : this.console.getAbsoluteMaxWorldSize();
     }
 
     @Override
@@ -2545,12 +2545,16 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull List<String> getInitialDisabledPacks() {
-        return List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getDisabled());
+        return getProperties() != null
+                ? List.copyOf(getProperties().initialDataPackConfiguration.getDisabled())
+                : List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getDisabled());
 	}
 
 	@Override
 	public @NotNull List<String> getInitialEnabledPacks() {
-        return List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getEnabled());
+        return getProperties() != null
+                ? List.copyOf(getProperties().initialDataPackConfiguration.getEnabled())
+                : List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getEnabled());
 	}
 
     public void setMotd(String motd) {

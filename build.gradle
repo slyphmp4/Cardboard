@@ -460,13 +460,14 @@ if (project.hasProperty('integratedSmoke')) {
         from sourceSets.integratedSmokePlugin.output
     }
     tasks.named('runClient') {
+        classpath sourceSets.integratedSmoke.output
         dependsOn tasks.named('integratedSmokeClasses'), fixtureJar
         doFirst {
             copy {
                 from fixtureJar
                 into layout.projectDirectory.dir('run-integrated-smoke/plugins')
             }
-            file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:2\nmaxFps:30\nenableVsync:false\n'
+            file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\nonboardAccessibility:false\n'
         }
     }
 }

@@ -41,7 +41,7 @@ jobs:
         with:
           cache-provider: basic
       - name: Install software graphics and Xvfb
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 libflite1 xcursor-themes
       - name: Open two worlds, verify owner login and close both
         shell: bash
         run: |

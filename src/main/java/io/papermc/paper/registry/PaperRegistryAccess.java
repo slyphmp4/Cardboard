@@ -127,7 +127,8 @@ implements RegistryAccess {
         } else if (registryHolder instanceof RegistryHolder.Delayed<?, ?> && entry instanceof final DelayedRegistryEntry<M, B> delayedEntry) {
             ((RegistryHolder.Delayed<B, R>)registryHolder).loadFrom(delayedEntry, registry);
         } else {
-            throw new IllegalArgumentException(String.valueOf(resourceKey) + " has already been created");
+            // The next integrated world supplies fresh server-backed registries.
+            this.registries.put(entry.apiKey(), entry.createRegistryHolder(registry));
         }
     }
     

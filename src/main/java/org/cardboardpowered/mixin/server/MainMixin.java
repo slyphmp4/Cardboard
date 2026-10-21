@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import org.cardboardpowered.CardboardLogger;
 import org.cardboardpowered.CardboardMod;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,17 +14,12 @@ import com.google.common.io.FileWriteMode;
 import com.google.common.io.Files;
 import com.llamalad7.mixinextras.sugar.Local;
 
-import io.papermc.paper.plugin.PluginInitializerManager;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Main;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource;
 
-import static java.util.Arrays.asList;
-import joptsimple.util.PathConverter;
 
 /**
  * Mixin of {@link net.minecraft.server.Main}
