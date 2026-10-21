@@ -29,7 +29,7 @@ public abstract class PlayerMixin extends LivingEntityMixin implements EntityBri
     @Inject(method = "startFallFlying", at = @At("HEAD"), cancellable = true)
     private void cardboard$toggleGlideStart(CallbackInfo ci) {
         Player self = (Player) (Object) this;
-        if (self.isFallFlying()) {
+        if (self.level().isClientSide() || self.isFallFlying()) {
             return;
         }
 
@@ -53,3 +53,4 @@ public abstract class PlayerMixin extends LivingEntityMixin implements EntityBri
         return (org.bukkit.craftbukkit.entity.CraftHumanEntity) super.getBukkitEntity();
     }
 }
+

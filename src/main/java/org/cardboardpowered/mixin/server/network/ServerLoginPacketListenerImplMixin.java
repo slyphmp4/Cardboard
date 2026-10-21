@@ -51,6 +51,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -297,7 +298,7 @@ public abstract class ServerLoginPacketListenerImplMixin implements ServerLoginP
 		String playerName = profile.name();
 		java.net.InetAddress address;
 		if(connection.getRemoteAddress() instanceof LocalAddress) {
-			address = InetAddress.getLocalHost();
+			address = InetAddress.getLoopbackAddress();
 		} else address = ((java.net.InetSocketAddress) connection.getRemoteAddress()).getAddress();
 		UUID uniqueId = profile.id();
 		final org.bukkit.craftbukkit.CraftServer server = CraftServer.INSTANCE;
@@ -379,26 +380,25 @@ public abstract class ServerLoginPacketListenerImplMixin implements ServerLoginP
         this.connection.send(new ClientboundLoginFinishedPacket(profile, this.server.getConnection().getSessionId()));
     }
 
-	@Inject(at = @At("TAIL"), method = "handleHello")
-	public void spigotHello(ServerboundHelloPacket packetlogininstart, CallbackInfo ci) {
-		if(!(this.server.usesAuthentication() && !this.connection.isMemoryConnection())) {
-			// Spigot start
-			new Thread("User Authenticator #" + theid++) {
-				@Override
-				public void run() {
-					try {
-						initUUID();
-						fireEvents(authenticatedProfile);
-					} catch(Exception ex) {
-						disconnect("Failed to verify username!");
-						CraftServer.INSTANCE.getLogger()
-								.log(java.util.logging.Level.WARNING, "Exception verifying " + authenticatedProfile.name(), ex);
-					}
-				}
-			}.start();
-			// Spigot end
-		}
-	}
+
+    /** Both the owner's real profile and offline/LAN profiles wait for pre-login. */
+    @Redirect(method = "handleHello", at = @At(value = "INVOKE", target =
+            "Lnet/minecraft/server/network/ServerLoginPacketListenerImpl;startClientVerification(Lcom/mojang/authlib/GameProfile;)V"))
+    private void cardboard$preLoginBeforeVerification(ServerLoginPacketListenerImpl instance, GameProfile profile) {
+        this.state = State.AUTHENTICATING;
+        this.authenticatedProfile = profile;
+        boolean owner = this.server.getSingleplayerProfile() != null
+                && this.server.getSingleplayerProfile().id().equals(profile.id());
+        authenticatorPool.execute(() -> {
+            try {
+                if (!owner) this.initUUID();
+                this.fireEvents(this.authenticatedProfile);
+            } catch (Exception ex) {
+                this.disconnect("Failed to verify username!");
+                LOGGER_BF.warn("Exception verifying {}", profile.name(), ex);
+            }
+        });
+    }
 
 	// Spigot start
 	public void initUUID() {

@@ -10,7 +10,7 @@ import org.cardboardpowered.impl.command.VersionCommand;
 import org.cardboardpowered.impl.util.CardboardCachedServerIcon;
 
 import net.minecraft.SharedConstants;
-import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.MinecraftServer;
 
 public abstract class CardboardAbstractServer implements org.bukkit.Server {
 
@@ -22,9 +22,9 @@ public abstract class CardboardAbstractServer implements org.bukkit.Server {
     public final String shortVersion;
     
     public CardboardCachedServerIcon icon;
-    public static DedicatedServer server;
+    public static MinecraftServer server;
 	
-    public CardboardAbstractServer(DedicatedServer dserver) {
+    public CardboardAbstractServer(MinecraftServer dserver) {
     	server = dserver;
     	String hash = VersionCommand.getGitHash().substring(0,7); // use short hash
         serverVersion = "git-Cardboard-" + hash;
