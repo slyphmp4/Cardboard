@@ -25,6 +25,11 @@ final class EntityEventSmoke {
         Pig subject = new Pig(EntityTypes.PIG, client.level);
         Pig first = new Pig(EntityTypes.PIG, client.level);
         Pig second = new Pig(EntityTypes.PIG, client.level);
+        // Packet-created client entities receive IDs before passenger updates.
+        // These isolated copies are not inserted into ClientLevel, so assign their IDs explicitly.
+        subject.setId(1_000_001);
+        first.setId(1_000_002);
+        second.setId(1_000_003);
         // The LAN guest has no local Bukkit server; host checks additionally count Bukkit events.
         Probe probe = Bukkit.getServer() == null ? null : new Probe(Bukkit.getPluginManager().getPlugin("IntegratedSmoke"));
         if (probe != null) probe.arm(subject, "OBSERVE", null);
@@ -271,3 +276,4 @@ final class EntityEventSmoke {
         }
     }
 }
+
