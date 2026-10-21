@@ -23,6 +23,7 @@ public final class DedicatedLuckPermsSmoke implements ModInitializer {
                 }
                 Files.createDirectories(exchange);
                 Files.writeString(exchange.resolve("dedicated-ready"), "25579");
+                System.out.println("DEDICATED_LUCKPERMS_READY");
             } catch (Throwable failure) {
                 fail(failure);
             }

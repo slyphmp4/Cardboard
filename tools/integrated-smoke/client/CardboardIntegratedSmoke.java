@@ -93,6 +93,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                     require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, GameType.SURVIVAL, false, port), "LAN publication failed");
                     Files.createDirectories(EXCHANGE);
                     Files.writeString(EXCHANGE.resolve("ready-" + world), Integer.toString(port));
+                    System.out.println("INTEGRATED_LAN_HOST_READY " + world);
                     stage = 5;
                 } else closeWorld(client);
             } else if (stage == 5 && Files.exists(EXCHANGE.resolve("joined-" + world))) {

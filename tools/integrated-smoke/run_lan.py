@@ -20,11 +20,16 @@ try:
         processes.append(subprocess.Popen(launch['command'], cwd=launch['cwd'], stdout=handle,
                                           stderr=subprocess.STDOUT, start_new_session=True))
     deadline = time.monotonic() + 900
+    next_progress = time.monotonic() + 30
     while any(process.poll() is None for process in processes):
         if any(process.poll() not in (None, 0) for process in processes):
             raise RuntimeError(f'Client failed: {[process.poll() for process in processes]}')
         if time.monotonic() > deadline:
             raise TimeoutError('LAN smoke exceeded 15 minutes')
+        if time.monotonic() > next_progress:
+            markers = sorted(path.name for path in exchange.glob('*'))
+            print(f'LAN smoke progress: markers={markers}, exits={[process.poll() for process in processes]}', flush=True)
+            next_progress = time.monotonic() + 30
         time.sleep(1)
     if any(process.returncode != 0 for process in processes):
         raise RuntimeError(f'Client exit codes: {[process.returncode for process in processes]}')
@@ -50,5 +55,8 @@ finally:
         handle.close()
     for log in logs:
         if log.exists():
+            for line in log.read_text(errors='replace').splitlines():
+                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_']):
+                    print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)

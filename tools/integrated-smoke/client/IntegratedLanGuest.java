@@ -16,6 +16,7 @@ final class IntegratedLanGuest implements ClientModInitializer {
     private final long deadline = System.nanoTime() + 420_000_000_000L;
     private int world = 1;
     private int stage;
+    private long phaseDeadline;
 
     @Override
     public void onInitializeClient() {
@@ -26,18 +27,25 @@ final class IntegratedLanGuest implements ClientModInitializer {
     private void tick(Minecraft client) {
         try {
             require(System.nanoTime() < deadline, "Guest timeout at world " + world + " stage " + stage);
+            if (stage == 1 || stage == 2) {
+                require(System.nanoTime() < phaseDeadline, "Guest connection phase timed out at world " + world + " stage " + stage);
+            }
             String ready = world == 3 ? "dedicated-ready" : "ready-" + world;
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null
                     && Files.exists(exchange.resolve(ready))) {
                 String address = "127.0.0.1:" + Files.readString(exchange.resolve(ready)).trim();
                 ConnectScreen.startConnecting(new TitleScreen(), client, ServerAddress.parseString(address),
                         new ServerData("Cardboard LAN smoke", address, ServerData.Type.LAN), false, null);
+                System.out.println("INTEGRATED_LAN_GUEST_CONNECT world=" + world + " address=" + address);
+                phaseDeadline = System.nanoTime() + 90_000_000_000L;
                 stage = 1;
             } else if (stage == 1 && client.player != null && client.level != null) {
                 require(client.getSingleplayerServer() == null && org.bukkit.Bukkit.getServer() == null,
                         "Guest unexpectedly has a local Bukkit server");
                 CardboardIntegratedSmoke.exerciseClientCopies(client);
                 Files.writeString(exchange.resolve(world == 3 ? "dedicated-joined" : "joined-" + world), "PASS");
+                System.out.println("INTEGRATED_LAN_GUEST_JOINED " + world);
+                phaseDeadline = System.nanoTime() + 90_000_000_000L;
                 stage = 2;
             } else if (stage == 2 && Files.exists(exchange.resolve(world == 3 ? "dedicated-verified" : "verified-" + world))) {
                 client.disconnect(new TitleScreen(), false);
