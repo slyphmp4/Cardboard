@@ -67,6 +67,16 @@ final class EntityEventSmoke {
             subject.setTarget(new Ghast(EntityTypes.GHAST, client.level));
             require(subject.getTargetUnchecked() == null, "Client setTarget bypassed vanilla ghast filtering");
         });
+        check(failures, "client current target revalidation", () -> {
+            subject.setTarget(first);
+            first.setInvulnerable(true);
+            try {
+                subject.setTarget(first);
+                require(subject.getTargetUnchecked() == null, "Client retained an invulnerable current target");
+            } finally {
+                first.setInvulnerable(false);
+            }
+        });
         if (probe != null) check(failures, "client Bukkit isolation", () -> {
             require(probe.count(subject, "heal") == 0, "Client healing emitted a Bukkit event");
             require(probe.count(subject, "target") == 0, "Client target assignment emitted a Bukkit event");
@@ -152,6 +162,18 @@ final class EntityEventSmoke {
             check(failures, "server vanilla target validation", () -> {
                 ((MobBridge) subject).cardboard$setTargetWithReason(owner, TargetReason.CLOSEST_PLAYER);
                 require(subject.getTargetUnchecked() == null, "Server target assignment bypassed vanilla creative-player filtering");
+            });
+            check(failures, "server current target revalidation", () -> {
+                ((MobBridge) subject).cardboard$setTargetWithReason(first, TargetReason.CLOSEST_ENTITY);
+                int before = probe.count(subject, "target");
+                first.setInvulnerable(true);
+                try {
+                    subject.setTarget(first);
+                    require(subject.getTargetUnchecked() == null, "Server retained an invulnerable current target");
+                    require(probe.count(subject, "target") == before, "Revalidation duplicated a Bukkit target event");
+                } finally {
+                    first.setInvulnerable(false);
+                }
             });
         } finally {
             subject.discard();

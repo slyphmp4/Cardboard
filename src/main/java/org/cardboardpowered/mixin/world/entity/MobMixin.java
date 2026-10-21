@@ -71,6 +71,10 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
         }
         EntityTargetEvent.TargetReason reason = this.cardboard$pendingTargetReason;
         this.cardboard$pendingTargetReason = null;
+        if (this.getTargetUnchecked() == livingEntity) {
+            // Vanilla must still reject a current target that has become invalid.
+            return;
+        }
         this.cardboard$setTarget(livingEntity, reason == null ? EntityTargetEvent.TargetReason.UNKNOWN : reason);
         // A cancelled Bukkit event must not fall through to vanilla's target assignment.
         ci.cancel();
