@@ -25,12 +25,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.plugin.PluginLoadOrder;
 import org.bukkit.plugin.java.JavaPluginLoader;
-import io.papermc.paper.plugin.PluginInitializerManager;
-import io.papermc.paper.plugin.entrypoint.LaunchEntryPointHandler;
 import org.cardboardpowered.CardboardLoadHolder;
 import org.cardboardpowered.CardboardMod;
 import org.cardboardpowered.bridge.server.MinecraftServerBridge;
 import org.cardboardpowered.impl.util.CardboardMagicNumbers;
+import org.cardboardpowered.util.IntegratedServerLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
@@ -56,9 +55,6 @@ public abstract class IntegratedServerMixin {
 	@Unique
 	private static boolean cardboard$materialsSetUp;
 
-	@Unique
-	private static boolean cardboard$bootedBefore;
-
 	// The client constructs its integrated server on the render thread.
 	@Inject(at = @At("TAIL"), method = "<init>")
 	private void cardboard$rememberClientThread(CallbackInfo ci) {
@@ -80,17 +76,8 @@ public abstract class IntegratedServerMixin {
 			cardboard$materialsSetUp = true;
 		}
 
-		// Plugin jars were opened by discovery at game start and closed when the last world shut down.
-		if (cardboard$bootedBefore) {
-			LaunchEntryPointHandler.INSTANCE.populateProviderStorage();
-			try {
-				PluginInitializerManager.load(CardboardMod.options);
-				LaunchEntryPointHandler.enterBootstrappers();
-			} catch (Exception e) {
-				throw new IllegalStateException("Could not rediscover plugins for this world", e);
-			}
-		}
-		cardboard$bootedBefore = true;
+		// Normally prepared by the client world-opening flow before registries load.
+		IntegratedServerLifecycle.prepareWorldLoad();
 
 		MinecraftServer self = (MinecraftServer) (Object) this;
 		Bukkit.setServer(new CraftServer(self));
@@ -108,6 +95,7 @@ public abstract class IntegratedServerMixin {
 	// MinecraftServerMixin.doStop has already disabled plugins by the time super.stopServer() returns.
 	@Inject(at = @At("TAIL"), method = "stopServer")
 	private void cardboard$resetBukkit(CallbackInfo ci) {
+		IntegratedServerLifecycle.serverStopped();
 		CraftServer.INSTANCE = null;
 		CraftServer.console = null;
 		CraftServer.server = null;

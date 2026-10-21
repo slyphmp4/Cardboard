@@ -458,13 +458,21 @@ if (project.hasProperty('integratedSmoke')) {
         archiveFileName = 'integrated-smoke-plugin.jar'
         destinationDirectory = layout.buildDirectory.dir('integrated-smoke')
         from sourceSets.integratedSmokePlugin.output
+        exclude '**/bootstrap/**', 'paper-plugin.yml'
+    }
+    def bootstrapFixtureJar = tasks.register('integratedSmokePaperPluginJar', Jar) {
+        archiveFileName = 'integrated-bootstrap-plugin.jar'
+        destinationDirectory = layout.buildDirectory.dir('integrated-smoke')
+        from sourceSets.integratedSmokePlugin.output
+        include '**/bootstrap/**', 'paper-plugin.yml'
     }
     tasks.named('runClient') {
         classpath sourceSets.integratedSmoke.output
-        dependsOn tasks.named('integratedSmokeClasses'), fixtureJar
+        dependsOn tasks.named('integratedSmokeClasses'), fixtureJar, bootstrapFixtureJar
         doFirst {
             copy {
                 from fixtureJar
+                from bootstrapFixtureJar
                 into layout.projectDirectory.dir('run-integrated-smoke/plugins')
             }
             file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\nonboardAccessibility:false\n'

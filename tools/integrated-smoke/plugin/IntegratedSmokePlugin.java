@@ -12,10 +12,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class IntegratedSmokePlugin extends JavaPlugin implements Listener {
     private final ConcurrentMap<UUID, Integer> preLogins = new ConcurrentHashMap<>();
     private final ConcurrentMap<UUID, Integer> logins = new ConcurrentHashMap<>();
+    private volatile boolean bukkitAsyncRan;
+    private volatile boolean foliaAsyncRan;
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getScheduler().runTaskAsynchronously(this, () -> bukkitAsyncRan = true);
+        getServer().getAsyncScheduler().runNow(this, task -> foliaAsyncRan = true);
+        // Start the timer executor too; it must be released when the world closes.
+        getServer().getAsyncScheduler().runDelayed(this, task -> {}, 1, java.util.concurrent.TimeUnit.HOURS);
     }
 
     @EventHandler
@@ -36,6 +42,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     }
 
     public void verifyLogin(UUID owner) {
+        if (!bukkitAsyncRan || !foliaAsyncRan) throw new AssertionError("Async schedulers did not execute their tasks");
         if (preLogins.getOrDefault(owner, 0) != 1 || logins.getOrDefault(owner, 0) != 1) {
             throw new AssertionError("Expected exactly one pre-login and login for " + owner + ": " + preLogins + " / " + logins);
         }

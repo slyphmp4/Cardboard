@@ -75,7 +75,7 @@ public abstract class ServerLoginPacketListenerImplMixin implements ServerLoginP
 	
 	// Cardboard: Paper - Use ExecutorService
 	private static final ExecutorService authenticatorPool = Executors.newCachedThreadPool(
-		      new ThreadFactoryBuilder().setNameFormat("User Authenticator #%d").setUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler(LOGGER_BF)).build()
+		      new ThreadFactoryBuilder().setNameFormat("User Authenticator #%d").setDaemon(true).setUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler(LOGGER_BF)).build()
 		   );
 	
 	@Shadow @Nullable private String requestedUsername;

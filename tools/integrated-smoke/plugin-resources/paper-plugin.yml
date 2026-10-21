@@ -1,0 +1,5 @@
+name: IntegratedBootstrap
+main: org.cardboardpowered.smoke.bootstrap.IntegratedBootstrapPlugin
+bootstrapper: org.cardboardpowered.smoke.bootstrap.IntegratedBootstrap
+version: 1.0.0
+api-version: '26.2'

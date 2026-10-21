@@ -10,7 +10,7 @@ import org.bukkit.Bukkit;
 
 public class WatchdogThread extends Thread {
 
-    private static WatchdogThread instance;
+    private static volatile WatchdogThread instance;
     private long timeoutTime;
     private boolean restart;
     private volatile long lastTick;
@@ -28,7 +28,7 @@ public class WatchdogThread extends Thread {
         return System.nanoTime() / 1000000L;
     }
 
-    public static void doStart(int timeoutTime, boolean restart)
+    public static synchronized void doStart(int timeoutTime, boolean restart)
     {
         if ( instance == null )
         {
@@ -43,14 +43,17 @@ public class WatchdogThread extends Thread {
 
     public static void tick()
     {
-        instance.lastTick = monotonicMillis();
+        WatchdogThread current = instance;
+        if (current != null) current.lastTick = monotonicMillis();
     }
 
-    public static void doStop()
+    public static synchronized void doStop()
     {
         if ( instance != null )
         {
             instance.stopping = true;
+            instance.interrupt();
+            instance = null;
         }
     }
 
@@ -123,3 +126,4 @@ public class WatchdogThread extends Thread {
         }
     }
 }
+

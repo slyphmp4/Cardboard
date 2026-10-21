@@ -80,6 +80,14 @@ public class LifecycleEventRunner {
         }
     }
 
+    /** A new integrated world has new providers and bootstrap contexts. */
+    public void resetForServerStop() {
+        for (final LifecycleEventType<?, ?, ?> type : this.lifecycleEventTypes) {
+            ((AbstractLifecycleEventType<?, ?, ?>) type).removeMatching(handler -> true);
+        }
+        this.blockPluginReloading = false;
+    }
+
     private <O extends LifecycleEventOwner> void removeEventHandlersOwnedBy(final LifecycleEventType<O, ?, ?> eventType, final Plugin possibleOwner) {
         final AbstractLifecycleEventType<O, ?, ?> lifecycleEventType = (AbstractLifecycleEventType<O, ?, ?>) eventType;
         lifecycleEventType.removeMatching(registeredHandler -> registeredHandler.owner().getPluginMeta().getName().equals(possibleOwner.getPluginMeta().getName()));
@@ -98,3 +106,4 @@ public class LifecycleEventRunner {
     private LifecycleEventRunner() {
     }
 }
+

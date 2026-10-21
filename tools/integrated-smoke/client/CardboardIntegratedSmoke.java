@@ -119,6 +119,12 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             require(player.getGameMode() == org.bukkit.GameMode.CREATIVE, "Stored singleplayer game mode was overwritten");
             Plugin plugin = Bukkit.getPluginManager().getPlugin("IntegratedSmoke");
             require(plugin != null && plugin.isEnabled(), "Smoke plugin was not enabled");
+            Plugin bootstrapPlugin = Bukkit.getPluginManager().getPlugin("IntegratedBootstrap");
+            require(bootstrapPlugin != null && bootstrapPlugin.isEnabled(), "Paper fixture was not enabled");
+            require(Integer.parseInt(System.getProperty("cardboard.smoke.bootstrap.count", "0")) == world,
+                    "Paper bootstrapper did not run once per world");
+            require(Integer.parseInt(System.getProperty("cardboard.smoke.compose.count", "0")) == world,
+                    "Registry compose handler was late, missing, or retained from the previous world");
             require(plugin != previousPlugin, "Previous world's plugin instance was reused");
             require(Bukkit.getPluginCommand("smokeworld") != null
                     && Bukkit.getPluginCommand("smokeworld").getPlugin() == plugin, "Stale command owner");
