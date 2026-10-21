@@ -77,9 +77,29 @@ final class EntityEventSmoke {
                 first.setInvulnerable(false);
             }
         });
+        check(failures, "client eventful mount and dismount", () -> {
+            require(subject.startRiding(first, true, true), "Client mount was rejected");
+            require(subject.getVehicle() == first && first.getPassengers().contains(subject), "Client mount lost its passenger");
+            subject.removeVehicle();
+            require(subject.getVehicle() == null && first.getPassengers().isEmpty(), "Client dismount left inconsistent passengers");
+        });
+        check(failures, "client packet-style mount and eject", () -> {
+            require(subject.startRiding(first, true, false), "Client packet-style mount was rejected");
+            first.ejectPassengers();
+            require(subject.getVehicle() == null && first.getPassengers().isEmpty(), "Client packet-style eject left a passenger");
+        });
+        check(failures, "client vehicle transfer", () -> {
+            require(subject.startRiding(first, true, false), "Client initial mount was rejected");
+            require(subject.startRiding(second, true, true), "Client vehicle transfer was rejected");
+            require(subject.getVehicle() == second && first.getPassengers().isEmpty(), "Client transfer retained the old vehicle");
+            subject.removeVehicle();
+            require(second.getPassengers().isEmpty(), "Client transfer cleanup left a passenger");
+        });
         if (probe != null) check(failures, "client Bukkit isolation", () -> {
             require(probe.count(subject, "heal") == 0, "Client healing emitted a Bukkit event");
             require(probe.count(subject, "target") == 0, "Client target assignment emitted a Bukkit event");
+            require(probe.count(subject, "vehicleEnter") == 0, "Client mounting emitted a Bukkit event");
+            require(probe.count(subject, "vehicleExit") == 0, "Client dismounting emitted a Bukkit event");
         });
         finish(failures, "CLIENT_ENTITY_EVENTS_PASS");
     }
@@ -174,6 +194,15 @@ final class EntityEventSmoke {
                 } finally {
                     first.setInvulnerable(false);
                 }
+            });
+            check(failures, "server vehicle events remain active", () -> {
+                int enters = probe.count(subject, "vehicleEnter");
+                int exits = probe.count(subject, "vehicleExit");
+                require(subject.startRiding(first, true, true), "Server mount was rejected");
+                require(subject.getVehicle() == first && probe.count(subject, "vehicleEnter") == enters + 1, "Server vehicle enter event was lost or duplicated");
+                subject.removeVehicle();
+                require(subject.getVehicle() == null && first.getPassengers().isEmpty(), "Server dismount left inconsistent passengers");
+                require(probe.count(subject, "vehicleExit") == exits + 1, "Server vehicle exit event was lost or duplicated");
             });
         } finally {
             subject.discard();

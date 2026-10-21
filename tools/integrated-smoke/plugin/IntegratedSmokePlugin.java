@@ -9,6 +9,8 @@ import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
+import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class IntegratedSmokePlugin extends JavaPlugin implements Listener {
@@ -78,6 +80,18 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
         entityEventReasons.put(id + ":heal", event.getRegainReason().name());
         if (behavior.equals("HEAL_CANCEL")) event.setCancelled(true);
         if (behavior.equals("HEAL_MODIFY")) event.setAmount(3.0);
+    }
+
+    @EventHandler
+    public void vehicleEnter(VehicleEnterEvent event) {
+        UUID id = event.getEntered().getUniqueId();
+        if (entityProbes.containsKey(id)) entityEventCounts.merge(id + ":vehicleEnter", 1, Integer::sum);
+    }
+
+    @EventHandler
+    public void vehicleExit(VehicleExitEvent event) {
+        UUID id = event.getExited().getUniqueId();
+        if (entityProbes.containsKey(id)) entityEventCounts.merge(id + ":vehicleExit", 1, Integer::sum);
     }
 
     @EventHandler

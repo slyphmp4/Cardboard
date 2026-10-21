@@ -27,6 +27,9 @@ public abstract class EntityMixin_VehicleEvents {
         }
 
         Entity passenger = (Entity) (Object) this;
+        if (passenger.level().isClientSide() || entityToRide.level().isClientSide()) {
+            return;
+        }
         if (passenger.getVehicle() == entityToRide) {
             return;
         }
@@ -51,6 +54,9 @@ public abstract class EntityMixin_VehicleEvents {
     )
     private void cardboard$vehicleExitEvent(Entity passenger, CallbackInfo ci) {
         Entity vehicleEntity = (Entity) (Object) this;
+        if (vehicleEntity.level().isClientSide() || passenger.level().isClientSide()) {
+            return;
+        }
         org.bukkit.entity.Entity bukkitPassenger = ((EntityBridge) passenger).getBukkitEntity();
         org.bukkit.entity.Entity bukkitVehicle = ((EntityBridge) vehicleEntity).getBukkitEntity();
         if (!(bukkitVehicle instanceof Vehicle vehicle) || !(bukkitPassenger instanceof LivingEntity living)) {

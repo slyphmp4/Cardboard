@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: cardboard-release-${{ github.ref }}
@@ -137,6 +138,29 @@ jobs:
           if gh release view v26.2.16 >/dev/null 2>&1; then
             gh release delete v26.2.16 --cleanup-tag --yes
           fi
+
+      - name: Require successful CI for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 80); do
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" --jq '[.workflow_runs[] | select(.event == "push" and .name != "Cardboard Release")]')"
+            if jq -e 'any(.[]; .status == "completed" and .conclusion != "success" and .conclusion != "skipped")' <<< "$runs" >/dev/null; then
+              echo "::error::A CI workflow failed for release commit $GITHUB_SHA"
+              jq -r '.[] | "\(.name): \(.status) / \(.conclusion) \(.html_url)"' <<< "$runs"
+              exit 1
+            fi
+            if jq -e 'any(.[]; .path == ".github/workflows/ci.yml" and .conclusion == "success") and all(.[]; .status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))' <<< "$runs" >/dev/null; then
+              echo "All CI workflows passed for release commit $GITHUB_SHA"
+              exit 0
+            fi
+            echo "Waiting for CI on release commit $GITHUB_SHA (attempt $attempt/80)"
+            sleep 15
+          done
+          echo "::error::Timed out waiting for successful release CI"
+          exit 1
 
       - name: Publish GitHub release
         shell: bash
