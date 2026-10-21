@@ -64,6 +64,12 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         }
     }
 
+    void clearHandlers() {
+        synchronized (this.handlers) {
+            this.handlers.clear();
+        }
+    }
+
     /**
      * Runs every registered handler. A handler that throws is logged against its own owner and
      * does not stop the remaining handlers.
@@ -123,3 +129,4 @@ public abstract class CardboardLifecycleEventType<O extends LifecycleEventOwner,
         }
     }
 }
+

@@ -66,6 +66,11 @@ public class CraftScheduler implements BukkitScheduler {
         this(false);
     }
 
+    /** Releases the per-server async scheduler when an integrated world closes. */
+    public void shutdown() {
+        if (!this.isAsyncScheduler) this.asyncScheduler.shutdown();
+    }
+
     public CraftScheduler(boolean isAsync) {
         this.isAsyncScheduler = isAsync;
         if (isAsync) {

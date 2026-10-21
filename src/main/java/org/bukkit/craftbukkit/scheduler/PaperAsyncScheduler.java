@@ -26,7 +26,7 @@ package org.bukkit.craftbukkit.scheduler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -41,13 +41,22 @@ public class PaperAsyncScheduler extends CraftScheduler {
 
     private final ThreadPoolExecutor executor = new ThreadPoolExecutor(4, Integer.MAX_VALUE,30L, TimeUnit.SECONDS, new SynchronousQueue<>(),
             new ThreadFactoryBuilder().setNameFormat("Paper Scheduler Thread - %1$d").build());
-    private final Executor management = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Craft Async Scheduler Management Thread").build());
+    private final ExecutorService management = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("Craft Async Scheduler Management Thread").build());
     private final List<BukkitTaskImpl> temp = new ArrayList<>();
 
     PaperAsyncScheduler() {
         super(true);
         executor.allowCoreThreadTimeOut(true);
         executor.prestartAllCoreThreads();
+    }
+
+    @Override
+    public synchronized void shutdown() {
+        this.management.shutdownNow();
+        this.cancelTasks(null);
+        this.executor.shutdownNow();
+        this.pending.clear();
+        this.temp.clear();
     }
 
     @Override

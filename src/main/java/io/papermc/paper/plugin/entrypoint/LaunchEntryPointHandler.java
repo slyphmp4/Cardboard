@@ -67,6 +67,8 @@ public class LaunchEntryPointHandler implements EntrypointHandler {
 
     // Reload only
     public void populateProviderStorage() {
+        this.storage.clear();
+        this.enteredMap.clear();
         this.storage.put(Entrypoint.BOOTSTRAPPER, new BootstrapProviderStorage());
         this.storage.put(Entrypoint.PLUGIN, new ServerPluginProviderStorage());
     }

@@ -92,7 +92,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.ConsoleInput;
 import net.minecraft.server.bossevents.CustomBossEvent;
 import net.minecraft.server.commands.ReloadCommand;
-import net.minecraft.server.dedicated.DedicatedPlayerList;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.PlayerList;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.server.level.ServerLevel;
@@ -280,8 +281,11 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     private final MobGoals mobGoals = new PaperMobGoals();
     private final YamlConfiguration configuration;
 
-    public static DedicatedServer console;
-    protected final DedicatedPlayerList playerList;
+    public static MinecraftServer console;
+    protected final PlayerList playerList;
+
+    /** Physical client thread; null on dedicated servers. */
+    public static volatile Thread clientThread;
 
     public static CraftServer INSTANCE;
     public ApiVersion minimumAPI;
@@ -333,7 +337,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
     // Paper end - Folia reagion threading API
 
-    public CraftServer(DedicatedServer nms) {
+    public CraftServer(MinecraftServer nms) {
     	super(nms);
         INSTANCE = this;
         server = nms;
@@ -368,7 +372,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         this.datapackManager = new io.papermc.paper.datapack.PaperDatapackManager(this.getServer().getPackRepository());
         this.potionBrewer = new io.papermc.paper.potion.PaperPotionBrewer(this.getServer());
         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
-        this.serverLinks = new CraftServerLinks(console);
+        this.serverLinks = console instanceof DedicatedServer dedicated
+                ? new CraftServerLinks(dedicated) : new CraftServerLinks(console.serverLinks());
         this.minimumAPI = ApiVersion.getOrCreateVersion(this.configuration.getString("settings.minimum-api"));
         loadIcon();
 
@@ -550,7 +555,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         }
     }
 
-    public DedicatedServer getServer() {
+    public MinecraftServer getServer() {
         return server;
     }
 
@@ -1134,8 +1139,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         // return getServer().isNetherAllowed();
     }
 
-    private DedicatedServerProperties getProperties() {
-        return this.console.getProperties();
+    /** server.properties only exists on a dedicated server; null in singleplayer. */
+    public static DedicatedServerProperties getProperties() {
+        return console instanceof DedicatedServer dedicated ? dedicated.getProperties() : null;
     }
 
     @Override
@@ -1456,7 +1462,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getSpawnRadius() {
-        return getServer().spawnProtectionRadius();
+        return getServer() instanceof DedicatedServer dedicated ? dedicated.spawnProtectionRadius() : 0;
     }
 
     public <T extends Keyed> Tag<T> getTag(String registry, NamespacedKey tag, Class<T> clazz) {
@@ -1574,7 +1580,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getViewDistance() {
-        return server != null ? server.getProperties().viewDistance.get() : 12;
+        return getProperties() != null ? getProperties().viewDistance.get() : server.getPlayerList().getViewDistance();
     }
 
     @Override
@@ -1767,7 +1773,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void setSpawnRadius(int value) {
-        this.getServer().setSpawnProtectionRadius(value);
+        if (this.getServer() instanceof DedicatedServer dedicated) {
+            dedicated.setSpawnProtectionRadius(value);
+        }
     }
 
     @Override
@@ -1921,7 +1929,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         return completions;
     }
 
-    public DedicatedPlayerList getHandle() {
+    public PlayerList getHandle() {
         return this.playerList;
     }
 
@@ -2072,7 +2080,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getMaxWorldSize() {
-        return this.getProperties().maxWorldSize;
+        return getProperties() != null ? getProperties().maxWorldSize : this.console.getAbsoluteMaxWorldSize();
     }
 
     @Override
@@ -2197,7 +2205,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @Override
     public void setMaxPlayers(int maxPlayers) {
         Preconditions.checkArgument(maxPlayers >= 0, "maxPlayers must be >= 0");
-        this.console.setMaxPlayers(maxPlayers);
+        if (this.console instanceof DedicatedServer dedicated) {
+            dedicated.setMaxPlayers(maxPlayers);
+        }
     }
 
     @Override
@@ -2458,7 +2468,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public int getSimulationDistance() {
-        return this.console.simulationDistance();
+        return this.console.getPlayerList().getSimulationDistance();
 	}
 
 	@Override
@@ -2535,12 +2545,16 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public @NotNull List<String> getInitialDisabledPacks() {
-        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getDisabled());
+        return getProperties() != null
+                ? List.copyOf(getProperties().initialDataPackConfiguration.getDisabled())
+                : List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getDisabled());
 	}
 
 	@Override
 	public @NotNull List<String> getInitialEnabledPacks() {
-        return Collections.unmodifiableList(this.getProperties().initialDataPackConfiguration.getEnabled());
+        return getProperties() != null
+                ? List.copyOf(getProperties().initialDataPackConfiguration.getEnabled())
+                : List.copyOf(this.console.getWorldData().getDataConfiguration().dataPacks().getEnabled());
 	}
 
     public void setMotd(String motd) {
@@ -2814,7 +2828,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public int getPauseWhenEmptyTime() {
-        return this.getProperties().pauseWhenEmptySeconds.get();
+        return getProperties() != null ? getProperties().pauseWhenEmptySeconds.get() : 0;
     }
 
     @Override
@@ -2853,7 +2867,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public boolean forcesDefaultGameMode() {
-		return CraftServer.console.getProperties().forceGameMode.get();
+		return getProperties() != null && getProperties().forceGameMode.get();
 	}
 
 	@Override

@@ -17,11 +17,21 @@ import org.bukkit.plugin.Plugin;
 import com.destroystokyo.paper.Metrics_Cardboard;
 
 public class PaperMetrics {
+
+    private static Metrics_Cardboard activeMetrics;
+
+    public static synchronized void stopMetrics_Cardboard() {
+        if (activeMetrics != null) {
+            activeMetrics.shutdown();
+            activeMetrics = null;
+        }
+    }
 	
 	// NAME: cardboard
 	// ID: 28476
 	
-    public static void startMetrics_Cardboard() {
+    public static synchronized void startMetrics_Cardboard() {
+        stopMetrics_Cardboard();
         // Get the config file
         File configFile = new File(new File(new File("plugins"), "bStats"), "config.yml");
         YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
@@ -57,6 +67,7 @@ public class PaperMetrics {
         	String name = "Paper"; // "cardboard"
         	
             Metrics_Cardboard Metrics_Cardboard = new Metrics_Cardboard(name, serverUUID, logFailedRequests, Bukkit.getLogger());
+            activeMetrics = Metrics_Cardboard;
 
             Metrics_Cardboard.addCustomChart(new Metrics_Cardboard.SimplePie("minecraft_version", () -> {
                 String minecraftVersion = Bukkit.getVersion();

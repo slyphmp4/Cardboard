@@ -258,6 +258,8 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
             ci.cancel();
             return;
         }
+        // No Bukkit server on the client; on a remote server Bukkit.server is null
+        if (((Entity)(Object)this).level().isClientSide()) return;
         Pose b = Pose.STANDING;
         switch (entitypose) {
             case CROUCHING:
@@ -292,6 +294,8 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
 
     @Inject(at = @At("HEAD"), method = "setAirSupply", cancellable = true)
     public void cardboard$setAir_EntityAirChangeEvent(int i, CallbackInfo ci) {
+        // Client entities are never valid, so leave their local air prediction to vanilla
+        if (this.level.isClientSide()) return;
         if (!valid) {
             ci.cancel();
             return;
@@ -348,6 +352,11 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
      */
     @Redirect(method = "lavaIgnite", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;igniteForSeconds(F)V"))
     public void cardboard$mixinEntity_igniteByLava_EntityCombustByBlockEvent(Entity entity, float seconds) {
+        // Client entities have no Bukkit side; on a remote server CraftServer.console is null
+        if (this.level.isClientSide()) {
+            entity.igniteForSeconds(seconds);
+            return;
+        }
         if ((Object) this instanceof LivingEntity && ((Entity) (Object) this).remainingFireTicks <= 0) {
             org.bukkit.block.Block damager = null;
             org.bukkit.entity.Entity damagee = this.getBukkitEntity();
@@ -392,6 +401,8 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
 	 */
 	@Inject(method = "saveWithoutId", at = @At(value = "INVOKE", shift = At.Shift.AFTER, ordinal = 0, target = "Lnet/minecraft/world/level/storage/ValueOutput;store(Ljava/lang/String;Lcom/mojang/serialization/Codec;Ljava/lang/Object;)V"))
     public void cardboard$writeData_saveBukkitWorldUuid(ValueOutput output, CallbackInfo ci) {
+		// ClientLevel has no CraftWorld; the client saves entities for F3+I
+		if (this.level.isClientSide()) return;
 		output.putLong("WorldUUIDLeast", this.level.cardboard$getWorld().getUID().getLeastSignificantBits());
 		output.putLong("WorldUUIDMost", this.level.cardboard$getWorld().getUID().getMostSignificantBits());
     }

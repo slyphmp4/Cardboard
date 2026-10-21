@@ -16,7 +16,7 @@ public final class FoliaAsyncScheduler implements AsyncScheduler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private final Executor executors = new ThreadPoolExecutor(Math.max(4, Runtime.getRuntime().availableProcessors() / 2), Integer.MAX_VALUE,
+    private final ExecutorService executors = new ThreadPoolExecutor(Math.max(4, Runtime.getRuntime().availableProcessors() / 2), Integer.MAX_VALUE,
         30L, TimeUnit.SECONDS, new SynchronousQueue<>(),
         new ThreadFactory() {
             private final AtomicInteger idGenerator = new AtomicInteger();
@@ -52,6 +52,14 @@ public final class FoliaAsyncScheduler implements AsyncScheduler {
     });
 
     private final Set<AsyncScheduledTask> tasks = ConcurrentHashMap.newKeySet();
+
+    /** Releases executors owned by this server, after plugins have been disabled. */
+    public void shutdown() {
+        for (AsyncScheduledTask task : this.tasks) task.cancel();
+        this.tasks.clear();
+        this.timerThread.shutdownNow();
+        this.executors.shutdownNow();
+    }
 
     @Override
     public ScheduledTask runNow(final Plugin plugin, final Consumer<ScheduledTask> task) {
@@ -318,3 +326,4 @@ public final class FoliaAsyncScheduler implements AsyncScheduler {
         }
     }
 }
+

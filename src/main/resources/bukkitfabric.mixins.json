@@ -269,6 +269,11 @@
     "MixinDataFixTypes",
     "server.MixinDataLoadContext"
   ],
+  "client": [
+    "client.IntegratedServerMixin",
+    "client.WorldOpenFlowsMixin",
+    "client.CreateWorldScreenMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },

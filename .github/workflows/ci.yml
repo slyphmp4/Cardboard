@@ -17,6 +17,97 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  integrated-client:
+    name: Integrated client two-world lifecycle smoke
+    needs: cardboard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "true"
+      ALSOFT_DRIVERS: "null"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          cache-provider: basic
+      - name: Install software graphics and Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 libflite1 xcursor-themes
+      - name: Open two worlds, verify owner login and close both
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 900s xvfb-run -a ./gradlew -PintegratedSmoke runClient --no-daemon --stacktrace 2>&1 | tee integrated-client-smoke.log
+          grep -q '^.*INTEGRATED_SMOKE_PASS$' integrated-client-smoke.log
+          test -f run-integrated-smoke/integrated-smoke.success
+      - name: Upload client smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: integrated-client-smoke-${{ github.run_id }}
+          path: |
+            integrated-client-smoke.log
+            run-integrated-smoke/logs/**
+            run-integrated-smoke/crash-reports/**
+            run-integrated-smoke/integrated-smoke.success
+          if-no-files-found: ignore
+          retention-days: 7
+
+  integrated-lan-luckperms:
+    name: Two-client LAN + dedicated LuckPerms-Fabric smoke
+    needs: cardboard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "true"
+      ALSOFT_DRIVERS: "null"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Temurin JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          cache-provider: basic
+      - name: Install software graphics and Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 libflite1 xcursor-themes
+      - name: Prepare two clients and real LuckPerms
+        run: ./gradlew -PintegratedSmoke -PlanSmoke prepareIntegratedLanSmoke --no-daemon --max-workers=2 --stacktrace
+      - name: Join both LAN worlds, then verify LuckPerms on its dedicated server
+        run: timeout 960s xvfb-run -a python3 tools/integrated-smoke/run_lan.py
+      - name: Upload both client logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: integrated-lan-luckperms-${{ github.run_id }}
+          path: |
+            integrated-lan-*.log
+            run-integrated-smoke/logs/**
+            run-integrated-guest/logs/**
+            run-luckperms-smoke/logs/**
+            run-integrated-smoke/crash-reports/**
+            run-integrated-guest/crash-reports/**
+            run-luckperms-smoke/crash-reports/**
+            build/integrated-lan-exchange/**
+          if-no-files-found: ignore
+          retention-days: 7
+
   cardboard:
     name: Cardboard build and tests
     runs-on: ubuntu-latest

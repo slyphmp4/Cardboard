@@ -1,0 +1,7 @@
+name: IntegratedSmoke
+main: org.cardboardpowered.smoke.plugin.IntegratedSmokePlugin
+version: 1.0.0
+api-version: '26.2'
+commands:
+  smokeworld:
+    description: Checks command ownership across integrated worlds

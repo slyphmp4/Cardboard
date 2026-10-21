@@ -426,3 +426,115 @@ publishing {
     //    }
     //}
 }
+
+// Disposable client/plugin fixtures are enabled only by the explicit smoke flag.
+if (project.hasProperty('integratedSmoke')) {
+    sourceSets {
+        integratedSmoke {
+            java.srcDirs = ['tools/integrated-smoke/client']
+            resources.srcDirs = ['tools/integrated-smoke/client-resources']
+            compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+            runtimeClasspath += sourceSets.main.runtimeClasspath
+        }
+        integratedSmokePlugin {
+            java.srcDirs = ['tools/integrated-smoke/plugin']
+            resources.srcDirs = ['tools/integrated-smoke/plugin-resources']
+            compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        }
+    }
+    dependencies {
+        integratedSmokeCompileOnly 'net.luckperms:api:5.5'
+    }
+    if (project.hasProperty('lanSmoke')) {
+        repositories { maven { url = 'https://api.modrinth.com/maven' } }
+        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2
+    }
+    loom {
+        mods {
+            cardboard { sourceSet sourceSets.main }
+            cardboard_integrated_smoke { sourceSet sourceSets.integratedSmoke }
+        }
+        runs {
+            client {
+                runDir 'run-integrated-smoke'
+                programArgs '--username', 'SmokeOwner', '--uuid', '00112233-4455-6677-8899-aabbccddeeff', '--width', '854', '--height', '480'
+                if (project.hasProperty('lanSmoke')) {
+                    vmArg '-Dcardboard.smoke.lan=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
+            }
+            if (project.hasProperty('lanSmoke')) {
+                smokeGuest {
+                    client()
+                    runDir 'run-integrated-guest'
+                    programArgs '--username', 'SmokeGuest', '--uuid', 'ffeeddcc-bbaa-9988-7766-554433221100', '--width', '640', '--height', '360'
+                    vmArg '-Dcardboard.smoke.guest=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
+                luckPermsServer {
+                    server()
+                    runDir 'run-luckperms-smoke'
+                    programArg 'nogui'
+                    vmArg '-Dcardboard.smoke.dedicated=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
+            }
+        }
+    }
+    def fixtureJar = tasks.register('integratedSmokePluginJar', Jar) {
+        archiveFileName = 'integrated-smoke-plugin.jar'
+        destinationDirectory = layout.buildDirectory.dir('integrated-smoke')
+        from sourceSets.integratedSmokePlugin.output
+        exclude '**/bootstrap/**', 'paper-plugin.yml'
+    }
+    def bootstrapFixtureJar = tasks.register('integratedSmokePaperPluginJar', Jar) {
+        archiveFileName = 'integrated-bootstrap-plugin.jar'
+        destinationDirectory = layout.buildDirectory.dir('integrated-smoke')
+        from sourceSets.integratedSmokePlugin.output
+        include '**/bootstrap/**', 'paper-plugin.yml'
+    }
+    tasks.named('runClient') {
+        classpath sourceSets.integratedSmoke.output
+        dependsOn tasks.named('integratedSmokeClasses'), fixtureJar, bootstrapFixtureJar
+        doFirst {
+            copy {
+                from fixtureJar
+                from bootstrapFixtureJar
+                into layout.projectDirectory.dir('run-integrated-smoke/plugins')
+            }
+            file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\nonboardAccessibility:false\n'
+        }
+    }
+    if (project.hasProperty('lanSmoke')) {
+        tasks.named('runSmokeGuest') { classpath sourceSets.integratedSmoke.output }
+        tasks.named('runLuckPermsServer') { classpath sourceSets.integratedSmoke.output }
+        tasks.register('prepareIntegratedLanSmoke') {
+            // Resolve the same Loom prerequisites without running either blocking JavaExec task.
+            dependsOn { ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].collectMany { tasks.named(it).get().taskDependencies.getDependencies(tasks.named(it).get()) } }
+            dependsOn fixtureJar, bootstrapFixtureJar, tasks.named('integratedSmokeClasses')
+            doLast {
+                def hostDir = file('run-integrated-smoke')
+                def guestDir = file('run-integrated-guest')
+                def serverDir = file('run-luckperms-smoke')
+                [hostDir, guestDir].each { dir ->
+                    dir.mkdirs()
+                    new File(dir, 'options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:15\nenableVsync:false\nonboardAccessibility:false\n'
+                }
+                copy { from fixtureJar; from bootstrapFixtureJar; into new File(hostDir, 'plugins') }
+                copy { from fixtureJar; into new File(serverDir, 'plugins') }
+                new File(serverDir, 'eula.txt').text = 'eula=true\n'
+                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\n'
+                def launches = ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].withIndex().collect { name, i ->
+                    def run = tasks.named(name).get()
+                    run.maxHeapSize = '2G'
+                    def args = [run.javaLauncher.get().executablePath.asFile.absolutePath] + run.allJvmArgs + [run.mainClass.get()] + run.args
+                    run.argumentProviders.each { args.addAll(it.asArguments()) }
+                    [command: args, cwd: [hostDir, guestDir, serverDir][i].absolutePath]
+                }
+                def target = layout.buildDirectory.file('integrated-lan-launch.json').get().asFile
+                target.parentFile.mkdirs()
+                target.text = groovy.json.JsonOutput.toJson(launches)
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@ import io.papermc.paper.registry.PaperRegistryListenerManager;
 import io.papermc.paper.registry.data.util.Conversions;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryDataLoader;
+import net.minecraft.resources.NetworkRegistryLoadTask;
 import net.minecraft.resources.RegistryLoadTask;
 import net.minecraft.resources.RegistryLoadTask.PendingRegistration;
 import net.minecraft.resources.ResourceManagerRegistryLoadTask;
@@ -35,6 +36,8 @@ public abstract class RegistryLoadTaskMixin<T> {
 			Map<?, ?> loadingErrors,
 			CallbackInfo ci
 	) {
+		// Network registries belong to the client, not the Bukkit server.
+		if ((Object) this instanceof NetworkRegistryLoadTask<?>) return;
 		PaperRegistryAccess.instance().registerRegistry(this.registry);
 	}
 

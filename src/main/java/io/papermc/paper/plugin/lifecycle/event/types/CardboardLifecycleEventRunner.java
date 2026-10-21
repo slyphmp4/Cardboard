@@ -56,4 +56,12 @@ public final class CardboardLifecycleEventRunner {
         for (CardboardLifecycleEventType<?, ?, ?> eventType : EVENT_TYPES)
             eventType.removeOwner(owner);
     }
+
+    public static void resetForServerStop() {
+        for (CardboardLifecycleEventType<?, ?, ?> eventType : EVENT_TYPES) {
+            eventType.clearHandlers();
+        }
+        currentOwner = null;
+    }
 }
+

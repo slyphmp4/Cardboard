@@ -66,6 +66,7 @@ public class BlockItemMixin implements BlockItemBridge {
             "Lnet/minecraft/world/item/BlockItem;getPlacementState(Lnet/minecraft/world/item/context/BlockPlaceContext;)Lnet/minecraft/world/level/block/state/BlockState;"),
             method = "place(Lnet/minecraft/world/item/context/BlockPlaceContext;)Lnet/minecraft/world/InteractionResult;")
     public void cardboard$captureReplacedBlockState(BlockPlaceContext context, CallbackInfoReturnable<InteractionResult> ci) {
+        if (context.getLevel().isClientSide()) return;
         bukkit_state = org.bukkit.craftbukkit.block.CraftBlockStates.getBlockState(context.getLevel(), context.getClickedPos());
     }
 
@@ -100,6 +101,7 @@ public class BlockItemMixin implements BlockItemBridge {
      */
     @Inject(at = @At("RETURN"), method = "canPlace(Lnet/minecraft/world/item/context/BlockPlaceContext;Lnet/minecraft/world/level/block/state/BlockState;)Z", cancellable = true)
     public void doBukkitEvent_BlockCanBuildEvent(BlockPlaceContext blockactioncontext, BlockState iblockdata, CallbackInfoReturnable<Boolean> ci) {
+        if (blockactioncontext.getLevel().isClientSide()) return;
         Player entityhuman = blockactioncontext.getPlayer();
         CollisionContext voxelshapecollision = entityhuman == null ? CollisionContext.empty() : CollisionContext.of((Entity) entityhuman);
 
