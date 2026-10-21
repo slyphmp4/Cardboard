@@ -48,6 +48,7 @@ final class EntityEventSmoke {
             require(subject.getHealth() == 0.0F, "Client healing revived a dead entity");
         });
         check(failures, "client vanilla setTarget", () -> {
+            subject.setHealth(4.0F);
             subject.setTarget(first);
             require(subject.getTargetUnchecked() == first, "Vanilla client target assignment was lost");
         });

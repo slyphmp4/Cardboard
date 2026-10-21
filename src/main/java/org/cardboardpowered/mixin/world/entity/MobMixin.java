@@ -64,14 +64,16 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
         }
     }
 
-    @Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setTarget(Lnet/minecraft/world/entity/LivingEntity;)V", at = @At("HEAD"), cancellable = true)
     public void setTargetCraftBukkit(LivingEntity livingEntity, CallbackInfo ci) {
+        if (this.level().isClientSide()) {
+            return;
+        }
         EntityTargetEvent.TargetReason reason = this.cardboard$pendingTargetReason;
         this.cardboard$pendingTargetReason = null;
-        boolean set = this.cardboard$setTarget(livingEntity, reason == null ? EntityTargetEvent.TargetReason.UNKNOWN : reason);
-        if (set) {
-            ci.cancel();
-        }
+        this.cardboard$setTarget(livingEntity, reason == null ? EntityTargetEvent.TargetReason.UNKNOWN : reason);
+        // A cancelled Bukkit event must not fall through to vanilla's target assignment.
+        ci.cancel();
     }
 
     @Override
@@ -79,6 +81,10 @@ public abstract class MobMixin extends LivingEntity implements MobBridge, Entity
         LivingEntity oldTarget = this.getTargetUnchecked();
         if (oldTarget == target) {
             return false;
+        }
+        if (this.level().isClientSide()) {
+            ((Mob) (Object) this).setTarget(target);
+            return this.getTargetUnchecked() != oldTarget;
         }
         if (reason != null) {
             if (reason == EntityTargetEvent.TargetReason.UNKNOWN && oldTarget != null && target == null) {

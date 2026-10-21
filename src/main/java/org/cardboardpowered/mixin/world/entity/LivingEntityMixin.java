@@ -266,14 +266,22 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
     /**
      * @reason Bukkit RegainHealthEvent
      */
-    @Inject(at = @At("HEAD"), method = "heal", cancellable = true)
+    @Inject(at = @At("HEAD"), method = "heal(F)V", cancellable = true)
     public void doRegainHealthEvent(float f, CallbackInfo ci) {
+        if (this.level().isClientSide()) {
+            return;
+        }
         heal(f, EntityRegainHealthEvent.RegainReason.CUSTOM);
         ci.cancel();
         return;
     }
 
     public void heal(float f, EntityRegainHealthEvent.RegainReason regainReason) {
+        if (this.level().isClientSide()) {
+            // The vanilla injection above lets client-side healing run without Bukkit.
+            get().heal(f);
+            return;
+        }
         if (get().getHealth() > 0.0F) {
             EntityRegainHealthEvent event = new EntityRegainHealthEvent(this.getBukkitEntity(), f, regainReason);
             if (this.isValidBF()) {
