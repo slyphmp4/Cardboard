@@ -1773,7 +1773,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void setSpawnRadius(int value) {
-        this.getServer().setSpawnProtectionRadius(value);
+        if (this.getServer() instanceof DedicatedServer dedicated) {
+            dedicated.setSpawnProtectionRadius(value);
+        }
     }
 
     @Override
@@ -2203,7 +2205,9 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     @Override
     public void setMaxPlayers(int maxPlayers) {
         Preconditions.checkArgument(maxPlayers >= 0, "maxPlayers must be >= 0");
-        this.console.setMaxPlayers(maxPlayers);
+        if (this.console instanceof DedicatedServer dedicated) {
+            dedicated.setMaxPlayers(maxPlayers);
+        }
     }
 
     @Override
@@ -2464,7 +2468,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public int getSimulationDistance() {
-        return this.console.simulationDistance();
+        return this.console.getPlayerList().getSimulationDistance();
 	}
 
 	@Override

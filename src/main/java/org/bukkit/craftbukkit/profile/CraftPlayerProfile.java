@@ -184,7 +184,7 @@ public final class CraftPlayerProfile implements PlayerProfile, com.destroystoky
         return new CraftPlayerProfile(profile);
     }
 
-    private static @Nullable GameProfile fetchProfileGuarded(DedicatedServer server, UUID profileId) {
+    private static @Nullable GameProfile fetchProfileGuarded(MinecraftServer server, UUID profileId) {
         CraftServer craftServer = (CraftServer) Bukkit.getServer();
 
         GameProfile cachedProfile = craftServer.getPaperFilledProfileCache().getIfCached(profileId);
