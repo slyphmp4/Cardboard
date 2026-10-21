@@ -31,6 +31,7 @@ public final class IntegratedServerLifecycle {
             ((io.papermc.paper.threadedregions.scheduler.FoliaAsyncScheduler) server.getAsyncScheduler()).shutdown();
         }
         org.spigotmc.WatchdogThread.doStop();
+        org.cardboardpowered.PaperMetrics.stopMetrics_Cardboard();
         // Bootstrap contexts may outlive their plugin instance or fail before onEnable.
         CardboardLifecycleEventRunner.resetForServerStop();
         LifecycleEventRunner.INSTANCE.resetForServerStop();

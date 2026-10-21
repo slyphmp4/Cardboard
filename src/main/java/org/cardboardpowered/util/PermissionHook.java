@@ -6,8 +6,8 @@ import net.minecraft.world.entity.Entity;
 
 /**
  * Lets Bukkit plugins see permissions from a Fabric permissions provider (e.g. LuckPerms-Fabric).
- * Called by reflection because fabric-permissions-api is only present when such a mod bundles it;
- * callers already gate on FabricLoader.isModLoaded("fabric-permissions-api-v0").
+ * Reflection also allows this hook to fail closed when the optional API cannot be loaded.
+ * Callers gate on FabricLoader.isModLoaded("fabric-permissions-api-v0").
  */
 public class PermissionHook {
 

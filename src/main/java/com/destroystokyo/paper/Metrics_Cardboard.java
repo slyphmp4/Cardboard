@@ -39,7 +39,16 @@ public class Metrics_Cardboard {
 
     // Executor service for requests
     // We use an executor service because the Bukkit scheduler is affected by server lags
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, task -> {
+        Thread thread = new Thread(task, "Cardboard metrics");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /** Stops this server's submissions when its world is closed. */
+    public void shutdown() {
+        scheduler.shutdownNow();
+    }
 
     // The version of this bStats class
     public static final int B_STATS_VERSION = 1;

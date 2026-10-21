@@ -36,6 +36,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private Plugin previousPlugin;
     private Object previousRegistry;
     private int previousMaterialCount = -1;
+    private long closeDeadline;
     private final long deadline = System.nanoTime() + 600_000_000_000L;
 
     @Override
@@ -81,8 +82,21 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 client.disconnect(new TitleScreen(), false);
                 require(CraftServer.INSTANCE == null && Bukkit.getServer() == null, "Bukkit singleton survived world close");
                 require(!org.cardboardpowered.CardboardMod.isAfterWorldLoad, "World-loaded flag survived world close");
+                closeDeadline = System.nanoTime() + 5_000_000_000L;
                 stage = 3;
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
+                var remaining = Thread.getAllStackTraces().keySet().stream()
+                        .filter(Thread::isAlive).map(Thread::getName)
+                        .filter(name -> name.equals("Cardboard metrics")
+                                || name.startsWith("Paper Scheduler Thread")
+                                || name.startsWith("Craft Async Scheduler Management Thread")
+                                || name.startsWith("Folia Async Scheduler Thread")
+                                || name.equals("Spigot Watchdog Thread"))
+                        .toList();
+                if (!remaining.isEmpty()) {
+                    require(System.nanoTime() < closeDeadline, "World threads survived close: " + remaining);
+                    return;
+                }
                 if (world < 2) {
                     createWorld(client);
                 } else {
