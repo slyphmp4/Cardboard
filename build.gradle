@@ -442,6 +442,13 @@ if (project.hasProperty('integratedSmoke')) {
             compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
         }
     }
+    dependencies {
+        integratedSmokeCompileOnly 'net.luckperms:api:5.5'
+    }
+    if (project.hasProperty('lanSmoke')) {
+        repositories { maven { url = 'https://api.modrinth.com/maven' } }
+        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2
+    }
     loom {
         mods {
             cardboard { sourceSet sourceSets.main }
@@ -451,6 +458,19 @@ if (project.hasProperty('integratedSmoke')) {
             client {
                 runDir 'run-integrated-smoke'
                 programArgs '--username', 'SmokeOwner', '--uuid', '00112233-4455-6677-8899-aabbccddeeff', '--width', '854', '--height', '480'
+                if (project.hasProperty('lanSmoke')) {
+                    vmArg '-Dcardboard.smoke.lan=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
+            }
+            if (project.hasProperty('lanSmoke')) {
+                smokeGuest {
+                    client()
+                    runDir 'run-integrated-guest'
+                    programArgs '--username', 'SmokeGuest', '--uuid', 'ffeeddcc-bbaa-9988-7766-554433221100', '--width', '640', '--height', '360'
+                    vmArg '-Dcardboard.smoke.guest=true'
+                    vmArg "-Dcardboard.smoke.exchange=${layout.buildDirectory.dir('integrated-lan-exchange').get().asFile.absolutePath}"
+                }
             }
         }
     }
@@ -476,6 +496,33 @@ if (project.hasProperty('integratedSmoke')) {
                 into layout.projectDirectory.dir('run-integrated-smoke/plugins')
             }
             file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\nonboardAccessibility:false\n'
+        }
+    }
+    if (project.hasProperty('lanSmoke')) {
+        tasks.named('runSmokeGuest') { classpath sourceSets.integratedSmoke.output }
+        tasks.register('prepareIntegratedLanSmoke') {
+            // Resolve the same Loom prerequisites without running either blocking JavaExec task.
+            dependsOn { ['runClient', 'runSmokeGuest'].collectMany { tasks.named(it).get().taskDependencies.getDependencies(tasks.named(it).get()) } }
+            dependsOn fixtureJar, bootstrapFixtureJar, tasks.named('integratedSmokeClasses')
+            doLast {
+                def hostDir = file('run-integrated-smoke')
+                def guestDir = file('run-integrated-guest')
+                [hostDir, guestDir].each { dir ->
+                    dir.mkdirs()
+                    new File(dir, 'options.txt').text = 'renderDistance:2\nsimulationDistance:5\nmaxFps:15\nenableVsync:false\nonboardAccessibility:false\n'
+                }
+                copy { from fixtureJar; from bootstrapFixtureJar; into new File(hostDir, 'plugins') }
+                def launches = ['runClient', 'runSmokeGuest'].withIndex().collect { name, i ->
+                    def run = tasks.named(name).get()
+                    run.maxHeapSize = '2G'
+                    def args = [run.javaLauncher.get().executablePath.asFile.absolutePath] + run.allJvmArgs + [run.mainClass.get()] + run.args
+                    run.argumentProviders.each { args.addAll(it.asArguments()) }
+                    [command: args, cwd: (i == 0 ? hostDir : guestDir).absolutePath]
+                }
+                def target = layout.buildDirectory.file('integrated-lan-launch.json').get().asFile
+                target.parentFile.mkdirs()
+                target.text = groovy.json.JsonOutput.toJson(launches)
+            }
         }
     }
 }

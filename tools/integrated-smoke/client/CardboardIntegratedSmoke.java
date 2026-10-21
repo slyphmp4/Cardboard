@@ -37,10 +37,16 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private Object previousRegistry;
     private int previousMaterialCount = -1;
     private long closeDeadline;
+    private static final boolean LAN = Boolean.getBoolean("cardboard.smoke.lan");
+    private static final Path EXCHANGE = Path.of(System.getProperty("cardboard.smoke.exchange", "."));
     private final long deadline = System.nanoTime() + 600_000_000_000L;
 
     @Override
     public void onInitializeClient() {
+        if (Boolean.getBoolean("cardboard.smoke.guest")) {
+            new IntegratedLanGuest().onInitializeClient();
+            return;
+        }
         System.out.println("INTEGRATED_SMOKE_START");
         me.lucko.fabric.api.permissions.v0.PermissionCheckEvent.EVENT.register((source, permission) -> {
             if (permission.equals("cardboard.smoke.fabric")) return net.fabricmc.fabric.api.util.TriState.TRUE;
@@ -54,7 +60,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 Thread.currentThread().interrupt();
                 return;
             }
-            if (stage < 4) {
+            if (stage != 4) {
                 System.err.println("INTEGRATED_SMOKE_WATCHDOG stage=" + stage + " world=" + world);
                 Thread.getAllStackTraces().forEach((thread, frames) -> {
                     System.err.println(thread.getName() + " " + thread.getState());
@@ -79,11 +85,24 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 2;
             } else if (stage == 2 && verification.isDone()) {
                 verification.join();
-                client.disconnect(new TitleScreen(), false);
-                require(CraftServer.INSTANCE == null && Bukkit.getServer() == null, "Bukkit singleton survived world close");
-                require(!org.cardboardpowered.CardboardMod.isAfterWorldLoad, "World-loaded flag survived world close");
-                closeDeadline = System.nanoTime() + 5_000_000_000L;
-                stage = 3;
+                if (LAN) {
+                    var server = client.getSingleplayerServer();
+                    // Disposable CI profiles have no Microsoft session. Still use vanilla LAN publication and real TCP login.
+                    server.setUsesAuthentication(false);
+                    int port = 25576 + world;
+                    require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, GameType.SURVIVAL, false, port), "LAN publication failed");
+                    Files.createDirectories(EXCHANGE);
+                    Files.writeString(EXCHANGE.resolve("ready-" + world), Integer.toString(port));
+                    stage = 5;
+                } else closeWorld(client);
+            } else if (stage == 5 && Files.exists(EXCHANGE.resolve("joined-" + world))) {
+                var server = client.getSingleplayerServer();
+                verification = CompletableFuture.runAsync(() -> verifyLanGuest(server), server);
+                stage = 6;
+            } else if (stage == 6 && verification.isDone()) {
+                verification.join();
+                Files.writeString(EXCHANGE.resolve("verified-" + world), "PASS");
+                if (Files.exists(EXCHANGE.resolve("left-" + world))) closeWorld(client);
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
                 var remaining = Thread.getAllStackTraces().keySet().stream()
                         .filter(Thread::isAlive).map(Thread::getName)
@@ -110,6 +129,32 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             error.printStackTrace();
             System.err.println("INTEGRATED_SMOKE_FAILED stage=" + stage + " world=" + world);
             System.exit(1);
+        }
+    }
+
+    private void closeWorld(Minecraft client) {
+        client.disconnect(new TitleScreen(), false);
+        require(CraftServer.INSTANCE == null && Bukkit.getServer() == null, "Bukkit singleton survived world close");
+        require(!org.cardboardpowered.CardboardMod.isAfterWorldLoad, "World-loaded flag survived world close");
+        closeDeadline = System.nanoTime() + 5_000_000_000L;
+        stage = 3;
+    }
+
+    private void verifyLanGuest(MinecraftServer server) {
+        try {
+            UUID id = net.minecraft.core.UUIDUtil.createOfflinePlayerUUID("SmokeGuest");
+            var guest = Bukkit.getPlayer(id);
+            require(guest != null && guest.isOnline(), "TCP guest did not reach Bukkit with its offline UUID");
+            require(Bukkit.getOnlinePlayers().size() == 2, "Owner and guest are not online together");
+            require(!guest.isOp(), "LAN guest unexpectedly became an operator");
+            Plugin plugin = Bukkit.getPluginManager().getPlugin("IntegratedSmoke");
+            plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
+            require(guest.hasPermission("cardboard.smoke.fabric"), "Guest Fabric permission grant was lost");
+            require(!guest.hasPermission("cardboard.smoke.denied"), "Guest Fabric denial was lost");
+            LuckPermsSmoke.verify(guest);
+            System.out.println("INTEGRATED_LAN_HOST_PASS " + world + " guest=" + id);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
         }
     }
 
@@ -145,6 +190,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");
+            if (LAN) LuckPermsSmoke.verify(player);
             // Exercise property-backed API methods against an IntegratedServer.
             Bukkit.getServer().getViewDistance();
             Bukkit.getServer().getSimulationDistance();
@@ -172,7 +218,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
         }
     }
 
-    private void exerciseClientCopies(Minecraft client) {
+    static void exerciseClientCopies(Minecraft client) {
         var inventory = client.player.getInventory();
         new EnchantmentMenu(1, inventory, ContainerLevelAccess.NULL);
         new GrindstoneMenu(2, inventory, ContainerLevelAccess.NULL);

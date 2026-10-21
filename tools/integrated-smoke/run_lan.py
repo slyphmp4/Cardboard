@@ -1,0 +1,52 @@
+"""Run two prepared Loom client commands concurrently, requiring normal exit from both."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+root = Path(__file__).resolve().parents[2]
+launches = json.loads((root / 'build/integrated-lan-launch.json').read_text())
+exchange = root / 'build/integrated-lan-exchange'
+if exchange.exists() or (root / 'run-integrated-smoke/integrated-smoke.success').exists():
+    raise SystemExit('Use fresh disposable run directories for this smoke')
+logs = [root / 'integrated-lan-host.log', root / 'integrated-lan-guest.log']
+processes = []
+handles = []
+try:
+    for launch, log in zip(launches, logs):
+        handle = log.open('w', encoding='utf-8')
+        handles.append(handle)
+        processes.append(subprocess.Popen(launch['command'], cwd=launch['cwd'], stdout=handle,
+                                          stderr=subprocess.STDOUT, start_new_session=True))
+    deadline = time.monotonic() + 900
+    while any(process.poll() is None for process in processes):
+        if any(process.poll() not in (None, 0) for process in processes):
+            raise RuntimeError(f'Client failed: {[process.poll() for process in processes]}')
+        if time.monotonic() > deadline:
+            raise TimeoutError('LAN smoke exceeded 15 minutes')
+        time.sleep(1)
+    if any(process.returncode != 0 for process in processes):
+        raise RuntimeError(f'Client exit codes: {[process.returncode for process in processes]}')
+    host = logs[0].read_text(errors='replace')
+    guest = logs[1].read_text(errors='replace')
+    for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2',
+                   'LUCKPERMS_FABRIC_PASS SmokeOwner', 'LUCKPERMS_FABRIC_PASS SmokeGuest']:
+        if marker not in host:
+            raise AssertionError(f'Missing host marker: {marker}')
+    if 'INTEGRATED_LAN_GUEST_PASS' not in guest:
+        raise AssertionError('Missing guest PASS marker')
+    if not (exchange / 'guest.success').is_file() or not (root / 'run-integrated-smoke/integrated-smoke.success').is_file():
+        raise AssertionError('Missing client success files')
+    print('INTEGRATED_LAN_LUCKPERMS_PASS: both clients exited normally', flush=True)
+finally:
+    for process in processes:
+        if process.poll() is None:
+            # Only these disposable client process groups are owned by this harness.
+            os.killpg(process.pid, 15)
+    for handle in handles:
+        handle.close()
+    for log in logs:
+        if log.exists():
+            print(f'--- {log.name} (last 100 lines) ---', flush=True)
+            print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)
