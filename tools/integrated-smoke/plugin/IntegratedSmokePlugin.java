@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,6 +14,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class IntegratedSmokePlugin extends JavaPlugin implements Listener {
     private final ConcurrentMap<UUID, Integer> preLogins = new ConcurrentHashMap<>();
     private final ConcurrentMap<UUID, Integer> logins = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, String> entityProbes = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, UUID> targetReplacements = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Integer> entityEventCounts = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, String> entityEventReasons = new ConcurrentHashMap<>();
     private volatile boolean bukkitAsyncRan;
     private volatile boolean foliaAsyncRan;
 
@@ -45,6 +51,49 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
         if (!bukkitAsyncRan || !foliaAsyncRan) throw new AssertionError("Async schedulers did not execute their tasks");
         if (preLogins.getOrDefault(owner, 0) != 1 || logins.getOrDefault(owner, 0) != 1) {
             throw new AssertionError("Expected exactly one pre-login and login for " + owner + ": " + preLogins + " / " + logins);
+        }
+    }
+
+    // These methods cross the fixture plugin classloader using only JDK types.
+    public void probeEntity(UUID entity, String behavior, UUID replacement) {
+        entityProbes.put(entity, behavior);
+        if (replacement == null) targetReplacements.remove(entity);
+        else targetReplacements.put(entity, replacement);
+    }
+
+    public int probeCount(UUID entity, String kind) {
+        return entityEventCounts.getOrDefault(entity + ":" + kind, 0);
+    }
+
+    public String probeReason(UUID entity, String kind) {
+        return entityEventReasons.get(entity + ":" + kind);
+    }
+
+    @EventHandler
+    public void regainHealth(EntityRegainHealthEvent event) {
+        UUID id = event.getEntity().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":heal", 1, Integer::sum);
+        entityEventReasons.put(id + ":heal", event.getRegainReason().name());
+        if (behavior.equals("HEAL_CANCEL")) event.setCancelled(true);
+        if (behavior.equals("HEAL_MODIFY")) event.setAmount(3.0);
+    }
+
+    @EventHandler
+    public void target(EntityTargetLivingEntityEvent event) {
+        UUID id = event.getEntity().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":target", 1, Integer::sum);
+        entityEventReasons.put(id + ":target", event.getReason().name());
+        if (behavior.equals("TARGET_CANCEL")) event.setCancelled(true);
+        if (behavior.equals("TARGET_REPLACE")) {
+            var replacement = getServer().getEntity(targetReplacements.get(id));
+            if (!(replacement instanceof org.bukkit.entity.LivingEntity living)) {
+                throw new AssertionError("Target replacement was not a live Bukkit entity");
+            }
+            event.setTarget(living);
         }
     }
 }
