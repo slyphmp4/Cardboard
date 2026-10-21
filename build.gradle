@@ -426,3 +426,47 @@ publishing {
     //    }
     //}
 }
+
+// Disposable client/plugin fixtures are enabled only by the explicit smoke flag.
+if (project.hasProperty('integratedSmoke')) {
+    sourceSets {
+        integratedSmoke {
+            java.srcDirs = ['tools/integrated-smoke/client']
+            resources.srcDirs = ['tools/integrated-smoke/client-resources']
+            compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+            runtimeClasspath += sourceSets.main.runtimeClasspath
+        }
+        integratedSmokePlugin {
+            java.srcDirs = ['tools/integrated-smoke/plugin']
+            resources.srcDirs = ['tools/integrated-smoke/plugin-resources']
+            compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        }
+    }
+    loom {
+        mods {
+            cardboard { sourceSet sourceSets.main }
+            cardboard_integrated_smoke { sourceSet sourceSets.integratedSmoke }
+        }
+        runs {
+            client {
+                runDir 'run-integrated-smoke'
+                programArgs '--username', 'SmokeOwner', '--uuid', '00112233-4455-6677-8899-aabbccddeeff', '--width', '854', '--height', '480'
+            }
+        }
+    }
+    def fixtureJar = tasks.register('integratedSmokePluginJar', Jar) {
+        archiveFileName = 'integrated-smoke-plugin.jar'
+        destinationDirectory = layout.buildDirectory.dir('integrated-smoke')
+        from sourceSets.integratedSmokePlugin.output
+    }
+    tasks.named('runClient') {
+        dependsOn tasks.named('integratedSmokeClasses'), fixtureJar
+        doFirst {
+            copy {
+                from fixtureJar
+                into layout.projectDirectory.dir('run-integrated-smoke/plugins')
+            }
+            file('run-integrated-smoke/options.txt').text = 'renderDistance:2\nsimulationDistance:2\nmaxFps:30\nenableVsync:false\n'
+        }
+    }
+}
