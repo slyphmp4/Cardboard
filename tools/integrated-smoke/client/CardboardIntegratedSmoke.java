@@ -33,6 +33,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private volatile int stage;
     private int world;
     private CompletableFuture<Void> verification;
+    private Throwable clientProbeFailure;
     private Plugin previousPlugin;
     private Object previousRegistry;
     private int previousMaterialCount = -1;
@@ -78,13 +79,21 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null) {
                 createWorld(client);
             } else if (stage == 1 && client.player != null && client.getSingleplayerServer() != null) {
-                exerciseClientCopies(client);
+                clientProbeFailure = null;
+                try {
+                    exerciseClientCopies(client);
+                } catch (Throwable error) {
+                    // Run the server probes too, so client failures cannot hide server regressions.
+                    clientProbeFailure = error;
+                    error.printStackTrace();
+                }
                 MinecraftServer server = client.getSingleplayerServer();
                 UUID owner = client.getUser().getProfileId();
                 verification = CompletableFuture.runAsync(() -> verifyServer(server, owner), server);
                 stage = 2;
             } else if (stage == 2 && verification.isDone()) {
                 verification.join();
+                if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
                     // Disposable CI profiles have no Microsoft session. Still use vanilla LAN publication and real TCP login.
@@ -188,6 +197,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             require(Bukkit.getPluginCommand("smokeworld") != null
                     && Bukkit.getPluginCommand("smokeworld").getPlugin() == plugin, "Stale command owner");
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
+            EntityEventSmoke.verifyServer(server.getPlayerList().getPlayer(owner), plugin);
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");
             // Exercise property-backed API methods against an IntegratedServer.
@@ -227,6 +237,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
         client.player.setAirSupply(250);
         require(client.player.getAirSupply() == 250, "Client air prediction was cancelled");
         new ItemEntity(client.level, client.player.getX(), client.player.getY(), client.player.getZ(), new ItemStack(Items.DIRT)).tick();
+        EntityEventSmoke.verifyClient(client);
     }
 
     private static void require(boolean condition, String message) {
