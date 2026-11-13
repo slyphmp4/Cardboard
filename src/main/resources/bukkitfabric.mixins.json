@@ -242,6 +242,7 @@
     "world.level.block.entity.LecternBlockEntityMixin",
     "world.level.block.entity.ShulkerBoxBlockEntityMixin",
     "world.level.block.entity.SignBlockEntityMixin",
+    "world.level.block.entity.SignTextMutableMixin",
     "world.level.block.entity.TheEndGatewayBlockEntityMixin",
     "world.level.block.entity.trialspawner.TrialSpawner_FullConfigMixin",
     "world.level.block.entity.vault.VaultServerDataMixin",

@@ -176,6 +176,21 @@ final class EntityEventSmoke {
                     require(sign.getText(slot).getMessages(false).get(1).getString().equals("secret")
                             && sign.getText(slot).getMessages(true).get(1).getString().isEmpty(),
                             "Unchanged sign line lost its filtered variant");
+                    var snapshot = new org.bukkit.craftbukkit.block.sign.CraftSignSide(sign.getText(slot));
+                    snapshot.line(0, net.kyori.adventure.text.Component.text("snapshot edit"));
+                    snapshot.setColor(org.bukkit.DyeColor.PURPLE);
+                    snapshot.setGlowingText(true);
+                    var snapshotText = snapshot.applyLegacyStringToSignSide();
+                    require(snapshotText.getMessages(false).get(1).getString().equals("secret")
+                            && snapshotText.getMessages(true).get(1).getString().isEmpty(),
+                            "Bukkit sign snapshot lost an unchanged filtered line");
+                    require(snapshotText.getMessages(false).getFirst().getString().equals("snapshot edit")
+                            && snapshotText.getMessages(true).getFirst().getString().equals("snapshot edit"),
+                            "Bukkit sign snapshot did not update both variants of the edited line");
+                    require(snapshotText.getColor() == net.minecraft.world.item.DyeColor.PURPLE
+                            && snapshotText.hasGlowingText(), "Bukkit sign snapshot lost colour or glow");
+                    require(sign.getText(slot).getMessages(false).getFirst().getString().equals("plugin edit"),
+                            "Editing a Bukkit sign snapshot mutated the original text");
                     before = probe.count(owner, "sign");
                     sign.setAllowedPlayerEditor(UUID.randomUUID());
                     sign.updateSignText(owner, slot, lines);
