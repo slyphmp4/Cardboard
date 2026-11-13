@@ -523,7 +523,11 @@ if (project.hasProperty('integratedSmoke')) {
                 copy { from fixtureJar; from bootstrapFixtureJar; into new File(hostDir, 'plugins') }
                 copy { from fixtureJar; into new File(serverDir, 'plugins') }
                 new File(serverDir, 'eula.txt').text = 'eula=true\n'
-                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\n'
+                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\nwhite-list=true\nenforce-whitelist=false\n'
+                // 26.3 enables the whitelist by default. Admit only this fixture's
+                // offline guest, retaining the native login and permission checks.
+                def guestId = UUID.nameUUIDFromBytes('OfflinePlayer:SmokeGuest'.getBytes(StandardCharsets.UTF_8))
+                new File(serverDir, 'whitelist.json').text = groovy.json.JsonOutput.toJson([[uuid: guestId.toString(), name: 'SmokeGuest']])
                 def launches = ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].withIndex().collect { name, i ->
                     def run = tasks.named(name).get()
                     run.maxHeapSize = '2G'

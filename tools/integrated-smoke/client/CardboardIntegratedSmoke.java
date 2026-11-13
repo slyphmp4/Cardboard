@@ -197,6 +197,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             require(Bukkit.getPluginCommand("smokeworld") != null
                     && Bukkit.getPluginCommand("smokeworld").getPlugin() == plugin, "Stale command owner");
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
+            DedicatedLuckPermsSmoke.verifyWhitelistSettings(server);
             EntityEventSmoke.verifyServer(server.getPlayerList().getPlayer(owner), plugin);
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");

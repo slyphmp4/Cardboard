@@ -21,6 +21,7 @@ public final class DedicatedLuckPermsSmoke implements ModInitializer {
                 if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("luckperms")) {
                     throw new AssertionError("Real LuckPerms-Fabric was not loaded");
                 }
+                verifyWhitelistSettings(server);
                 Files.createDirectories(exchange);
                 Files.writeString(exchange.resolve("dedicated-ready"), "25579");
                 System.out.println("DEDICATED_LUCKPERMS_READY");
@@ -49,6 +50,31 @@ public final class DedicatedLuckPermsSmoke implements ModInitializer {
                 fail(failure);
             }
         });
+    }
+
+    static void verifyWhitelistSettings(net.minecraft.server.MinecraftServer server) {
+        boolean enabled = server.isUsingWhitelist();
+        boolean enforced = server.isEnforceWhitelist();
+        try {
+            if (Bukkit.hasWhitelist() != enabled) throw new AssertionError("Bukkit read the enforcement flag as whitelist state");
+            for (boolean value : new boolean[] {false, true}) {
+                Bukkit.setWhitelist(value);
+                if (server.isUsingWhitelist() != value || Bukkit.hasWhitelist() != value) {
+                    throw new AssertionError("Bukkit did not change the native whitelist setting");
+                }
+                if (server.isEnforceWhitelist() != enforced) throw new AssertionError("Whitelist toggle changed enforcement");
+                Bukkit.setWhitelistEnforced(!enforced);
+                if (server.isEnforceWhitelist() == enforced || Bukkit.isWhitelistEnforced() == enforced
+                        || server.isUsingWhitelist() != value || Bukkit.hasWhitelist() != value) {
+                    throw new AssertionError("Whitelist state and enforcement are not independent");
+                }
+                Bukkit.setWhitelistEnforced(enforced);
+            }
+            System.out.println("WHITELIST_SETTINGS_PASS dedicated=" + server.isDedicatedServer());
+        } finally {
+            server.setUsingWhitelist(enabled);
+            server.setEnforceWhitelist(enforced);
+        }
     }
 
     private static void fail(Throwable failure) {

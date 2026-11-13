@@ -1635,7 +1635,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public boolean hasWhitelist() {
-        return getServer().isEnforceWhitelist();
+        return getServer().isUsingWhitelist();
     }
 
     @Override
@@ -1781,8 +1781,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public void setWhitelist(boolean arg0) {
-        server.setEnforceWhitelist(arg0);
+    public void setWhitelist(boolean enabled) {
+        server.setUsingWhitelist(enabled);
     }
 
     @Override

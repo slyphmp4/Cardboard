@@ -103,6 +103,18 @@ Fabric's official metadata still lists Loader 0.20.1 and API 0.166.2+26.3 as
 the current versions for this target. Loom is updated within 1.17, and Gradle
 within 9.8. Follow-up validation must use these updated pins.
 
+On `e991a2e0`, both LAN worlds passed and the old native abort did not recur,
+but the dedicated server rejected the guest through its whitelist. The native
+26.3 properties now default `white-list` to true. The fixture explicitly retains
+that setting and lists only its offline guest in `whitelist.json`. This is a
+fixture configuration change, not a bypass of native login checks.
+
+The follow-up audit also found Bukkit's whitelist getter/setter incorrectly
+using the separate enforcement flag. They now use the native
+`isUsingWhitelist`/`setUsingWhitelist` methods. Both integrated worlds and the
+dedicated fixture independently toggle whitelist state and enforcement, compare
+Bukkit with native state, and restore the original settings.
+
 ## Gates before a stable release
 
 1. Require the complete CI suite on the exact proposed commit: root and helper
