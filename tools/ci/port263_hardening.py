@@ -71,14 +71,15 @@ class Rcon:
             if receive()[0] != 1:
                 raise PermissionError('RCON authentication failed')
             send(2, 2, text)
+            identifier, first = receive()
+            if identifier != 2:
+                raise ValueError('Unexpected RCON response')
             if text == 'stop':
-                identifier, body = receive()
-                if identifier != 2:
-                    raise ValueError('Unexpected RCON response')
-                return body.decode()
-            # A following command marks the end of every response fragment.
-            send(3, 2, '')
-            parts = []
+                return first.decode()
+            # Vanilla expects one request per socket read. Send the completion
+            # sentinel only after the first response, avoiding TCP coalescing.
+            send(3, 2, 'list')
+            parts = [first]
             while True:
                 identifier, body = receive()
                 if identifier == 3:

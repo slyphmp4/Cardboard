@@ -40,9 +40,9 @@ class RconTests(unittest.TestCase):
                     self.assertIn(b'secret', receive())
                     send(1, b'')
                     self.assertIn(b'command', receive())
-                    receive()  # Completion sentinel.
                     payload = ('x' * 9000 + '\u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430').encode()
                     send(2, payload[:9001])
+                    self.assertIn(b'list', receive())  # Completion sentinel.
                     send(2, payload[9001:])
                     send(3, b'done')
             except BaseException as failure:
