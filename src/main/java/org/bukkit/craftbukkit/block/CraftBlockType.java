@@ -239,7 +239,7 @@ public class CraftBlockType<B extends @NonNull BlockData> extends HolderableBase
 
     @Override
     public @Nullable Material asMaterial() {
-        return Registry.MATERIAL.get(this.getKey());
+        return org.bukkit.craftbukkit.util.CraftMagicNumbers.getMaterial(this.getHandle());
     }
 
     // Paper start - add Translatable

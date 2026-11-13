@@ -21,13 +21,15 @@
   "entrypoints": {
     "main": [
       "com.javazilla.bukkitfabric.BukkitFabricMod",
-      "org.cardboardpowered.event.ChunkLifecycleBridge"
+      "org.cardboardpowered.event.ChunkLifecycleBridge",
+      "org.cardboardpowered.event.ServerResourceReloadBridge"
     ]
   },
   "mixins": [
     "bukkitfabric.mixins.json",
     "cardboard-adventure-fix.mixins.json",
-    "cardboard-modded-entity-fix.mixins.json"
+    "cardboard-modded-entity-fix.mixins.json",
+    "cardboard-registry-fix.mixins.json"
   ],
 
   "depends": {

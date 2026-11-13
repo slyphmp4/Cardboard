@@ -73,6 +73,10 @@ public final class Port263Probe extends JavaPlugin {
                     == ChunkGenerationState.GENERATED, "Loaded chunk was not fully generated");
             int distantX = 1_000_000;
             int distantZ = 1_000_000;
+            require(!world.isChunkGenerated(distantX, distantZ), "Legacy query reported an absent chunk as generated");
+            require(!world.loadChunk(distantX, distantZ, false), "loadChunk(generate=false) accepted absent terrain");
+            require(!world.isChunkGenerated(distantX, distantZ) && !world.isChunkLoaded(distantX, distantZ),
+                    "A read-only query or failed load created a chunk");
             AtomicBoolean completed = new AtomicBoolean();
             world.getChunkGenerationStateAsync(distantX, distantZ).whenComplete((state, error) ->
                     getServer().getScheduler().runTask(this, () -> {

@@ -312,10 +312,24 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
     }
 
     public org.bukkit.entity.Entity spawnEntity(Location location, EntityType entityType) {
+        Preconditions.checkArgument(entityType != null, "Entity type cannot be null");
+        if (!entityType.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            return this.spawnEntity(location, entityType, true);
+        }
         return this.spawn(location, entityType.getEntityClass());
     }
 
     public org.bukkit.entity.Entity spawnEntity(Location loc, EntityType type, boolean randomizeData) {
+        Preconditions.checkArgument(loc != null, "Location cannot be null");
+        Preconditions.checkArgument(type != null, "Entity type cannot be null");
+        if (!type.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            Entity entity = org.bukkit.craftbukkit.entity.CraftEntityType.bukkitToMinecraft(type)
+                    .create(this.getHandle().getLevel(), EntitySpawnReason.COMMAND);
+            Preconditions.checkArgument(entity != null, "Entity type cannot be spawned: %s", type);
+            entity.absSnapTo(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+            entity.setYHeadRot(loc.getYaw());
+            return this.addEntity(entity, CreatureSpawnEvent.SpawnReason.CUSTOM, null, randomizeData);
+        }
         return this.spawn(loc, type.getEntityClass(), null, CreatureSpawnEvent.SpawnReason.CUSTOM, randomizeData);
     }
 

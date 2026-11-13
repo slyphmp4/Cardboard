@@ -291,7 +291,7 @@ public class CraftItemType<M extends ItemMeta> extends HolderableBase<Item> impl
 
     @Override
     public @Nullable Material asMaterial() {
-        return Registry.MATERIAL.get(this.getKey());
+        return CraftMagicNumbers.getMaterial(this.getHandle());
     }
 
     // Paper start - add Translatable

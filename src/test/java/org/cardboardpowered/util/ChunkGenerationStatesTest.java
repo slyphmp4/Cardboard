@@ -8,6 +8,19 @@ import org.junit.jupiter.api.Test;
 
 class ChunkGenerationStatesTest {
     @Test
+    void legacyGeneratedFlagRequiresFullSavedDataAndKeepsOldFullChunks() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
+        assertFalse(ChunkGenerationStates.isFull(Optional.empty()));
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("DataVersion", 99);
+        tag.putString("Status", "minecraft:features");
+        assertFalse(ChunkGenerationStates.isFull(Optional.of(tag)));
+        tag.putString("Status", "minecraft:full");
+        assertTrue(ChunkGenerationStates.isFull(Optional.of(tag)));
+        assertEquals(ChunkGenerationState.OUTDATED, ChunkGenerationStates.fromSaved(Optional.of(tag), 100));
+    }
+    @Test
     void absentAndOldChunksDoNotBecomeGenerated() {
         assertEquals(ChunkGenerationState.NOT_GENERATED, ChunkGenerationStates.fromSaved(Optional.empty(), 100));
         CompoundTag tag = new CompoundTag();

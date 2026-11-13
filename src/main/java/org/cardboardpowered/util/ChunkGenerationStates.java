@@ -9,6 +9,12 @@ import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 public final class ChunkGenerationStates {
     private ChunkGenerationStates() {}
 
+    public static boolean isFull(Optional<CompoundTag> saved) {
+        // The legacy boolean API still considers old FULL chunks generated;
+        // the newer state API reports OUTDATED independently of that status.
+        return saved.map(tag -> SerializableChunkData.getChunkStatusFromTag(tag) == ChunkStatus.FULL).orElse(false);
+    }
+
     public static ChunkGenerationState fromSaved(Optional<CompoundTag> saved, int currentVersion) {
         if (saved.isEmpty()) return ChunkGenerationState.NOT_GENERATED;
         CompoundTag tag = saved.get();

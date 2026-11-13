@@ -99,7 +99,7 @@ public class CardboardMagicNumbers {
                             + "_"
                             + id.getPath().toUpperCase(Locale.ROOT);
 
-            if (id.getNamespace().startsWith("minecraft")) {
+            if (id.getNamespace().equals("minecraft")) {
                 boolean has = false;
 
                 try {
@@ -164,7 +164,7 @@ public class CardboardMagicNumbers {
                 }
             }
 
-            Material m = Material.getMaterial(nam);
+            Material m = material;
 
             CraftMagicNumbers.BLOCK_MATERIAL.put(block, m);
             CraftMagicNumbers.MATERIAL_BLOCK.put(m, block);
@@ -180,7 +180,7 @@ public class CardboardMagicNumbers {
                             + "_"
                             + id.getPath().toUpperCase(Locale.ROOT);
 
-            if (id.getNamespace().startsWith("minecraft")) {
+            if (id.getNamespace().equals("minecraft")) {
                 boolean has = false;
 
                 try {
@@ -237,7 +237,7 @@ public class CardboardMagicNumbers {
                 }
             }
 
-            Material m = Material.getMaterial(nam);
+            Material m = material;
 
             CraftMagicNumbers.ITEM_MATERIAL.put(item, m);
             CraftMagicNumbers.MATERIAL_ITEM.put(m, item);
@@ -253,6 +253,8 @@ public class CardboardMagicNumbers {
         );
 
         for (Material material : list) {
+            ((org.cardboardpowered.bridge.bukkit.EnumRegistryBridge<Material>) org.bukkit.Registry.MATERIAL)
+                    .cardboard$registerValue(material);
             Identifier key = key(material);
 
             BuiltInRegistries.ITEM

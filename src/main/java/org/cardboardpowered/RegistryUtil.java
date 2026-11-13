@@ -99,6 +99,11 @@ public class RegistryUtil {
 
                 cb.cardboard$setKey(key);
                 cb.cardboard$addToMaps(entityType.toLowerCase(), (short) typeId);
+                if (org.bukkit.Registry.ENTITY_TYPE instanceof org.cardboardpowered.bridge.bukkit.EnumRegistryBridge<?> simple) {
+                    ((org.cardboardpowered.bridge.bukkit.EnumRegistryBridge<EntityType>) simple).cardboard$registerValue(bukkitType);
+                } else {
+                    throw new IllegalStateException("Entity registry cannot accept mod type " + key);
+                }
             }
 
             // Vanilla entity types already have a converter in CraftEntityTypes. Modded

@@ -488,6 +488,21 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     private boolean brigadierCommandsRegistered = false;
 
+    /** Vanilla replaces its dispatcher during every successful data-pack reload. */
+    public void cardboard$afterDataReload() {
+        if (!server.isSameThread()) {
+            server.execute(this::cardboard$afterDataReload);
+            return;
+        }
+        if (!this.brigadierCommandsRegistered) return;
+        // Old native nodes retain the previous registry/command build context.
+        this.commandMap.getKnownCommands().entrySet().removeIf(entry -> entry.getValue() instanceof MinecraftCommandWrapper);
+        this.setVanillaCommands();
+        this.registerPluginBrigadierCommands();
+        this.commandMap.registerServerAliases();
+        this.syncCommands();
+    }
+
     /**
      * Lets plugins register Brigadier commands through the Paper lifecycle API. Runs once the
      * vanilla commands are in the command map but before it is synced, so the commands plugins add
@@ -1697,7 +1712,6 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
         pluginManager.clearPlugins();
         commandMap.clearCommands();
-        resetRecipes();
         reloadData();
 
         int pollCount = 0;
@@ -1726,8 +1740,26 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public void reloadData() {
-        // Paper delegates to a server-side ReloadCommand helper that is not part of vanilla/Fabric.
-        // Data reload remains driven by Cardboard's existing resource reload path.
+        if (!server.isSameThread()) {
+            server.execute(this::reloadData);
+            return;
+        }
+        // Vanilla's reload command also discovers newly installed, enabled packs.
+        var repository = server.getPackRepository();
+        var selected = new ArrayList<>(repository.getSelectedIds());
+        repository.reload();
+        var disabled = server.getWorldData().getDataConfiguration().dataPacks().getDisabled();
+        for (String available : repository.getAvailableIds()) {
+            if (!disabled.contains(available) && !selected.contains(available)) selected.add(available);
+        }
+        server.reloadResources(selected).whenCompleteAsync((ignored, failure) -> {
+            if (failure != null) {
+                logger.log(Level.SEVERE, "Failed to reload server resources", failure);
+            } else {
+                getPluginManager().callEvent(new io.papermc.paper.event.server.ServerResourcesReloadedEvent(
+                        io.papermc.paper.event.server.ServerResourcesReloadedEvent.Cause.PLUGIN));
+            }
+        }, server);
     }
 
     @Override

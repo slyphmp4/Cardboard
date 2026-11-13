@@ -1120,11 +1120,18 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean isChunkGenerated(int x, int z) {
-		try {
-			return isChunkLoaded(x, z) || world.getChunkSource().chunkMap.read(new ChunkPos(x, z)) != null;
-		} catch(Exception ex) {
-			throw new RuntimeException(ex);
-		}
+        if (!this.world.getServer().isSameThread()) {
+            return java.util.concurrent.CompletableFuture.supplyAsync(
+                    () -> this.isChunkGenerated(x, z), this.world.getServer()).join();
+        }
+        if (this.isChunkLoaded(x, z)) return true;
+        var holder = this.world.getChunkSource().chunkMap.getUpdatingChunkIfPresent(ChunkPos.pack(x, z));
+        var chunk = holder == null ? null : holder.getLatestChunk();
+        if (chunk != null) return chunk.getPersistedStatus() == ChunkStatus.FULL;
+        // read() always returns a future, including for absent chunks. Inspect
+        // its saved status without generating terrain or adding a chunk ticket.
+        return org.cardboardpowered.util.ChunkGenerationStates.isFull(
+                this.world.getChunkSource().chunkMap.read(new ChunkPos(x, z)).join());
 	}
 
 	@Override
@@ -1181,8 +1188,10 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean loadChunk(int x, int z, boolean generate) {
+        org.spigotmc.AsyncCatcher.catchOp("chunk load");
+        if (!generate && !this.isChunkGenerated(x, z)) return false;
 		net.minecraft.world.level.chunk.ChunkAccess chunk = world.getChunkSource()
-				.getChunk(x, z, generate ? ChunkStatus.FULL : ChunkStatus.EMPTY, true);
+				.getChunk(x, z, ChunkStatus.FULL, true);
 
 		if(chunk instanceof ImposterProtoChunk)
 			chunk = world.getChunkSource().getChunk(x, z, ChunkStatus.FULL, true);
@@ -2224,6 +2233,10 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public Entity spawnEntity(Location loc, EntityType entityType) {
+        Preconditions.checkArgument(entityType != null, "Entity type cannot be null");
+        if (!entityType.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            return super.spawnEntity(loc, entityType);
+        }
 		return spawn(loc, entityType.getEntityClass());
 	}
 

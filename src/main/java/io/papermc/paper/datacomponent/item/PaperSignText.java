@@ -76,12 +76,16 @@ public record PaperSignText(
             );
 
             this.lines = fillWithBlankLines(PaperAdventure.asVanilla(ComponentLike.asComponents(lines)));
+            this.filteredLines.clear();
+            this.filteredLines.addAll(this.lines);
             return this;
         }
 
         @Override
         public Builder line(final int index, final ComponentLike line) {
-            this.lines.set(index, PaperAdventure.asVanilla(line.asComponent()));
+            final var vanilla = PaperAdventure.asVanilla(line.asComponent());
+            this.lines.set(index, vanilla);
+            this.filteredLines.set(index, vanilla);
             return this;
         }
 
@@ -104,8 +108,8 @@ public record PaperSignText(
             }
 
             return new PaperSignText(new net.minecraft.world.level.block.entity.SignText(
-                this.lines,
-                this.filteredLines.isEmpty() ? this.lines : this.filteredLines,
+                List.copyOf(this.lines),
+                List.copyOf(this.filteredLines.isEmpty() ? this.lines : this.filteredLines),
                 this.color,
                 this.hasGlowingText
             ));
