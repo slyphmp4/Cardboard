@@ -86,6 +86,7 @@ jobs:
             integrated-client-smoke.log
             run-integrated-smoke/logs/**
             run-integrated-smoke/crash-reports/**
+            run-integrated-smoke/hs_err_pid*.log
             run-integrated-smoke/integrated-smoke.success
           if-no-files-found: ignore
           retention-days: 7
@@ -132,6 +133,9 @@ jobs:
             run-integrated-smoke/crash-reports/**
             run-integrated-guest/crash-reports/**
             run-luckperms-smoke/crash-reports/**
+            run-integrated-smoke/hs_err_pid*.log
+            run-integrated-guest/hs_err_pid*.log
+            run-luckperms-smoke/hs_err_pid*.log
             build/integrated-lan-exchange/**
           if-no-files-found: ignore
           retention-days: 7

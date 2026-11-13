@@ -13,7 +13,7 @@ import java.nio.file.Files
 import java.time.Instant
 
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17.11'
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
     id 'maven-publish'
     id 'com.gradleup.shadow' version '9.6.1'
     id 'java-library'
@@ -527,6 +527,10 @@ if (project.hasProperty('integratedSmoke')) {
                 def launches = ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].withIndex().collect { name, i ->
                     def run = tasks.named(name).get()
                     run.maxHeapSize = '2G'
+                    // Each concurrent JVM owns its extracted libraries; a loaded
+                    // native library must not be overwritten by another launch.
+                    def nativeDir = new File([hostDir, guestDir, serverDir][i], 'native-libraries')
+                    run.jvmArgs "-Dorg.lwjgl.system.SharedLibraryExtractPath=${nativeDir.absolutePath}"
                     def args = [run.javaLauncher.get().executablePath.asFile.absolutePath] + run.allJvmArgs + [run.mainClass.get()] + run.args
                     run.argumentProviders.each { args.addAll(it.asArguments()) }
                     [command: args, cwd: [hostDir, guestDir, serverDir][i].absolutePath]

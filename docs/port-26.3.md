@@ -13,8 +13,8 @@ No old branch history or 26.2 release was replaced.
 | --- | --- |
 | Minecraft | 26.3 |
 | Java | 25 |
-| Gradle | 9.8.0 |
-| Fabric Loom | 1.17.11 |
+| Gradle | 9.8.1 |
+| Fabric Loom | 1.17.21 |
 | Fabric Loader | 0.20.1 |
 | Fabric API | 0.166.2+26.3 |
 | Paper API | 26.3.build.249-stable |
@@ -41,6 +41,9 @@ on 26.3. This is not evidence that every iCommon integration is compatible.
 - Adapt immutable sign text and the update event, fire the player drop event
   before spawning its item, and keep cancellation authoritative. Update punch
   packets, item break callbacks, TNT priming and lectern drops.
+- Correct 26.3's `SignText.Mutable` copy constructor, which initializes its
+  filtered array from the raw messages. Preserve filtered components in native
+  sign updates and Bukkit sign snapshots when a plugin edits another line.
 - Adapt entity gravity, drag, invulnerability, conversion trackers, swings,
   post-processing effects, alliances and enchantment offers to native 26.3 APIs.
 - Add Bukkit wrappers and spawn routing for cushions and poplar boats.
@@ -77,6 +80,28 @@ The automated runtime probe is `bash tools/ci/port-263-smoke.sh`; the broader
 plugin matrix is `bash tools/ci/common-plugins-smoke.sh`. Both use disposable
 worlds. Tests involving player login, sign edits, drops and packet-driven
 behaviour still require the client fixtures, not merely the no-player probe.
+
+## Follow-up from PR #58
+
+The published head `a5750ea6b1fc07eae4b1b2a986f73eff3a9cebad` passed
+seven checks, including the Linux build, reproducible JARs and server probes.
+Its integrated-client test failed because a plugin edit erased an unchanged
+line's filtered variant. Inspection of the actual 26.3 merged JAR confirmed
+the incorrect field read in `SignText.Mutable`'s constructor; the constructor
+mixin repairs that copy for both vanilla and Bukkit callers. The client fixture
+also checks snapshot edits, both variants of the changed line, colour/glow and
+that editing a snapshot does not mutate its source.
+
+The same head's LAN host aborted with SIGBUS in the Linux native linker before
+entering a world. Each LAN JVM now has a separate LWJGL extraction directory,
+and CI preserves JVM fatal-error reports. Shared native extraction is a possible
+cause, not a proven diagnosis: the old job did not upload its `hs_err` file.
+Require a new successful LAN run; do not turn that native failure into a pass
+by ignoring the exit code or dropping an assertion.
+
+Fabric's official metadata still lists Loader 0.20.1 and API 0.166.2+26.3 as
+the current versions for this target. Loom is updated within 1.17, and Gradle
+within 9.8. Follow-up validation must use these updated pins.
 
 ## Gates before a stable release
 
