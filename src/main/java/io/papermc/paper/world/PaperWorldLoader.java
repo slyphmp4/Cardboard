@@ -172,7 +172,7 @@ public record PaperWorldLoader(MinecraftServer server, String levelId) {
             ? this.server.getWorldGenSettings()
             : loadWorldGenSettings(
             this.server.storageSource,
-            ((MinecraftServerBridge)this.server).cardboard$worldLoaderContext().datapackWorldgen(),
+            ((MinecraftServerBridge)this.server).cardboard$worldLoaderContext().datapackWorldRegistries(),
             loading.info().dimensionKey()
         );
         final var worldDataAndGenSettings = new LevelDataAndDimensions.WorldDataAndGenSettings(this.server.getWorldData(), worldGenSettings);

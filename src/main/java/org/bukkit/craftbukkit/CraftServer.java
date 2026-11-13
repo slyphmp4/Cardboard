@@ -255,7 +255,7 @@ import java.util.logging.Logger;
 public class CraftServer extends CardboardAbstractServer implements Server {
 
     public final String serverName = "Cardboard";
-    public final String bukkitVersion = "26.2"; // "1.21.11-R0.1-SNAPSHOT"; // "1.21.10-R0.1-SNAPSHOT"; // "1.21.8-R0.1-SNAPSHOT"; // "1.21.1-R0.1-SNAPSHOT";
+    public final String bukkitVersion = API_VERSION;
 
     private final Logger logger = BukkitLogger.getLogger();
 
@@ -605,6 +605,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
                 toAdd = CraftSmithingTrimRecipe.fromBukkitRecipe((SmithingTrimRecipe) recipe);
             } else if (recipe instanceof TransmuteRecipe) {
                 toAdd = CraftTransmuteRecipe.fromBukkitRecipe((TransmuteRecipe) recipe);
+            } else if (recipe instanceof org.bukkit.inventory.BrewingRecipe brewing) {
+                toAdd = org.bukkit.craftbukkit.inventory.CraftBrewingRecipe.fromBukkitRecipe(brewing);
             } else if (recipe instanceof ComplexRecipe) {
                 throw new UnsupportedOperationException("Cannot add custom complex recipe");
             } else {
@@ -2892,4 +2894,78 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     //    return console.idleTickCount > 0 && console.idleTickCount >= console.getPauseWhenEmptySeconds() * 20;
     //}
 
+
+    @Override
+    public boolean removeRecipes(Iterable<NamespacedKey> keys) {
+        Preconditions.checkArgument(keys != null, "recipeKeys cannot be null");
+        org.spigotmc.AsyncCatcher.catchOp("Recipe Remove");
+        var manager = this.getServer().getRecipeManager();
+        boolean removed = false;
+        for (NamespacedKey key : keys) {
+            Preconditions.checkArgument(key != null, "recipeKey cannot be null");
+            removed |= ((org.cardboardpowered.bridge.world.item.crafting.RecipeMapBridge) manager.recipes)
+                    .cardboard$removeRecipe((ResourceKey) CraftRecipe.toMinecraft(key));
+        }
+        if (removed) {
+            ((RecipeManagerBridge) manager).cardboard$finalizeRecipeLoading();
+        }
+        return removed;
+    }
+
+    @Override
+    public boolean hasRecipe(NamespacedKey key) {
+        Preconditions.checkArgument(key != null, "recipeKey cannot be null");
+        return this.getServer().getRecipeManager().byKey(CraftRecipe.toMinecraft(key)).isPresent();
+    }
+    @Override
+    public boolean addRecipes(Iterable<Recipe> recipes) {
+        Preconditions.checkArgument(recipes != null, "recipes cannot be null");
+        boolean added = false;
+        for (Recipe recipe : recipes) {
+            added |= this.addRecipe(recipe);
+        }
+        return added;
+    }
+
+    @Override
+    public boolean addRecipe(Recipe recipe) {
+        return recipe != null && this.addRecipe(recipe, true);
+    }
+
+    @Override
+	public @Nullable ItemStack createExplorerMap(@NotNull World world, @NotNull Location location,
+			org.bukkit.generator.structure.@NotNull Structure structure,
+			org.bukkit.map.MapCursor.@NotNull Type mapIcon, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(world != null, "World cannot be null");
+        Preconditions.checkArgument(location != null, "Location cannot be null");
+        Preconditions.checkArgument(structure != null, "structure cannot be null");
+        Preconditions.checkArgument(mapIcon != null, "mapIcon cannot be null");
+
+        final org.bukkit.util.StructureSearchResult result =
+                world.locateNearestStructure(location, structure, radius, findUnexplored);
+        if (result == null) {
+            return null;
+        }
+
+        Location structureLocation = result.getLocation();
+        BlockPos structurePos = new BlockPos(
+                structureLocation.getBlockX(),
+                structureLocation.getBlockY(),
+                structureLocation.getBlockZ()
+        );
+        ServerLevel level = ((CraftWorld) world).getHandle();
+
+        net.minecraft.world.item.ItemStack stack =
+                MapItem.create(level, structurePos.getX(), structurePos.getZ(),
+                        MapView.Scale.NORMAL.getValue(), true, true);
+        MapItem.renderBiomePreviewMap(level, stack);
+        MapItemSavedData.addTargetDecoration(
+                stack,
+                structurePos,
+                "+",
+                CraftMapCursor.CraftType.bukkitToMinecraftHolder(mapIcon)
+        );
+
+        return CraftItemStack.asBukkitCopy(stack);
+	}
 }

@@ -74,12 +74,12 @@ final class EntityEventSmoke {
         });
         check(failures, "client current target revalidation", () -> {
             subject.setTarget(first);
-            first.setInvulnerable(true);
+            first.setPermanentlyInvulnerable(true);
             try {
                 subject.setTarget(first);
                 require(subject.getTargetUnchecked() == null, "Client retained an invulnerable current target");
             } finally {
-                first.setInvulnerable(false);
+                first.setPermanentlyInvulnerable(false);
             }
         });
         check(failures, "client eventful mount and dismount", () -> {
@@ -191,13 +191,13 @@ final class EntityEventSmoke {
             check(failures, "server current target revalidation", () -> {
                 ((MobBridge) subject).cardboard$setTargetWithReason(first, TargetReason.CLOSEST_ENTITY);
                 int before = probe.count(subject, "target");
-                first.setInvulnerable(true);
+                first.setPermanentlyInvulnerable(true);
                 try {
                     subject.setTarget(first);
                     require(subject.getTargetUnchecked() == null, "Server retained an invulnerable current target");
                     require(probe.count(subject, "target") == before, "Revalidation duplicated a Bukkit target event");
                 } finally {
-                    first.setInvulnerable(false);
+                    first.setPermanentlyInvulnerable(false);
                 }
             });
             check(failures, "server vehicle events remain active", () -> {

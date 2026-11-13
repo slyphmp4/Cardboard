@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a disposable Fabric 26.2 server with ordinary plugins alongside
+# Run a disposable Fabric 26.3 server with ordinary plugins alongside
 # NightCore, ExcellentEnchants, and Paper CommandAPI on the same instance.
 set -euo pipefail
 
@@ -46,14 +46,14 @@ download_plugin EssentialsXSpawn \
   'https://github.com/EssentialsX/Essentials/releases/download/2.22.0/EssentialsXSpawn-2.22.0.jar' \
   'dd5377c4c921b9b67814209f4f6646ffbb959729003e721ec5e63c47c7c010b8'
 download_plugin nightcore \
-  'https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar' \
-  '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab'
+  'https://cdn.modrinth.com/data/Y4NRwMW5/versions/HwbIRRCo/nightcore-2.16.7.jar' \
+  '645c643635ef0add0e38fa82cf6609a2350b5ea28e257ab2fc93a017864bc301'
 download_plugin ExcellentEnchants \
   'https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar' \
   '01991c6dcf3030e736db69b9d5fd49ac6ab030d3c09feabdf1bd7674d9570133'
 download_plugin CommandAPI \
-  'https://cdn.modrinth.com/data/ExxvCi0y/versions/tVPSAZFC/CommandAPI-12.0.0-Paper.jar' \
-  'd731a9e8c056dc43fd5aeb37b44839d1f584d8c17cf3215c762a96e4c13aa613'
+  'https://cdn.modrinth.com/data/ExxvCi0y/versions/Niu5FiSP/CommandAPI-12.1.0-Paper.jar' \
+  'ab48e55fd06264dd239cf015b501936cb50eb6c38d967fbffca6c91a48064049'
 download_plugin ProtocolLib \
   'https://github.com/dmulloy2/ProtocolLib/releases/download/5.4.0/ProtocolLib.jar' \
   'ee2e7ab9b5386f2d103081c4d108e61b1035df2ca692b53d6e2409fb1f5caccf'
@@ -64,7 +64,7 @@ download_plugin ProtocolLib \
 # the compiled classes and resolved dependencies.
 ./gradlew compileJava --no-daemon
 
-paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/io.papermc.paper/paper-api" -name 'paper-api-*.jar' -print -quit)
+paper_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/io.papermc.paper/paper-api/26.3.build.249-stable" -name 'paper-api-*.jar' -print -quit)
 test -n "$paper_api"
 adventure_api=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/net.kyori" -name '*.jar' -print | paste -sd: -)
 test -n "$adventure_api"

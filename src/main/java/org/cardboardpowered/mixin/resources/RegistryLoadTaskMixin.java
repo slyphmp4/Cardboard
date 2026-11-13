@@ -59,4 +59,24 @@ public abstract class RegistryLoadTaskMixin<T> {
 			PaperRegistryListenerManager.INSTANCE.runFreezeListeners(this.registry.key(), new Conversions(lookup));
 		}
 	}
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(
+            method = "lambda$registerElements$1",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/core/WritableRegistry;register(Lnet/minecraft/resources/ResourceKey;Ljava/lang/Object;Lnet/minecraft/core/RegistrationInfo;)Lnet/minecraft/core/Holder$Reference;"))
+    private net.minecraft.core.Holder.Reference<T> cardboard$registerWithPaperListeners(
+            WritableRegistry<T> registry,
+            net.minecraft.resources.ResourceKey<T> key,
+            T value,
+            net.minecraft.core.RegistrationInfo info,
+            com.llamalad7.mixinextras.injector.wrapoperation.Operation<net.minecraft.core.Holder.Reference<T>> original) {
+        if ((Object) this instanceof ResourceManagerRegistryLoadTask<?>) {
+            var lookup = ((ResourceManagerRegistryLoadTaskBridge) this).cardboard$registryLookup();
+            if (lookup == null) throw new IllegalStateException("Registry lookup is unavailable for " + key);
+            return PaperRegistryListenerManager.INSTANCE.registerWithListeners(
+                    registry, key, value, info,
+                    (r, k, v, registration) -> original.call(r, k, v, registration),
+                    new Conversions(lookup));
+        }
+        return original.call(registry, key, value, info);
+    }
 }

@@ -2,7 +2,7 @@ package org.bukkit.craftbukkit.block.impl;
 
 import com.google.common.base.Preconditions;
 import io.papermc.paper.annotation.GeneratedClass;
-import net.minecraft.world.level.block.RedStoneWireBlock;
+import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -21,9 +21,9 @@ import java.util.stream.Collectors;
 @NullMarked
 @GeneratedClass
 public class CraftRedStoneWire extends CraftBlockData implements RedstoneWire {
-    private static final IntegerProperty POWER = RedStoneWireBlock.POWER;
+    private static final IntegerProperty POWER = RedstoneWireBlock.POWER;
 
-    private static final Map<BlockFace, EnumProperty<RedstoneSide>> PROPERTY_BY_DIRECTION = RedStoneWireBlock.PROPERTY_BY_DIRECTION.entrySet().stream()
+    private static final Map<BlockFace, EnumProperty<RedstoneSide>> PROPERTY_BY_DIRECTION = RedstoneWireBlock.PROPERTY_BY_DIRECTION.entrySet().stream()
             .collect(Collectors.toMap(entry -> CraftBlock.notchToBlockFace(entry.getKey()), entry -> entry.getValue()));
 
     public CraftRedStoneWire(BlockState state) {

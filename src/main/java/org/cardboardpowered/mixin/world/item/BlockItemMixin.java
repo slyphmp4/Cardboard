@@ -52,7 +52,6 @@ public class BlockItemMixin implements BlockItemBridge {
     // @Shadow public BlockState placeFromTag(BlockPos blockposition, World world, ItemStack itemstack, BlockState iblockdata) {return null;}
     @Shadow public BlockPlaceContext updatePlacementContext(BlockPlaceContext blockactioncontext) {return null;}
     @Shadow public boolean placeBlock(BlockPlaceContext blockactioncontext, BlockState iblockdata) {return false;}
-    @Shadow public boolean updateCustomBlockEntityTag(BlockPos blockposition, Level world, Player entityhuman, ItemStack itemstack, BlockState iblockdata) {return false;}
     @Shadow protected boolean mustSurvive() {return false;}
 
     private org.bukkit.block.BlockState bukkit_state;
@@ -76,7 +75,7 @@ public class BlockItemMixin implements BlockItemBridge {
      * placement so the plugin's cancellation is authoritative.
      */
     @Inject(at = @At(value = "INVOKE_ASSIGN", target =
-            "Lnet/minecraft/world/item/BlockItem;updateCustomBlockEntityTag(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/block/state/BlockState;)Z"),
+            "Lnet/minecraft/world/item/BlockItem;updateCustomBlockEntityTag(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/item/ItemStack;)Z"),
             method = "place(Lnet/minecraft/world/item/context/BlockPlaceContext;)Lnet/minecraft/world/InteractionResult;", cancellable = true)
     public void cardboard$blockPlaceEvent(BlockPlaceContext context, CallbackInfoReturnable<InteractionResult> ci) {
         if (bukkit_state == null || !(context.getLevel() instanceof ServerLevel world) || context.getPlayer() == null) {

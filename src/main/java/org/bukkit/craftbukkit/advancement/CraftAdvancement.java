@@ -52,7 +52,7 @@ public class CraftAdvancement implements org.bukkit.advancement.Advancement {
 
 	@Override
 	public io.papermc.paper.advancement.AdvancementDisplay getDisplay() {
-		return this.handle.value().display().map(d -> ((DisplayInfoBridge)d).cardboard$getPaper()).orElse(null);
+		return this.handle.value().display().map(io.papermc.paper.advancement.PaperAdvancementDisplay::new).orElse(null);
 	}
 
 	@Deprecated

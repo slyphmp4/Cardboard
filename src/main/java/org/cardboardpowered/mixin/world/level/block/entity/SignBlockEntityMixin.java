@@ -21,7 +21,7 @@ public class SignBlockEntityMixin implements SignBlockEntityBridge {
     @Override
     public Component[] getTextBF() {
     	SignBlockEntity e = (SignBlockEntity)(Object)this;
-    	return e.getFrontText().getMessages(false);
+        return e.getText(net.minecraft.world.level.block.entity.SignTextSlot.FRONT).getMessages(false).toArray(Component[]::new);
     	
         //return texts;
     }
@@ -47,4 +47,36 @@ public class SignBlockEntityMixin implements SignBlockEntityBridge {
         return false;
     }
 
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(
+            method = "updateSignText",
+            at = @org.spongepowered.asm.mixin.injection.At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/SignBlockEntity;updateText(Ljava/util/function/UnaryOperator;Lnet/minecraft/world/level/block/entity/SignTextSlot;)Z"))
+    private boolean cardboard$signChangeEvent(
+            SignBlockEntity sign,
+            java.util.function.UnaryOperator<net.minecraft.world.level.block.entity.SignText> update,
+            net.minecraft.world.level.block.entity.SignTextSlot slot,
+            com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) net.minecraft.world.entity.player.Player player) {
+        // This call is reached only after vanilla has checked wax and editor ownership.
+        var proposed = update.apply(sign.getText(slot));
+        String[] lines = proposed.getMessages(player.isTextFilteringEnabled()).stream()
+                .map(org.bukkit.craftbukkit.util.CraftChatMessage::fromComponent).toArray(String[]::new);
+        var bukkitPlayer = (org.bukkit.entity.Player) ((org.cardboardpowered.bridge.world.entity.EntityBridge) player).getBukkitEntity();
+        var side = slot == net.minecraft.world.level.block.entity.SignTextSlot.FRONT
+                ? org.bukkit.block.sign.Side.FRONT : org.bukkit.block.sign.Side.BACK;
+        var event = new org.bukkit.event.block.SignChangeEvent(
+                bukkitPlayer.getWorld().getBlockAt(sign.getBlockPos().getX(), sign.getBlockPos().getY(), sign.getBlockPos().getZ()),
+                bukkitPlayer, lines, side);
+        org.bukkit.Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                serverPlayer.connection.send(sign.getUpdatePacket());
+            }
+            return false;
+        }
+        var edited = proposed.asMutable();
+        Component[] messages = org.bukkit.craftbukkit.block.CraftSign.sanitizeLines(event.getLines());
+        for (int line = 0; line < messages.length; line++) edited.setLine(line, messages[line]);
+        return original.call(sign, (java.util.function.UnaryOperator<net.minecraft.world.level.block.entity.SignText>) ignored -> edited.asImmutable(), slot);
+    }
 }

@@ -1,5 +1,6 @@
 package org.cardboardpowered.mixin.world.entity;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.bukkit.craftbukkit.CraftServer;
@@ -252,7 +253,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
     protected abstract ItemEntity createItemStackToDrop(ItemStack itemStack, boolean bl, boolean bl2);
 
     @Shadow
-    public abstract void swing(InteractionHand interactionHand);
+    public abstract boolean swing(InteractionHand interactionHand, net.minecraft.world.item.component.SwingAnimation animation, boolean reset);
 
     @Shadow
     public ItemStack useItem;
@@ -291,6 +292,40 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
         }
     }
 
+    @Inject(method = "drop", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z"),
+            cancellable = true)
+    private void cardboard$playerDropItemEvent(ItemStack stack, boolean thrownFromHand,
+            net.minecraft.util.Prediction prediction, CallbackInfoReturnable<ItemEntity> cir,
+            @Local ItemEntity itemEntity) {
+        if (get() instanceof ServerPlayer && !this.cardboard$allowPlayerDrop(itemEntity, thrownFromHand)) {
+            cir.setReturnValue(null);
+        }
+    }
+
+    private boolean cardboard$allowPlayerDrop(ItemEntity itemEntity, boolean thrownFromHand) {
+        if (!(this.getBukkitEntity() instanceof Player player)) {
+            return true;
+        }
+        org.bukkit.entity.Item drop = (org.bukkit.entity.Item) ((EntityBridge) itemEntity).getBukkitEntity();
+        org.bukkit.event.player.PlayerDropItemEvent event = new org.bukkit.event.player.PlayerDropItemEvent(player, drop);
+        CraftServer.INSTANCE.getPluginManager().callEvent(event);
+        if (!event.isCancelled()) {
+            return true;
+        }
+        org.bukkit.inventory.ItemStack inHandItem = player.getInventory().getItemInMainHand();
+        if (thrownFromHand && inHandItem.getAmount() == 0) {
+            player.getInventory().setItemInMainHand(drop.getItemStack());
+        } else if (thrownFromHand && inHandItem.isSimilar(drop.getItemStack())
+                && inHandItem.getAmount() < inHandItem.getMaxStackSize() && drop.getItemStack().getAmount() == 1) {
+            inHandItem.setAmount(inHandItem.getAmount() + 1);
+            player.getInventory().setItemInMainHand(inHandItem);
+        } else {
+            player.getInventory().addItem(drop.getItemStack());
+        }
+        return false;
+    }
+
     // Paper start - Extend dropItem API
     @Override
     public final @Nullable ItemEntity cardboard$drop(ItemStack stack, boolean randomizeMotion, boolean includeThrower) {
@@ -303,34 +338,17 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
         if (stack.isEmpty()) {
             return null;
         } else if (this.level().isClientSide()) {
-            this.swing(InteractionHand.MAIN_HAND);
+            this.swing(InteractionHand.MAIN_HAND, get().getItemInHand(InteractionHand.MAIN_HAND).getOrDefault(
+                    net.minecraft.core.component.DataComponents.ATTACK_ANIMATION,
+                    net.minecraft.world.item.component.SwingAnimation.DEFAULT), true);
             return null;
         } else {
             ItemEntity itemEntity = this.createItemStackToDrop(stack, randomizeMotion, includeThrower);
             if (itemEntity != null) {
                 // CraftBukkit start - fire PlayerDropItemEvent
                 if (entityOperation != null) entityOperation.accept((org.bukkit.entity.Item)((EntityBridge)itemEntity).getBukkitEntity());
-                if (callEvent && this.getBukkitEntity() instanceof org.bukkit.entity.Player player) {
-                    org.bukkit.entity.Item drop = (org.bukkit.entity.Item)((EntityBridge)itemEntity).getBukkitEntity();
-
-                    org.bukkit.event.player.PlayerDropItemEvent event = new org.bukkit.event.player.PlayerDropItemEvent(player, drop);
-                    CraftServer.INSTANCE.getPluginManager().callEvent(event);
-
-                    if (event.isCancelled()) {
-                        org.bukkit.inventory.ItemStack inHandItem = player.getInventory().getItemInMainHand();
-                        if (includeThrower && inHandItem.getAmount() == 0) {
-                            // The complete stack was dropped
-                            player.getInventory().setItemInMainHand(drop.getItemStack());
-                        } else if (includeThrower && inHandItem.isSimilar(drop.getItemStack()) && inHandItem.getAmount() < inHandItem.getMaxStackSize() && drop.getItemStack().getAmount() == 1) {
-                            // Only one item is dropped
-                            inHandItem.setAmount(inHandItem.getAmount() + 1);
-                            player.getInventory().setItemInMainHand(inHandItem);
-                        } else {
-                            // Fallback
-                            player.getInventory().addItem(drop.getItemStack());
-                        }
-                        return null;
-                    }
+                if (callEvent && !this.cardboard$allowPlayerDrop(itemEntity, includeThrower)) {
+                    return null;
                 }
                 // CraftBukkit end
                 this.level().addFreshEntity(itemEntity);

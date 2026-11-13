@@ -163,8 +163,8 @@ configurations.all {
 }
 
 // Paper-API
-def PAPER_VER_A = "26.2.build.129-stable" // "26.1.2.build.69-stable"
-def PAPER_VER_B = "26.2.build.129-stable" // "26.1.2.build.69-stable"
+def PAPER_VER_A = "26.3.build.249-stable"
+def PAPER_VER_B = "26.3.build.249-stable"
 
 def PAPER_API_VER = "io.papermc.paper:paper-api:" + PAPER_VER_B
 
@@ -398,7 +398,7 @@ modrinth {
     versionNumber = project.mod_version + "-" + System.env.BUILD_NUMBER
     versionType = "beta"
     uploadFile = reproducibleJar
-    gameVersions = ["26.2"]
+    gameVersions = ["26.3"]
     loaders = ["fabric"]
 }
 
@@ -447,7 +447,7 @@ if (project.hasProperty('integratedSmoke')) {
     }
     if (project.hasProperty('lanSmoke')) {
         repositories { maven { url = 'https://api.modrinth.com/maven' } }
-        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2
+        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2 and 26.3
     }
     loom {
         mods {

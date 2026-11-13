@@ -11,8 +11,6 @@ package org.cardboardpowered.bridge.world.level.chunk;
 
 import java.util.Map;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.bukkit.Chunk;
 
@@ -25,8 +23,6 @@ public interface ChunkAccessBridge {
 
     Map<BlockPos, BlockEntity> cardboard_getBlockEntities();
 
-    default Registry<Biome> bridge$biomeRegistry() {
-        return null;
-    }
+
     
 }

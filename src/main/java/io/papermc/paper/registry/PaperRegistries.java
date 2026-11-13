@@ -137,6 +137,7 @@ public final class PaperRegistries {
                 start(Registries.JUKEBOX_SONG, RegistryKey.JUKEBOX_SONG).craft(JukeboxSong.class, CraftJukeboxSong::new).writable(PaperJukeboxSongRegistryEntry.PaperBuilder::new).delayed(),
                 start(Registries.BANNER_PATTERN, RegistryKey.BANNER_PATTERN).craft(PatternType.class, CraftPatternType::new, true).writable(PaperBannerPatternRegistryEntry.PaperBuilder::new).delayed(),
                 start(Registries.PAINTING_VARIANT, RegistryKey.PAINTING_VARIANT).craft(Art.class, CraftArt::new).writable(PaperPaintingVariantRegistryEntry.PaperBuilder::new).delayed(),
+                start(Registries.DECORATED_POT_PATTERN, RegistryKey.DECORATED_POT_PATTERN).craft(io.papermc.paper.block.pot.PotPatternType.class, io.papermc.paper.block.pot.PaperPotPatternType::new).writable(io.papermc.paper.registry.data.PaperDecoratedPotPatternRegistryEntry.PaperBuilder::new),
                 start(Registries.INSTRUMENT, RegistryKey.INSTRUMENT).craft(MusicInstrument.class, CraftMusicInstrument::new, true).writable(PaperInstrumentRegistryEntry.PaperBuilder::new).delayed(),
                 start(Registries.CAT_VARIANT, RegistryKey.CAT_VARIANT).craft(Cat.Type.class, CraftCat.CraftType::new).writable(PaperCatTypeRegistryEntry.PaperBuilder::new).delayed(),
                 start(Registries.CAT_SOUND_VARIANT, RegistryKey.CAT_SOUND_VARIANT).craft(Cat.SoundVariant.class, CraftCat.CraftSoundVariant::new).build(),

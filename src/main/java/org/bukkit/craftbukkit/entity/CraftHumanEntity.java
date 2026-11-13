@@ -201,11 +201,11 @@ public class CraftHumanEntity extends CraftLivingEntity implements HumanEntity {
 
         BlockPos pos = CraftLocation.toBlockPosition(location);
         BlockState state = this.getHandle().level().getBlockState(pos);
-        if (!(state.getBlock() instanceof BedBlock)) {
+        if (!(state.getBlock() instanceof net.minecraft.world.level.block.AbstractBedBlock bed)) {
             return false;
         }
 
-        if (this.getHandle().startSleepInBed(pos).left().isPresent()) { //TODO: force?
+        if (this.getHandle().startSleepInBed(bed, state, bed.getBedRule(this.getHandle().level(), pos), pos).left().isPresent()) { //TODO: force?
             return false;
         }
 
@@ -726,7 +726,7 @@ public class CraftHumanEntity extends CraftLivingEntity implements HumanEntity {
 
     @Override
     public int undiscoverRecipes(Collection<NamespacedKey> recipes) {
-        return this.getHandle().resetRecipes(this.bukkitKeysToMinecraftRecipes(recipes));
+        return ((net.minecraft.server.level.ServerPlayer) this.getHandle()).resetRecipes(this.bukkitKeysToMinecraftRecipes(recipes));
     }
 
     @Override
@@ -944,5 +944,11 @@ public class CraftHumanEntity extends CraftLivingEntity implements HumanEntity {
     @Override
     public org.bukkit.entity.Entity copy(Location location) {
         throw new UnsupportedOperationException("Cannot copy human entities");
+    }
+
+    @Override
+    public boolean canCriticalAttack(org.bukkit.entity.Entity other) {
+        Preconditions.checkArgument(other != null, "entity cannot be null");
+        return this.getHandle().canCriticalAttack(((CraftEntity) other).getHandle());
     }
 }

@@ -55,10 +55,9 @@ public class ConsumableTypesBridgeImpl implements ConsumableTypesBridge {
     }
 
     @Override
-    public ConsumeEffect.TeleportRandomly teleportRandomlyEffect(final float diameter) {
-        Preconditions.checkArgument(diameter > 0, "diameter must be positive, was %s", diameter);
+    public ConsumeEffect.TeleportRandomly teleportRandomlyEffect(final float diameter, final boolean directionalParticles) {
         return new PaperTeleportRandomly(
-            new net.minecraft.world.item.consume_effects.TeleportRandomlyConsumeEffect(diameter)
+            new net.minecraft.world.item.consume_effects.TeleportRandomlyConsumeEffect(io.papermc.paper.util.BoundChecker.requirePositive(diameter, "diameter"), directionalParticles)
         );
     }
 }

@@ -18,15 +18,15 @@ public class Libraries {
 	 */
 	public static List<Library> getLibraries() {
         // TODO: Keep Adventure version in check
-        String adventureVersion = "5.2.0"; // 26.2: Paper 26.2 ships Adventure 5
+        String adventureVersion = "5.2.0"; // Paper 26.3 build 249 BOM
 
         // Paper API
         //Library paperApi = Library.of("io.papermc", "paper-api", "1.21.11-R0.1-20260120.191825-59")
         //		.withSha1("223f4b673a6cefe155849a18d7a82b422bf45335")
         //		.overrideRepo("https://repo.papermc.io/repository/maven-snapshots/");
         
-        Library paperApi = Library.of("io.papermc.paper", "paper-api", "26.2.build.129-stable")
-        		.withSha256("f469d110d164a4ee7cb2428710cd6e433108eca8d8e0aebd6452547f408469a6")
+        Library paperApi = Library.of("io.papermc.paper", "paper-api", "26.3.build.249-stable")
+                .withSha256("d004db09ebb3ab27c960aed8daf0a9679abf834a586096fc8b3e13afc8cd7aba")
         		.overrideRepo("https://repo.papermc.io/repository/maven-public/");
 
         List<Library> libraries = List.of(

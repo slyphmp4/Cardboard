@@ -99,7 +99,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                     // Disposable CI profiles have no Microsoft session. Still use vanilla LAN publication and real TCP login.
                     server.setUsesAuthentication(false);
                     int port = 25576 + world;
-                    require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, GameType.SURVIVAL, false, port), "LAN publication failed");
+                    require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, false, port), "LAN publication failed");
                     Files.createDirectories(EXCHANGE);
                     Files.writeString(EXCHANGE.resolve("ready-" + world), Integer.toString(port));
                     System.out.println("INTEGRATED_LAN_HOST_READY " + world);

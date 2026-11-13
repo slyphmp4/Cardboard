@@ -13,7 +13,7 @@ public class ExplosionConditionMixin {
 
     @Inject(at = @At("HEAD"), method = "test(Lnet/minecraft/world/level/storage/loot/LootContext;)Z", cancellable = true)
     public void cardboard_test(LootContext loottableinfo, CallbackInfoReturnable<Boolean> ci) {
-        Float ofloat = loottableinfo.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS);
+        Float ofloat = loottableinfo.getOptional(LootContextParams.EXPLOSION_RADIUS);
         if (ofloat == null) {
             ci.setReturnValue(true);
             return;

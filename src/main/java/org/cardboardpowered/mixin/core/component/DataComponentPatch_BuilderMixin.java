@@ -14,7 +14,7 @@ import net.minecraft.core.component.DataComponentType;
 @Mixin(DataComponentPatch.Builder.class)
 public class DataComponentPatch_BuilderMixin implements DataComponentPatch_BuilderBridge {
     @Shadow @Final
-    public Reference2ObjectMap<DataComponentType<?>, Optional<?>> map;
+    public Reference2ObjectMap<DataComponentType<?>, Object> map;
 
     // CraftBukkit start
     @Override

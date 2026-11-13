@@ -164,7 +164,6 @@ import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.PrimaryLevelData;
@@ -361,7 +360,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	public boolean generateTree(Location loc, TreeType type) {
 		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
 
-        /*ConfiguredFeature gen;
+        /*net.minecraft.world.level.levelgen.feature.Feature gen;
         switch (type) {
             case BIG_TREE:
                 gen = ConfiguredFeatures.FANCY_OAK;
@@ -431,7 +430,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	@Override
 	public boolean generateTree(Location loc, TreeType arg1, BlockChangeDelegate arg2) {
 		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-		ConfiguredFeature gen = null;
+		net.minecraft.world.level.levelgen.feature.Feature gen = null;
         /*switch (arg1) {
             case ACACIA:
                 gen = ConfiguredFeatures.ACACIA;
@@ -1809,7 +1808,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	public <T extends Entity> T spawn(Location location, Class<T> clazz, Consumer<T> function, SpawnReason reason) throws IllegalArgumentException {
-		net.minecraft.world.entity.Entity entity = Display.class.isAssignableFrom(clazz)
+		net.minecraft.world.entity.Entity entity = (Display.class.isAssignableFrom(clazz) || org.bukkit.entity.Cushion.class.isAssignableFrom(clazz)
+                || org.bukkit.entity.boat.PoplarBoat.class.isAssignableFrom(clazz)
+                || org.bukkit.entity.boat.PoplarChestBoat.class.isAssignableFrom(clazz))
 				? super.createEntity(location, clazz, true)
 				: createEntity_Old(location, clazz);
 
@@ -2328,24 +2329,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public <T> void spawnParticle(Particle particle, double x, double y, double z, int count, double offsetX, double offsetY, double offsetZ, double extra, T data, boolean force) {
-		if(data != null && !particle.getDataType().isInstance(data))
-			throw new IllegalArgumentException("data should be " + particle.getDataType() + " got " + data.getClass());
-		// TODO Bukkit4Fabric: method
-		/*
-		getHandle().addParticle(
-				// null, // Sender
-				CraftParticle.createParticleParam(particle, data), // Particle
-				x, y, z, // Position
-				(double) count,  // Count
-				offsetX, offsetY//, offsetZ // Random offset
-				// extra // Speed?
-				// force
-		);
-		*/
-		
-		// TODO: 1.21.8
-		
-        // this.getHandle().spawnParticles(this.getHandle().getPlayers(), null, CraftParticle.createParticleParam(particle, data), force, false, x, y, z, count, offsetX, offsetY, offsetZ);
+        this.spawnParticle(particle, null, null, x, y, z, count, offsetX, offsetY, offsetZ, extra, data, force);
 
 	}
 
@@ -2985,11 +2969,11 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 		 */
 		biomeSource = gen.getBiomeSource();
 
-		final Climate.Sampler sampler = serverCache.randomState().sampler();
+		final net.minecraft.world.level.biome.BiomeResolver resolver = biomeSource.createUncachedResolver(serverCache.randomState());
 		final List<Biome> possibleBiomes = biomeSource.possibleBiomes().stream().map(CraftBiome::minecraftHolderToBukkit).toList();
 		return new BiomeProvider() {
 			public Biome getBiome(WorldInfo worldInfo, int x, int y, int z) {
-				return CraftBiome.minecraftHolderToBukkit(biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, sampler));
+				return CraftBiome.minecraftHolderToBukkit(resolver.getNoiseBiome(x >> 2, y >> 2, z >> 2));
 			}
 
 			public List<Biome> getBiomes(WorldInfo worldInfo) {
@@ -3118,7 +3102,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
         				CraftNamespacedKey.toMinecraft(structure.getStructureType().getKey())
         		).orElseThrow().value();
 
-        return this.getHandle().structureManager().getStructureWithPieceAt(MCUtil_toBlockPos(position), stru).isValid();
+        return this.getHandle().structureManager().getStructureWithPieceAt(MCUtil_toBlockPos(position), holder -> holder.value() == stru).isValid();
 
 	}
 	
@@ -3169,7 +3153,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
             holders.add(CraftBiome.bukkitToMinecraftHolder(biome));
         }
 
-        Climate.Sampler sampler = this.getHandle().getChunkSource().randomState().sampler();
+        net.minecraft.world.level.levelgen.RandomState sampler = this.getHandle().getChunkSource().randomState();
         Pair<BlockPos, Holder<net.minecraft.world.level.biome.Biome>> found = this.getHandle().getChunkSource().getGenerator().getBiomeSource().findClosestBiome3d(originPos, radius, horizontalInterval, verticalInterval, holders::contains, sampler, this.getHandle());
         if (found == null) {
             return null;
@@ -3395,7 +3379,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	
     private List<GeneratedStructure> getStructures(int x, int z, Predicate<net.minecraft.world.level.levelgen.structure.Structure> predicate) {
         List<GeneratedStructure> structures = new ArrayList<>();
-        for (StructureStart start : this.getHandle().structureManager().startsForStructure(new ChunkPos(x, z), predicate)) {
+        for (StructureStart start : this.getHandle().structureManager().startsForStructure(x, z, predicate)) {
             structures.add(new CraftGeneratedStructure(start));
         }
 
@@ -3567,4 +3551,61 @@ this.world.getServer().execute(cb);
         this.world.getChunkSource().setSpawnSettings(allow);
     }
 
+
+    @Override
+    public <T> void spawnParticle(Particle particle, List<Player> receivers, Player sender,
+            double x, double y, double z, int count, double offsetX, double offsetY, double offsetZ,
+            double speedX, double speedY, double speedZ, T data, boolean force,
+            Particle.RandomizationType randomizationType) {
+        Preconditions.checkArgument(particle != null, "particle cannot be null");
+        Preconditions.checkArgument(randomizationType != null, "randomizationType cannot be null");
+        data = CraftParticle.convertLegacy(data);
+        Preconditions.checkArgument(data == null || particle.getDataType().isInstance(data), "Invalid particle data");
+        var packet = new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(
+                CraftParticle.createParticleParam(particle, data), force, false, x, y, z,
+                (float) offsetX, (float) offsetY, (float) offsetZ,
+                (float) speedX, (float) speedY, (float) speedZ, count,
+                net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket.RandomizationType.valueOf(randomizationType.name()));
+        List<Player> targets = receivers == null ? this.getPlayers() : receivers;
+        for (Player target : targets) {
+            if (sender == null || target.canSee(sender)) {
+                this.getHandle().sendParticles(((CraftPlayer) target).getHandle(), force, x, y, z, packet);
+            }
+        }
+    }
+
+    @Override
+    public io.papermc.paper.world.chunk.ChunkGenerationState getChunkGenerationState(int x, int z) {
+        return this.getChunkGenerationStateAsync(x, z).join();
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<io.papermc.paper.world.chunk.ChunkGenerationState> getChunkGenerationStateAsync(int x, int z) {
+        var result = new java.util.concurrent.CompletableFuture<io.papermc.paper.world.chunk.ChunkGenerationState>();
+        Runnable query = () -> {
+            try {
+                var chunkMap = this.getHandle().getChunkSource().chunkMap;
+                var holder = chunkMap.getUpdatingChunkIfPresent(ChunkPos.pack(x, z));
+                var chunk = holder == null ? null : holder.getLatestChunk();
+                if (chunk != null) {
+                    result.complete(chunk.getPersistedStatus() == net.minecraft.world.level.chunk.status.ChunkStatus.FULL
+                            ? io.papermc.paper.world.chunk.ChunkGenerationState.GENERATED
+                            : io.papermc.paper.world.chunk.ChunkGenerationState.PARTIAL);
+                    return;
+                }
+                int currentVersion = net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version();
+                chunkMap.read(new ChunkPos(x, z))
+                        .thenApply(saved -> org.cardboardpowered.util.ChunkGenerationStates.fromSaved(saved, currentVersion))
+                        .whenComplete((state, error) -> {
+                            if (error == null) result.complete(state);
+                            else result.completeExceptionally(error);
+                        });
+            } catch (Throwable error) {
+                result.completeExceptionally(error);
+            }
+        };
+        if (this.getHandle().getServer().isSameThread()) query.run();
+        else this.getHandle().getServer().execute(query);
+        return result;
+    }
 }

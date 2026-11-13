@@ -328,7 +328,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public int getNoDamageTicks() {
-        return entity.invulnerableTime;
+        return entity.getInvulnerableTime();
     }
 
     @Override
@@ -523,12 +523,12 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public void swingMainHand() {
-        this.getHandle().swing(InteractionHand.MAIN_HAND);
+        this.getHandle().swing(InteractionHand.MAIN_HAND, this.cardboard$getSwingAnimation(InteractionHand.MAIN_HAND), true);
     }
 
     @Override
     public void swingOffHand() {
-        this.getHandle().swing(InteractionHand.OFF_HAND);
+        this.getHandle().swing(InteractionHand.OFF_HAND, this.cardboard$getSwingAnimation(InteractionHand.OFF_HAND), true);
     }
 
     @Override
@@ -1263,4 +1263,17 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
         this.getHandle().die(((CraftDamageSource) damageSource).getHandle());
     }
 
+
+    private net.minecraft.world.item.component.SwingAnimation cardboard$getSwingAnimation(InteractionHand hand) {
+        return this.getHandle().getItemInHand(hand).getOrDefault(
+                net.minecraft.core.component.DataComponents.ATTACK_ANIMATION,
+                net.minecraft.world.item.component.SwingAnimation.DEFAULT);
+    }
+
+    @Override
+    public void swingHand(org.bukkit.inventory.EquipmentSlot hand, io.papermc.paper.datacomponent.item.SwingAnimation animation) {
+        Preconditions.checkArgument(animation != null, "swingAnimation cannot be null");
+        this.getHandle().swing(org.bukkit.craftbukkit.CraftEquipmentSlot.getHand(hand),
+                ((io.papermc.paper.datacomponent.item.PaperSwingAnimation) animation).getHandle(), true);
+    }
 }
