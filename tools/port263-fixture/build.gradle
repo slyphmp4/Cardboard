@@ -1,0 +1,38 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
+}
+
+version = '1.0.0'
+group = 'org.cardboardpowered.test'
+base { archivesName = 'cardboard-port263-fixture' }
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+sourceSets {
+    probePlugin {
+        java.srcDirs = ['src/probe/java']
+        resources.srcDirs = ['src/probe/resources']
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+dependencies {
+    minecraft 'com.mojang:minecraft:26.3'
+    implementation 'net.fabricmc:fabric-loader:0.20.1'
+    implementation 'net.fabricmc.fabric-api:fabric-api:0.166.2+26.3'
+    probePluginCompileOnly 'io.papermc.paper:paper-api:26.3.build.249-stable'
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.register('probePluginJar', Jar) {
+    archiveFileName = 'CardboardPort263Audit.jar'
+    from sourceSets.probePlugin.output
+}
+tasks.named('build') { dependsOn 'probePluginJar' }
