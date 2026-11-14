@@ -64,12 +64,15 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
         var key = new NamespacedKey("cardboard_port263_fixture", "probe");
         var location = world.getSpawnLocation().add(5, 2, 5);
         var block = location.getBlock();
-        var biomeLocation = world.getSpawnLocation().add(9, 0, 9);
+        // Keep the biome in a different, already-saved chunk: unrelated fixture
+        // block/entity writes must not accidentally make its persistence pass.
+        var biomeLocation = world.getSpawnLocation().add(256, 0, 256);
         biomeLocation.setY(world.getMinHeight() + 8);
         world.getChunkAt(biomeLocation);
         getDataFolder().mkdirs();
         var state = getDataFolder().toPath().resolve("persist.json");
         if (!verify) {
+            world.save();
             var previous = block.getBlockData().getAsString();
             var previousBiome = world.getBiome(biomeLocation.getBlockX(), biomeLocation.getBlockY(), biomeLocation.getBlockZ());
             var changedBiome = previousBiome == org.bukkit.block.Biome.DESERT ? org.bukkit.block.Biome.FOREST : org.bukkit.block.Biome.DESERT;

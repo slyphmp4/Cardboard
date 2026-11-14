@@ -122,7 +122,9 @@ read-only biome container by copying it before mutation.
 Three additional public API groups cover reads/snapshots, cell/column/height
 boundaries and no-load writes. The native fixture independently reads stored
 biomes, and the process-restart gate now verifies a changed biome alongside the
-existing custom entity/block/item component. All mutations in API probes restore
+existing custom entity/block/item component. The biome uses a separate,
+already-saved chunk so unrelated block/entity writes
+cannot hide a missing dirty mark. All mutations in API probes restore
 the original blocks/biomes and release their chunk tickets. These checks are
 repeated on both stock and performance configurations after a full restart.
 Validation results for this batch are recorded separately from the earlier
