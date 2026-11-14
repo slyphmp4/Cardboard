@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the same public ray probes on a checksum-pinned Paper control server."""
+"""Run public API probes on a checksum-pinned Paper control server."""
 import hashlib
 import json
 from pathlib import Path
@@ -12,6 +12,9 @@ CASES = {
     'ray-legacy-location-blocks', 'ray-position-block-filters-and-fluids',
     'ray-entities-combined-nearest-and-radius', 'ray-builder-targets-modes-and-input-copies',
     'line-of-sight-blocked-clear-world-and-range', 'ray-validation-and-empty-result-contracts',
+    'drop-natural-callback-before-spawn-event', 'drop-cancellation-all-overloads',
+    'drop-natural-centered-jitter-and-input-copy', 'drop-exact-location-defaults-and-single-event',
+    'drop-callback-failure-and-null-validation',
 }
 
 
@@ -51,7 +54,7 @@ def main():
     if set(values) != CASES or any(value != 'PASS' for value in values.values()):
         raise AssertionError(values)
     (directory / 'success.json').write_text(json.dumps({'passed': True, 'cases': len(values), 'paper_build': lock['paper_build']}))
-    print(f'PAPER_RAY_REFERENCE_PASS {len(values)} cases on Paper {lock["minecraft"]} build {lock["paper_build"]}', flush=True)
+    print(f'PAPER_API_REFERENCE_PASS {len(values)} cases on Paper {lock["minecraft"]} build {lock["paper_build"]}', flush=True)
 
 
 if __name__ == '__main__':

@@ -23,13 +23,15 @@ public final class PaperRayReference extends JavaPlugin {
             Bukkit.getScheduler().runTaskLater(this, () -> {
                 var results = new LinkedHashMap<String, String>();
                 try {
-                    WorldRayTraceProbes.verify(world, this, (name, action) -> {
+                    java.util.function.BiConsumer<String, WorldRayTraceProbes.Checked> check = (name, action) -> {
                         try { action.run(); results.put(name, "PASS"); }
                         catch (Throwable failure) {
                             results.put(name, "FAIL: " + failure);
                             failure.printStackTrace();
                         }
-                    });
+                    };
+                    WorldRayTraceProbes.verify(world, this, check);
+                    ItemDropProbes.verify(world, this, check);
                     Files.createDirectories(getDataFolder().toPath());
                     Files.writeString(getDataFolder().toPath().resolve("results.json"),
                             new GsonBuilder().setPrettyPrinting().create().toJson(results));
