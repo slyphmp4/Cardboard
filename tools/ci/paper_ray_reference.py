@@ -15,6 +15,9 @@ CASES = {
     'drop-natural-callback-before-spawn-event', 'drop-cancellation-all-overloads',
     'drop-natural-centered-jitter-and-input-copy', 'drop-exact-location-defaults-and-single-event',
     'drop-callback-failure-and-null-validation',
+    'tree-basic-overloads-and-seeded-random', 'tree-consumer-buffered-snapshots-and-edits',
+    'tree-predicate-veto-and-filtered-placement', 'tree-legacy-block-change-delegate',
+    'tree-modern-types-and-tile-snapshot-data', 'tree-null-callbacks-exceptions-and-unsuitable-soil',
 }
 
 

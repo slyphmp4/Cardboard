@@ -32,6 +32,7 @@ public final class PaperRayReference extends JavaPlugin {
                     };
                     WorldRayTraceProbes.verify(world, this, check);
                     ItemDropProbes.verify(world, this, check);
+                    TreeProbes.verify(world, this, check);
                     Files.createDirectories(getDataFolder().toPath());
                     Files.writeString(getDataFolder().toPath().resolve("results.json"),
                             new GsonBuilder().setPrettyPrinting().create().toJson(results));

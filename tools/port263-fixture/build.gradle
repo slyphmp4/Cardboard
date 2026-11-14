@@ -47,6 +47,7 @@ tasks.register('paperRayReferenceJar', Jar) {
     from(sourceSets.probePlugin.output) {
         include 'org/cardboardpowered/test/WorldRayTraceProbes*.class'
         include 'org/cardboardpowered/test/ItemDropProbes*.class'
+        include 'org/cardboardpowered/test/TreeProbes*.class'
     }
 }
 tasks.named('build') { dependsOn 'probePluginJar' }
