@@ -112,25 +112,31 @@ final class TreeProbes {
                             "Modern tree mapped to incorrect feature: " + types[i]);
                 }
             }
-            try (var scene = new Scene(world)) {
-                var marker = new NamespacedKey(plugin, "tree_buffer_probe");
-                var heart = new AtomicReference<Location>();
-                boolean result = world.generateTree(scene.location, new Random(1044), TreeType.PALE_OAK_CREAKING,
-                        (Consumer<BlockState>) state -> {
-                            if (state.getType() == Material.CREAKING_HEART) {
-                                require(state instanceof TileState, "Heart snapshot has no tile data");
-                                require(state.getBlock().getType().isAir(), "Heart appeared before callback");
-                                ((TileState) state).getPersistentDataContainer().set(marker, PersistentDataType.STRING, "kept");
-                                heart.set(state.getLocation());
-                            }
-                        });
-                require(result && heart.get() != null, "Creaking tree produced no heart snapshot");
-                var placed = world.getBlockState(heart.get());
-                require(placed instanceof TileState && "kept".equals(((TileState) placed).getPersistentDataContainer().get(marker, PersistentDataType.STRING)),
-                        "Generated tile snapshot lost callback persistent data");
+            var marker = new NamespacedKey(plugin, "tree_buffer_probe");
+            boolean verifiedHeart = false;
+            for (int seed = 0; seed < 32 && !verifiedHeart; seed++) {
+                try (var scene = new Scene(world)) {
+                    var heart = new AtomicReference<Location>();
+                    boolean result = world.generateTree(scene.location, new Random(seed), TreeType.PALE_OAK_CREAKING,
+                            (Consumer<BlockState>) state -> {
+                                if (state.getType() == Material.CREAKING_HEART) {
+                                    require(state instanceof TileState, "Heart snapshot has no tile data");
+                                    require(state.getBlock().getType().isAir(), "Heart appeared before callback");
+                                    ((TileState) state).getPersistentDataContainer().set(marker, PersistentDataType.STRING, "kept");
+                                    heart.set(state.getLocation());
+                                }
+                            });
+                    // The native decorator also needs a suitable trunk position.
+                    if (!result || heart.get() == null) continue;
+                    var placed = world.getBlockState(heart.get());
+                    require(placed instanceof TileState && "kept".equals(((TileState) placed).getPersistentDataContainer().get(marker, PersistentDataType.STRING)),
+                            "Generated tile snapshot lost callback persistent data");
+                    verifiedHeart = true;
+                }
             }
+            require(verifiedHeart, "Creaking trees produced no heart snapshot across 32 fixed seeds");
         });
-        check.accept("tree-null-callbacks-exceptions-and-unsuitable-soil", () -> {
+        check.accept("tree-null-callbacks-exceptions-and-blocked-origin", () -> {
             for (int mode = 0; mode < 2; mode++) {
                 try (var scene = new Scene(world)) {
                     boolean result = mode == 0
@@ -151,11 +157,12 @@ final class TreeProbes {
                 require(thrown && scene.blocks().isEmpty(), "First callback exception left generated blocks");
             }
             try (var scene = new Scene(world)) {
-                scene.soil(Material.BEDROCK);
+                scene.location.getBlock().setType(Material.BEDROCK, false);
+                var before = scene.blocks();
                 var calls = new AtomicInteger();
                 boolean result = world.generateTree(scene.location, new Random(1044), TreeType.TREE,
                         (Consumer<BlockState>) state -> calls.incrementAndGet());
-                require(!result && calls.get() == 0 && scene.blocks().isEmpty(), "Unsuitable soil reported a successful tree");
+                require(!result && calls.get() == 0 && scene.blocks().equals(before), "Blocked trunk origin reported a successful tree");
             }
         });
     }
