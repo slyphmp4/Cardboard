@@ -1,0 +1,4 @@
+name: CardboardPaperRayReference
+main: org.cardboardpowered.test.PaperRayReference
+version: '1.0.0'
+api-version: '26.3'

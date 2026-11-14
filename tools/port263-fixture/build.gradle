@@ -15,6 +15,11 @@ sourceSets {
         resources.srcDirs = ['src/probe/resources']
         compileClasspath += sourceSets.main.compileClasspath
     }
+    referencePlugin {
+        java.srcDirs = ['src/reference/java']
+        resources.srcDirs = ['src/reference/resources']
+        compileClasspath += sourceSets.probePlugin.output + sourceSets.probePlugin.compileClasspath
+    }
 }
 dependencies {
     minecraft 'com.mojang:minecraft:26.3'
@@ -34,5 +39,13 @@ tasks.withType(AbstractArchiveTask).configureEach {
 tasks.register('probePluginJar', Jar) {
     archiveFileName = 'CardboardPort263Audit.jar'
     from sourceSets.probePlugin.output
+}
+tasks.register('paperRayReferenceJar', Jar) {
+    dependsOn 'referencePluginClasses', 'probePluginClasses'
+    archiveFileName = 'CardboardPaperRayReference.jar'
+    from sourceSets.referencePlugin.output
+    from(sourceSets.probePlugin.output) {
+        include 'org/cardboardpowered/test/WorldRayTraceProbes*.class'
+    }
 }
 tasks.named('build') { dependsOn 'probePluginJar' }

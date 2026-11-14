@@ -17,6 +17,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  paper-ray-reference:
+    name: Paper 26.3 ray tracing API reference
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+      - name: Build public API reference plugin
+        run: ./gradlew -p tools/port263-fixture paperRayReferenceJar --no-daemon --max-workers=2
+      - name: Verify all six ray groups on pinned Paper
+        run: python3 tools/ci/paper_ray_reference.py
+      - name: Upload reference diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: paper-ray-reference-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            build/paper-ray-reference/console.log
+            build/paper-ray-reference/success.json
+            build/paper-ray-reference/plugins/CardboardPaperRayReference/results.json
+          if-no-files-found: ignore
+
   port263-hardening:
     name: Production JAR + custom mod (${{ matrix.stack }})
     needs: cardboard
