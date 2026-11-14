@@ -53,6 +53,12 @@ public final class Port263Fixture implements ModInitializer {
         return stack.getOrDefault(COMPONENT, -1);
     }
 
+    /** Read stored quart biomes directly, independently of Bukkit's wrappers. */
+    public static String storedBiome(net.minecraft.server.level.ServerLevel level, int x, int y, int z) {
+        return level.getChunk(x >> 4, z >> 4).getNoiseBiome(x >> 2, y >> 2, z >> 2)
+                .unwrapKey().orElseThrow().identifier().toString();
+    }
+
     public static int[] nearestVillage(net.minecraft.server.level.ServerLevel level, int x, int y, int z) {
         var village = level.registryAccess().lookupOrThrow(Registries.STRUCTURE)
                 .get(Identifier.parse("minecraft:village_plains")).orElseThrow();

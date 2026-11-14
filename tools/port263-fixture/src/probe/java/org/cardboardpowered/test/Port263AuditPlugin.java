@@ -64,10 +64,17 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
         var key = new NamespacedKey("cardboard_port263_fixture", "probe");
         var location = world.getSpawnLocation().add(5, 2, 5);
         var block = location.getBlock();
+        var biomeLocation = world.getSpawnLocation().add(9, 0, 9);
+        biomeLocation.setY(world.getMinHeight() + 8);
+        world.getChunkAt(biomeLocation);
         getDataFolder().mkdirs();
         var state = getDataFolder().toPath().resolve("persist.json");
         if (!verify) {
             var previous = block.getBlockData().getAsString();
+            var previousBiome = world.getBiome(biomeLocation.getBlockX(), biomeLocation.getBlockY(), biomeLocation.getBlockZ());
+            var changedBiome = previousBiome == org.bukkit.block.Biome.DESERT ? org.bukkit.block.Biome.FOREST : org.bukkit.block.Biome.DESERT;
+            world.setBiome(biomeLocation, changedBiome);
+            require(storedBiome(world, biomeLocation).equals(changedBiome.getKey().toString()), "Biome write did not reach native storage");
             block.setBlockData(Registry.BLOCK.get(key).createBlockData(), false);
             var entity = world.spawnEntity(location.clone().add(0, 2, 0), Registry.ENTITY_TYPE.get(key), false);
             entity.setPersistent(true);
@@ -77,10 +84,13 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             var stack = (ItemStack) craft.getMethod("asBukkitCopy", Class.forName("net.minecraft.world.item.ItemStack"))
                     .invoke(null, fixture.getMethod("createMarkedStack").invoke(null));
             Files.write(getDataFolder().toPath().resolve("persist-item.nbt"), stack.serializeAsBytes());
-            Files.writeString(state, new GsonBuilder().create().toJson(Map.of("uuid", entity.getUniqueId().toString(), "previous", previous)));
+            Files.writeString(state, new GsonBuilder().create().toJson(Map.of("uuid", entity.getUniqueId().toString(), "previous", previous,
+                    "previousBiome", previousBiome.getKey().toString(), "changedBiome", changedBiome.getKey().toString())));
             world.save();
         } else {
             var values = new com.google.gson.Gson().fromJson(Files.readString(state), com.google.gson.JsonObject.class);
+            require(storedBiome(world, biomeLocation).equals(values.get("changedBiome").getAsString()), "Stored biome did not survive restart");
+            require(world.getBiome(biomeLocation).getKey().toString().equals(values.get("changedBiome").getAsString()), "Location biome getter disagrees after restart");
             require(block.getType().getKey().equals(key), "Saved mod block did not survive restart");
             var entity = Bukkit.getEntity(java.util.UUID.fromString(values.get("uuid").getAsString()));
             require(entity != null && entity.isValid() && entity.getType().getKey().equals(key), "Saved mod entity did not survive restart");
@@ -92,6 +102,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
                     "Saved custom component did not survive restart");
             entity.remove();
             block.setBlockData(Bukkit.createBlockData(values.get("previous").getAsString()), false);
+            world.setBiome(biomeLocation, Registry.BIOME.get(NamespacedKey.fromString(values.get("previousBiome").getAsString())));
             world.save();
         }
     }
@@ -235,6 +246,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             results.put("custom-mod", "SKIP: independent Fabric fixture not installed");
         }
         if (fixtureInstalled) {
+            verifyWorldAccessors(world);
             verifyWorldQueries(world);
             verifyDragon(this::verifyRecipes);
         } else {
@@ -244,6 +256,77 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
 
     private Object nativeWorld(World world) throws Exception {
         return world.getClass().getMethod("getHandle").invoke(world);
+    }
+
+    private String storedBiome(World world, org.bukkit.Location location) throws Exception {
+        return (String) Class.forName("org.cardboardpowered.test.Port263Fixture")
+                .getMethod("storedBiome", Class.forName("net.minecraft.server.level.ServerLevel"), int.class, int.class, int.class)
+                .invoke(null, nativeWorld(world), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+    }
+
+    private void verifyWorldAccessors(World world) {
+        check("location-world-getters-and-snapshots", () -> {
+            world.addPluginChunkTicket(-2, -2, this);
+            var location = new org.bukkit.Location(world, -17.25, world.getMinHeight() + 10.75, -16.25);
+            var block = location.getBlock();
+            var previous = block.getBlockData();
+            try {
+                require(world.getBiome(location) == world.getBiome(-18, location.getBlockY(), -17), "Location biome did not use floored coordinates");
+                require(world.getBiome(location).getKey().toString().equals(storedBiome(world, location)), "Biome getter differs from native storage");
+                block.setBlockData(Bukkit.createBlockData("minecraft:oak_log[axis=x]"), false);
+                var snapshot = world.getBlockState(location);
+                require(snapshot != null && snapshot.getLocation().equals(block.getLocation()), "Location block state is missing or at wrong coordinates");
+                require(snapshot.getBlockData().equals(block.getBlockData()), "Block state lost native block properties");
+                block.setType(Material.STONE, false);
+                require(snapshot.getType() == Material.OAK_LOG && world.getBlockState(location).getType() == Material.STONE,
+                        "Block state did not preserve snapshot semantics");
+            } finally {
+                block.setBlockData(previous, false);
+                world.removePluginChunkTicket(-2, -2, this);
+            }
+        });
+        check("biome-cell-column-and-height-boundaries", () -> {
+            world.addPluginChunkTicket(-2, -2, this);
+            int x = -28, z = -28;
+            var column = new java.util.ArrayList<org.bukkit.block.Biome>();
+            for (int y = world.getMinHeight(); y < world.getMaxHeight(); y += 4) column.add(world.getBiome(x, y, z));
+            var location = new org.bukkit.Location(world, x, world.getMinHeight() + 9, z);
+            var neighbors = java.util.List.of(location.clone().add(4, 0, 0), location.clone().add(-4, 0, 0),
+                    location.clone().add(0, 4, 0), location.clone().add(0, -4, 0), location.clone().add(0, 0, 4), location.clone().add(0, 0, -4));
+            var neighborBiomes = new java.util.ArrayList<String>();
+            for (var neighbor : neighbors) neighborBiomes.add(storedBiome(world, neighbor));
+            try {
+                var changed = world.getBiome(x, location.getBlockY(), z) == org.bukkit.block.Biome.DESERT
+                        ? org.bukkit.block.Biome.FOREST : org.bukkit.block.Biome.DESERT;
+                world.setBiome(location, changed);
+                require(storedBiome(world, location).equals(changed.getKey().toString()), "Location setter did not change stored biome");
+                require(storedBiome(world, location.clone().add(3, 2, 3)).equals(changed.getKey().toString()), "Biome update did not cover its 4x4x4 cell");
+                for (int i = 0; i < neighbors.size(); i++) require(storedBiome(world, neighbors.get(i)).equals(neighborBiomes.get(i)), "Biome update changed adjacent cell " + i);
+                world.setBiome(x, location.getBlockY(), z, org.bukkit.block.Biome.SWAMP);
+                require(storedBiome(world, location).equals("minecraft:swamp"), "Coordinate biome setter is missing");
+                location.getBlock().setBiome(changed);
+                require(storedBiome(world, location).equals(changed.getKey().toString()), "Block biome setter is missing");
+                world.setBiome(x, world.getMinHeight() - 100, z, changed);
+                world.setBiome(x, world.getMaxHeight() + 100, z, changed);
+                require(storedBiome(world, new org.bukkit.Location(world, x, world.getMinHeight(), z)).equals(changed.getKey().toString()), "Lower biome height was not clamped");
+                require(storedBiome(world, new org.bukkit.Location(world, x, world.getMaxHeight() - 1, z)).equals(changed.getKey().toString()), "Upper biome height was not clamped");
+                world.setBiome(x, z, changed);
+                for (int y = world.getMinHeight(); y < world.getMaxHeight(); y += 4)
+                    require(storedBiome(world, new org.bukkit.Location(world, x, y, z)).equals(changed.getKey().toString()), "Column setter missed biome at y=" + y);
+                expectIllegal(() -> world.setBiome(location, org.bukkit.block.Biome.CUSTOM));
+                expectIllegal(() -> world.setBiome(x, location.getBlockY(), z, org.bukkit.block.Biome.CUSTOM));
+            } finally {
+                for (int y = world.getMinHeight(), i = 0; y < world.getMaxHeight(); y += 4, i++) world.setBiome(x, y, z, column.get(i));
+                world.removePluginChunkTicket(-2, -2, this);
+            }
+        });
+        check("biome-setter-does-not-load-chunks", () -> {
+            int chunk = 1_000_002;
+            require(!world.isChunkLoaded(chunk, chunk), "Biome fixture chunk was already loaded");
+            world.setBiome(chunk << 4, world.getMinHeight(), chunk << 4, org.bukkit.block.Biome.DESERT);
+            require(!world.isChunkLoaded(chunk, chunk), "Biome setter loaded a missing chunk");
+            require(!world.isChunkGenerated(chunk, chunk), "Biome setter generated a missing chunk");
+        });
     }
 
     private void verifyWorldQueries(World world) {
