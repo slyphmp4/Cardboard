@@ -349,140 +349,21 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Override
 	public boolean generateTree(Location loc, TreeType type) {
-		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-
-        /*net.minecraft.world.level.levelgen.feature.Feature gen;
-        switch (type) {
-            case BIG_TREE:
-                gen = ConfiguredFeatures.FANCY_OAK;
-                break;
-            case BIRCH:
-                gen = ConfiguredFeatures.BIRCH;
-                break;
-            case REDWOOD:
-                gen = ConfiguredFeatures.SPRUCE;
-                break;
-            case TALL_REDWOOD:
-                gen = ConfiguredFeatures.TREES_GIANT_SPRUCE;
-                break;
-            case JUNGLE:
-                gen = ConfiguredFeatures.JUNGLE_TREE;
-                break;
-            case SMALL_JUNGLE:
-                gen = ConfiguredFeatures.JUNGLE_TREE_NO_VINE;
-                break;
-            case COCOA_TREE:
-                gen = ConfiguredFeatures.JUNGLE_TREE;
-                break;
-            case JUNGLE_BUSH:
-                gen = ConfiguredFeatures.JUNGLE_BUSH;
-                break;
-            case RED_MUSHROOM:
-                gen = ConfiguredFeatures.HUGE_RED_MUSHROOM;
-                break;
-            case BROWN_MUSHROOM:
-                gen = ConfiguredFeatures.HUGE_BROWN_MUSHROOM;
-                break;
-            case SWAMP:
-                gen = ConfiguredFeatures.TREES_SWAMP;
-                break;
-            case ACACIA:
-                gen = ConfiguredFeatures.ACACIA;
-                break;
-            case DARK_OAK:
-                gen = ConfiguredFeatures.DARK_OAK;
-                break;
-            case MEGA_REDWOOD:
-                gen = ConfiguredFeatures.MEGA_SPRUCE;
-                break;
-            case TALL_BIRCH:
-                gen = ConfiguredFeatures.BIRCH_TALL;
-                break;
-            case CHORUS_PLANT:
-                ChorusFlowerBlock.generate(nms, pos, rand, 8);
-                return true;
-            case CRIMSON_FUNGUS:
-                gen = ConfiguredFeatures.CRIMSON_FUNGI;
-                break;
-            case WARPED_FUNGUS:
-                gen = ConfiguredFeatures.WARPED_FUNGI;
-                break;
-            case TREE:
-            default:
-                gen = ConfiguredFeatures.OAK;
-                break;
-        }*/
-		// TODO 1.18
-
-		return false; // TODO 1.17ify: return gen.feature.generate(nms, nms.getChunkManager().getChunkGenerator(), rand, pos, gen.config);
+        return this.generateTree(loc, rand, type);
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Override
 	public boolean generateTree(Location loc, TreeType arg1, BlockChangeDelegate arg2) {
-		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-		net.minecraft.world.level.levelgen.feature.Feature gen = null;
-        /*switch (arg1) {
-            case ACACIA:
-                gen = ConfiguredFeatures.ACACIA;
-                break;
-            case BIG_TREE:
-                gen = ConfiguredFeatures.FANCY_OAK;
-                break;
-            case BIRCH:
-                gen = ConfiguredFeatures.BIRCH;
-                break;
-            case BROWN_MUSHROOM:
-                gen = ConfiguredFeatures.BROWN_MUSHROOM_NORMAL;
-                break;
-            case CHORUS_PLANT:
-                break;
-            case COCOA_TREE:
-                gen = ConfiguredFeatures.JUNGLE_TREE;
-                break;
-            case CRIMSON_FUNGUS:
-                break;
-            case DARK_OAK:
-                gen = ConfiguredFeatures.DARK_OAK;
-                break;
-            case JUNGLE:
-                gen = ConfiguredFeatures.JUNGLE_TREE;
-                break;
-            case JUNGLE_BUSH:
-                gen = ConfiguredFeatures.JUNGLE_BUSH;
-                break;
-            case MEGA_REDWOOD:
-                gen = ConfiguredFeatures.MEGA_SPRUCE;
-                break;
-            case REDWOOD:
-                gen = ConfiguredFeatures.SPRUCE;
-                break;
-            case RED_MUSHROOM:
-                break;
-            case SMALL_JUNGLE:
-                gen = ConfiguredFeatures.JUNGLE_TREE_NO_VINE;
-                break;
-            case SWAMP:
-                break;
-            case TALL_BIRCH:
-                gen = ConfiguredFeatures.BIRCH_TALL;
-                break;
-            case TALL_REDWOOD:
-                gen = ConfiguredFeatures.TREES_GIANT_SPRUCE;
-                break;
-            case TREE:
-                gen = ConfiguredFeatures.OAK;
-                break;
-            case WARPED_FUNGUS:
-                break;
-            default:
-                gen = ConfiguredFeatures.OAK;
-                break;
-            
-        }*/
-		// TODO 1.18
-		// TODO 1.17ify gen.feature.generate(nms, nms.getChunkManager().getChunkGenerator(), rand, pos, gen.config);
-		return false;
+        var populator = new org.bukkit.craftbukkit.util.BlockStateListPopulator(this.getHandle());
+        boolean generated = this.generateTree(populator, this.getHandle().getChunkSource().getGenerator(),
+                CraftLocation.toBlockPosition(loc), new org.bukkit.craftbukkit.util.RandomSourceWrapper(rand), arg1);
+        if (generated) {
+            for (var state : populator.getSnapshotBlocks()) {
+                arg2.setBlockData(state.getX(), state.getY(), state.getZ(), state.getBlockData());
+            }
+        }
+        return generated;
 	}
 
 	@Override
@@ -2784,15 +2665,13 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public boolean generateTree(@NotNull Location arg0, @NotNull Random arg1, @NotNull TreeType arg2) {
-		// TODO Auto-generated method stub
-		return false;
+        return super.generateTree(arg0, arg1, arg2);
 	}
 
 	@Override
 	public boolean generateTree(@NotNull Location arg0, @NotNull Random arg1, @NotNull TreeType arg2,
 	                            @Nullable java.util.function.Consumer<? super BlockState> arg3) {
-		// TODO Auto-generated method stub
-		return false;
+        return super.generateTree(arg0, arg1, arg2, arg3);
 	}
 
 	@Override
@@ -2968,8 +2847,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	@Override
 	public boolean generateTree(@NotNull Location arg0, @NotNull Random arg1, @NotNull TreeType arg2,
 	                            @Nullable Predicate<? super BlockState> arg3) {
-		// TODO Auto-generated method stub
-		return false;
+        return super.generateTree(arg0, arg1, arg2, arg3);
 	}
 
 	@Override

@@ -17,7 +17,6 @@ import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.EnvironmentAttributes;
@@ -52,6 +51,7 @@ import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.entity.CraftEntity;
 import org.bukkit.craftbukkit.entity.CraftEntityTypes;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.util.BlockStateListPopulator;
 import org.bukkit.craftbukkit.util.CraftLocation;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.craftbukkit.util.RandomSourceWrapper;
@@ -181,10 +181,8 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
 
     public boolean generateTree(Location location, Random random, TreeType treeType) {
         BlockPos pos = CraftLocation.toBlockPosition(location);
-        
-        ChunkGenerator gen = ((ServerLevel)this.getHandle()).getChunkSource().getGenerator();
-        
-        return this.generateTree(this.getHandle(), gen, pos, new RandomSourceWrapper(random), treeType);
+        ChunkGenerator generator = this.getHandle().getLevel().getChunkSource().getGenerator();
+        return this.generateTree(this.getHandle(), generator, pos, new RandomSourceWrapper(random), treeType);
     }
 
     public boolean generateTree(Location location, Random random, TreeType treeType, Consumer<? super BlockState> consumer) {
@@ -195,120 +193,22 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
     }
 
     public boolean generateTree(Location location, Random random, TreeType treeType, Predicate<? super BlockState> predicate) {
-        /*
-    	BlockPos pos = CraftLocation.toBlockPosition(location);
+        BlockPos pos = CraftLocation.toBlockPosition(location);
         BlockStateListPopulator populator = new BlockStateListPopulator(this.getHandle());
-        
-        ChunkGenerator gen = ((ServerWorld)this.getHandle()).getChunkManager().getChunkGenerator()
-        boolean result = this.generateTree(populator, gen, pos, new RandomSourceWrapper(random), treeType);
-        populator.refreshTiles();
-        for (BlockState blockState : populator.getList()) {
-            if (predicate != null && !predicate.test((BlockState)blockState)) continue;
-            blockState.update(true, true);
-        }
+        ChunkGenerator generator = this.getHandle().getLevel().getChunkSource().getGenerator();
+        boolean result = this.generateTree(populator, generator, pos, new RandomSourceWrapper(random), treeType);
+        populator.placeSomeBlocks(predicate == null ? block -> true : predicate);
         return result;
-        */
-    	// TODO
-    	return false;
     }
 
     public boolean generateTree(WorldGenLevel access, ChunkGenerator chunkGenerator, BlockPos pos, net.minecraft.util.RandomSource random, TreeType treeType) {
-        ResourceKey<Feature> gen;
-        switch (treeType) {
-            case BIG_TREE: {
-                gen = TreeFeatures.FANCY_OAK;
-                break;
-            }
-            case BIRCH: {
-                gen = TreeFeatures.BIRCH;
-                break;
-            }
-            case REDWOOD: {
-                gen = TreeFeatures.SPRUCE;
-                break;
-            }
-            case TALL_REDWOOD: {
-                gen = TreeFeatures.PINE;
-                break;
-            }
-            case JUNGLE: {
-                gen = TreeFeatures.MEGA_JUNGLE_TREE;
-                break;
-            }
-            case SMALL_JUNGLE: {
-                gen = TreeFeatures.JUNGLE_TREE_NO_VINE;
-                break;
-            }
-            case COCOA_TREE: {
-                gen = TreeFeatures.JUNGLE_TREE;
-                break;
-            }
-            case JUNGLE_BUSH: {
-                gen = TreeFeatures.JUNGLE_BUSH;
-                break;
-            }
-            case RED_MUSHROOM: {
-                gen = TreeFeatures.HUGE_RED_MUSHROOM;
-                break;
-            }
-            case BROWN_MUSHROOM: {
-                gen = TreeFeatures.HUGE_BROWN_MUSHROOM;
-                break;
-            }
-            case SWAMP: {
-                gen = TreeFeatures.SWAMP_OAK;
-                break;
-            }
-            case ACACIA: {
-                gen = TreeFeatures.ACACIA;
-                break;
-            }
-            case DARK_OAK: {
-                gen = TreeFeatures.DARK_OAK;
-                break;
-            }
-            case MEGA_REDWOOD: {
-                gen = TreeFeatures.MEGA_PINE;
-                break;
-            }
-            case TALL_BIRCH: {
-                gen = TreeFeatures.SUPER_BIRCH_BEES_0002;
-                break;
-            }
-            case CHORUS_PLANT: {
-                ((ChorusFlowerBlock) Blocks.CHORUS_FLOWER).generatePlant(access, pos, random, 8);
-                return true;
-            }
-            case CRIMSON_FUNGUS: {
-                gen = this.isNormalWorld() ? TreeFeatures.CRIMSON_FUNGUS_PLANTED : TreeFeatures.CRIMSON_FUNGUS;
-                break;
-            }
-            case WARPED_FUNGUS: {
-                gen = this.isNormalWorld() ? TreeFeatures.WARPED_FUNGUS_PLANTED : TreeFeatures.WARPED_FUNGUS;
-                break;
-            }
-            case AZALEA: {
-                gen = TreeFeatures.AZALEA_TREE;
-                break;
-            }
-            case MANGROVE: {
-                gen = TreeFeatures.MANGROVE;
-                break;
-            }
-            case TALL_MANGROVE: {
-                gen = TreeFeatures.TALL_MANGROVE;
-                break;
-            }
-            case CHERRY: {
-                gen = TreeFeatures.CHERRY;
-                break;
-            }
-            default: {
-                gen = TreeFeatures.OAK;
-            }
+        ResourceKey<Feature> feature = CraftTreeType.toFeature(treeType, this.isNormalWorld());
+        if (feature == null) {
+            ChorusFlowerBlock.generatePlant(access, pos, random, 8);
+            return true;
         }
-        Holder<Feature> holder = access.registryAccess().lookupOrThrow(Registries.FEATURE).get(gen).orElse(null);
-        return holder != null ? (holder.value()).place(access, chunkGenerator, random, pos) : false;
+        Holder<Feature> holder = access.registryAccess().lookupOrThrow(Registries.FEATURE).get(feature).orElse(null);
+        return holder != null && holder.value().place(access, chunkGenerator, random, pos);
     }
 
     public org.bukkit.entity.Entity spawnEntity(Location location, EntityType entityType) {

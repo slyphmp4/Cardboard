@@ -228,3 +228,24 @@ artifact inspection is implied by the bounded server gates. Existing CI also
 checks integrated two-world lifecycle, two-client LAN, LuckPerms, common plugin
 startup and reproducible builds. Keep the PR in draft until remaining release
 criteria and the intended real-world mod/plugin pack have been reviewed.
+
+## Tree generation follow-up
+
+World tree overloads now dispatch through RegionAccessor. Native features write
+to a BlockStateListPopulator for callback overloads; proposed state/fluid/tile
+reads see that buffer, and snapshots retain their original placement accessor.
+Callbacks can edit or veto each proposed block before placement. Existing world
+tiles are copied before buffered updates. Captured tile snapshots use the existing
+CraftBlockEntityState placement path, including persistent data.
+
+CraftTreeType maps every 26.3 TreeType explicitly, including all three poplars,
+pale oak and creaking pale oak, and corrects mega spruce/pine selection. The legacy
+BlockChangeDelegate receives generated proposals without implicit world writes.
+A callback failure after earlier accepted blocks may leave those blocks placed,
+matching Paper; this API does not provide whole-tree transactional rollback.
+
+Six shared public scenarios cover seeded generation, consumer edits, predicate
+veto/selection, delegates, modern tree types/tile data, null callbacks, first
+callback exceptions and an obstructed trunk origin. The checksum-pinned Paper
+control runs the same source. Tests use guarded air above a disposable flat world,
+then clear their blocks. Runtime results for this batch are pending.
