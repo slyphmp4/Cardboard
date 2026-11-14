@@ -113,8 +113,7 @@ public final class CraftRaid implements Raid {
 
     @Override
     public int getId() {
-        //return this.handle.idOrNegativeOne; // TODO
-        return -1;
+        return ((net.minecraft.server.level.ServerLevel) this.level).getRaids().getId(this.handle).orElse(-1);
     }
 
     @Override

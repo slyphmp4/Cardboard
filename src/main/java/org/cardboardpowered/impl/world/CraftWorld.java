@@ -577,8 +577,8 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public DragonBattle getEnderDragonBattle() {
-		// TODO Auto-generated method stub
-		return null;
+		var fight = this.world.getDragonFight();
+		return fight == null ? null : new org.bukkit.craftbukkit.boss.CraftDragonBattle(fight);
 	}
 
 	@Override
@@ -1002,7 +1002,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public List<Raid> getRaids() {
-		return Collections.emptyList();
+		return ((org.cardboardpowered.bridge.world.entity.raid.RaidsBridge) this.world.getRaids())
+                .cardboard$getRaidMap().values().stream()
+                .map(raid -> (Raid) new CraftRaid(raid, this.world)).collect(Collectors.toList());
 	}
 
 	@Override
@@ -1206,19 +1208,71 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	@Override
-	public Raid locateNearestRaid(Location arg0, int arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public Raid locateNearestRaid(Location location, int radius) {
+        Preconditions.checkArgument(location != null, "Location cannot be null");
+        Preconditions.checkArgument(radius >= 0, "Radius cannot be negative");
+        location.checkFinite();
+        BlockPos origin = CraftLocation.toBlockPosition(location);
+        net.minecraft.world.entity.raid.Raid nearest = null;
+        double distance = (double) radius * radius;
+        for (var raid : ((org.cardboardpowered.bridge.world.entity.raid.RaidsBridge) this.world.getRaids())
+                .cardboard$getRaidMap().values()) {
+            double candidate = raid.getCenter().distSqr(origin);
+            if (raid.isActive() && candidate < distance) {
+                distance = candidate;
+                nearest = raid;
+            }
+        }
+        return nearest == null ? null : new CraftRaid(nearest, this.world);
 	}
 
-	@Override
-	public Location locateNearestStructure(Location origin, StructureType structureType, int radius, boolean findUnexplored) {
-		// BlockPos originPos = new BlockPos(origin.getX(), origin.getY(), origin.getZ());
-		// FIXME: 1.18.2
-		return null;
-		// BlockPos nearest = this.getHandle().getChunkManager().getChunkGenerator().locateStructure(this.getHandle(), StructureFeature..STRUCTURES.get(structureType.getName()), originPos, radius, findUnexplored);
-		// return (nearest == null) ? null : new Location(this, nearest.getX(), nearest.getY(), nearest.getZ());
-	}
+    @Override
+    public Location locateNearestStructure(Location origin, org.bukkit.StructureType structureType, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structureType != null, "Structure type cannot be null");
+        StructureSearchResult result = null;
+
+        // Manually map the mess of the old StructureType to the new StructureType and normal Structure
+        if (org.bukkit.StructureType.MINESHAFT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.MINESHAFT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.VILLAGE == structureType) {
+            result = this.locateNearestStructure(origin, List.of(Structure.VILLAGE_DESERT, Structure.VILLAGE_PLAINS, Structure.VILLAGE_SAVANNA, Structure.VILLAGE_SNOWY, Structure.VILLAGE_TAIGA), radius, findUnexplored);
+        } else if (org.bukkit.StructureType.NETHER_FORTRESS == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.FORTRESS, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.STRONGHOLD == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.STRONGHOLD, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.JUNGLE_PYRAMID == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.JUNGLE_TEMPLE, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.OCEAN_RUIN == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.OCEAN_RUIN, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.DESERT_PYRAMID == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.DESERT_PYRAMID, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.IGLOO == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.IGLOO, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.SWAMP_HUT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.SWAMP_HUT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.OCEAN_MONUMENT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.OCEAN_MONUMENT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.END_CITY == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.END_CITY, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.WOODLAND_MANSION == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.WOODLAND_MANSION, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.BURIED_TREASURE == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.BURIED_TREASURE, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.SHIPWRECK == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.SHIPWRECK, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.PILLAGER_OUTPOST == structureType) {
+            result = this.locateNearestStructure(origin, Structure.PILLAGER_OUTPOST, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.NETHER_FOSSIL == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.NETHER_FOSSIL, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.RUINED_PORTAL == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.RUINED_PORTAL, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.BASTION_REMNANT == structureType) {
+            result = this.locateNearestStructure(origin, Structure.BASTION_REMNANT, radius, findUnexplored);
+        }
+
+        return (result == null) ? null : result.getLocation();
+    }
+
 
 	public void playEffect(Player player, Effect effect, int data) {
 		this.playEffect(player.getLocation(), effect, data, 0);
@@ -3047,6 +3101,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public StructureSearchResult locateNearestStructure(Location origin, org.bukkit.generator.structure.StructureType structureType, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structureType != null, "Structure type cannot be null");
 		List<Structure> structures = new ArrayList<>();
 		for (Structure structure : RegistryAccess.registryAccess().getRegistry(RegistryKey.STRUCTURE)) {
 			if (structure.getStructureType() == structureType) {
@@ -3059,16 +3114,17 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public StructureSearchResult locateNearestStructure(Location origin, Structure structure, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structure != null, "Structure cannot be null");
 		return this.locateNearestStructure(origin, List.of(structure), radius, findUnexplored);
 	}
 
 	private StructureSearchResult locateNearestStructure(Location origin, List<Structure> structures, int radius, boolean findUnexplored) {
-		// Cardboard: TODO
-		return null;
-		/*
+        Preconditions.checkArgument(origin != null, "Origin cannot be null");
+        Preconditions.checkArgument(radius >= 0, "Radius cannot be negative");
+        origin.checkFinite();
 		Pair<BlockPos, Holder<net.minecraft.world.level.levelgen.structure.Structure>> found = this.getHandle().getChunkSource().getGenerator().findNearestMapStructure(
 				this.getHandle(),
-				HolderSet.direct(CraftStructure::bukkitToMinecraftHolder, structures),
+				net.minecraft.core.HolderSet.direct(CraftStructure::bukkitToMinecraftHolder, structures),
 				CraftLocation.toBlockPosition(origin),
 				radius,
 				findUnexplored
@@ -3077,8 +3133,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 			return null;
 		}
 
-		return new CraftStructureSearchResult(CraftStructure.minecraftHolderToBukkit(found.getSecond()), CraftLocation.toBukkit(found.getFirst(), this));
-		*/
+		return new org.bukkit.craftbukkit.util.CraftStructureSearchResult(CraftStructure.minecraftHolderToBukkit(found.getSecond()), CraftLocation.toBukkit(found.getFirst(), this));
 	}
 
 	// 1.19.4
@@ -3108,13 +3163,9 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public boolean hasStructureAt(@NotNull Position position, @NotNull Structure structure) {
-		// TODO Auto-generated method stub
-        net.minecraft.world.level.levelgen.structure.Structure stru =
-        		this.getHandle().registryAccess().lookupOrThrow(Registries.STRUCTURE)
-        		.get(
-        				CraftNamespacedKey.toMinecraft(structure.getStructureType().getKey())
-        		).orElseThrow().value();
-
+        Preconditions.checkArgument(position != null, "Position cannot be null");
+        Preconditions.checkArgument(structure != null, "Structure cannot be null");
+        var stru = CraftStructure.bukkitToMinecraft(structure);
         return this.getHandle().structureManager().getStructureWithPieceAt(MCUtil_toBlockPos(position), holder -> holder.value() == stru).isValid();
 
 	}
@@ -3373,8 +3424,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public @Nullable Raid getRaid(int id) {
-		// TODO Auto-generated method stub
-		return null;
+        var raid = this.world.getRaids().get(id);
+        return raid == null ? null : new CraftRaid(raid, this.world);
 	}
 
 	@Override

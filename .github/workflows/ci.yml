@@ -21,7 +21,7 @@ jobs:
     name: Production JAR + custom mod (${{ matrix.stack }})
     needs: cardboard
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -45,7 +45,7 @@ jobs:
       - name: Check RCON framing
         run: python3 -m unittest discover -s tools/ci/tests -v
       - name: Verify APIs, mod content, workload and saved world restart
-        run: python3 tools/ci/port263_hardening.py --stack ${{ matrix.stack }} --directory build/hardening-server --duration 300
+        run: python3 tools/ci/port263_hardening.py --stack ${{ matrix.stack }} --directory build/hardening-server --duration 1800
       - name: Upload hardening diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

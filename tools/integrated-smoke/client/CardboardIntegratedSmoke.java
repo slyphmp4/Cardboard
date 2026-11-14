@@ -199,6 +199,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
             DedicatedLuckPermsSmoke.verifyWhitelistSettings(server);
             EntityEventSmoke.verifyServer(server.getPlayerList().getPlayer(owner), plugin);
+            DragonBattleSmoke.verify(server.getPlayerList().getPlayer(owner));
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");
             // Exercise property-backed API methods against an IntegratedServer.

@@ -145,6 +145,8 @@
     "world.entity.projectile.throwableitemprojectile.ThrownEggMixin",
     "world.entity.projectile.throwableitemprojectile.ThrownExperienceBottleMixin",
     "world.entity.raid.RaidMixin",
+    "world.entity.raid.RaidsMixin",
+    "world.level.dimension.end.EnderDragonFightMixin",
     "world.inventory.AbstractContainerMenuMixin",
     "world.inventory.AbstractFurnaceMenuMixin",
     "world.inventory.AnvilMenuMixin",

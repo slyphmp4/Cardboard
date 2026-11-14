@@ -1,5 +1,12 @@
 # Integrated client smoke
 
+The connected owner also exercises `DRAGON_BATTLE_TICK_PASS` in each world:
+controlled native End fight states advance an empty-crystal API respawn through
+the real tick, repeat after saved-data codec decoding, and retain the ordinary
+missing-crystal abort. Boss-bar membership/state, fight fields, entities and
+the native dragon chunk ticket are restored before the existing lifecycle
+checks continue. This is not a full player-driven dragon combat test.
+
 Run `./gradlew -PintegratedSmoke runClient` with Java 25 and a working graphics environment. Linux CI uses Xvfb and software rendering. The test creates two disposable worlds under `run-integrated-smoke`, closes each, and exits the game after success. Delete that directory before repeating the test.
 
 The test requires a normal client exit, the exact `INTEGRATED_SMOKE_PASS` log marker and `run-integrated-smoke/integrated-smoke.success`. It checks the owner's real profile UUID, exactly one async pre-login and login event per world, fresh plugin instances and command ownership, a Fabric permission check against a live player, client menu/entity guards, and singleton teardown. It also exercises API getters formerly tied to dedicated server properties, recipe conversion, fresh native registries and stable Material enum size.

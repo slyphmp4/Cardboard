@@ -114,10 +114,37 @@ fail the gate. This does not claim that ScalableLux/Starlight itself was tested.
 Cardboard contains inherited API stubs independent of this version migration.
 The source audit found 939 TODO/unsupported markers; that count is **not** a count
 of confirmed defects. Examples requiring separate implementation/verification
-include structure/raid-location Bukkit methods, portions of DragonBattle, and
-the full native Brigadier argument provider. Existing dialog/click callback
+include raid persistent data, Position-based ray tracing and the full native
+Brigadier argument provider. Existing dialog/click callback
 implementations also need end-to-end client verification; the presence of a
 builder/provider alone does not establish working callbacks.
+
+## World search and dragon follow-up
+
+The unchanged `2c1d6df2` production code was tested with four additional probe
+groups on `3a1416fc`: both matrices passed the original 12 cases and failed the
+new structure lookup, structure presence, raid lookup and dragon battle groups.
+The native oracle found a plains village, while Bukkit returned null; the
+presence query looked up a structure type key in the structure registry; raid
+ID lookup and the world's End battle getter were unimplemented.
+
+The follow-up restores modern/type/legacy structure searches, defensive result
+locations, exact structure presence, raid enumeration/ID/nearest lookup without
+squared-radius integer overflow, and the native DragonBattle state APIs. Mixins
+provide narrow access to the real fight and raid map. Empty-crystal API respawns
+retain their intended native tick behavior, including reconstruction from saved
+data; ordinary missing-crystal respawns retain vanilla cancellation.
+
+The standalone probe exercises real healing crystals, native references, portal
+idempotence, default/custom-position gateways, mutable fight state, native search
+results and a 50,000-block raid. The integrated fixture uses the connected owner
+to exercise native empty-respawn ticking, saved-data codec decoding and ordinary
+missing-reference cancellation in both worlds. These controlled states do not
+replace a full player-driven dragon combat/resurrection test.
+
+CI configures a 1,800-second workload for each stock/performance matrix, with a
+75-minute job limit including build, preparation and restart. The final PR
+validation record must establish its completion; configuring it is not a pass.
 
 No six-hour soak, arbitrary modpack validation, client FPS benchmark or visual
 artifact inspection is implied by the bounded server gates. Existing CI also
