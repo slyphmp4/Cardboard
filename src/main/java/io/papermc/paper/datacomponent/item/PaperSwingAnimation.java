@@ -3,6 +3,9 @@ package io.papermc.paper.datacomponent.item;
 import com.google.common.base.Preconditions;
 import net.minecraft.world.item.SwingAnimationType;
 import org.bukkit.craftbukkit.util.Handleable;
+import org.checkerframework.checker.index.qual.NonNegative;
+
+import static io.papermc.paper.util.BoundChecker.requireNonNegative;
 
 public record PaperSwingAnimation(
     net.minecraft.world.item.component.SwingAnimation impl
@@ -19,7 +22,7 @@ public record PaperSwingAnimation(
     }
 
     @Override
-    public int duration() {
+    public @NonNegative int duration() {
         return this.impl.duration();
     }
 
@@ -35,9 +38,8 @@ public record PaperSwingAnimation(
         }
 
         @Override
-        public Builder duration(final int duration) {
-            Preconditions.checkArgument(duration > 0, "duration must be positive");
-            this.duration = duration;
+        public SwingAnimation.Builder duration(final @NonNegative int duration) {
+            this.duration = requireNonNegative(duration, "duration");
             return this;
         }
 

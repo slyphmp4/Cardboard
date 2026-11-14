@@ -73,16 +73,15 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
         return new PaperCombatEntryWrapper(new net.minecraft.world.damagesource.CombatEntry(damageSource, damage, fallLocation, fallDistance));
     }
 
-    public Predicate<CommandSourceStack> restricted(Predicate<CommandSourceStack> predicate) {
-        record RestrictedPredicate(Predicate<CommandSourceStack> predicate) implements Predicate<CommandSourceStack>
-        // , PermissionLevelSource.RestrictedMarker
+    public Predicate<CommandSourceStack> restricted(Predicate<CommandSourceStack> predicate, boolean restricted) {
+        record RestrictedPredicate(Predicate<CommandSourceStack> predicate, boolean restricted) implements Predicate<CommandSourceStack>, org.cardboardpowered.bridge.commands.RestrictedCommandPredicate
         {
             @Override
             public boolean test(CommandSourceStack commandSourceStack) {
                 return this.predicate.test(commandSourceStack);
             }
         }
-        return new RestrictedPredicate(predicate);
+        return new RestrictedPredicate(predicate, restricted);
     }
 
 	@Override
@@ -214,4 +213,40 @@ public class PaperServerInternalAPIBridge implements InternalAPIBridge {
         return new com.destroystokyo.paper.util.VersionFetcher.DummyVersionFetcher();
     }
 
+
+    @Override
+    public <C> io.papermc.paper.persistence.PersistentDataKey<C> createPersistentDataKey(
+            net.kyori.adventure.key.Key key, org.bukkit.persistence.PersistentDataType<?, C> type) {
+        var namespaced = new org.bukkit.NamespacedKey(key.namespace(), key.value());
+        return new io.papermc.paper.persistence.PaperPersistentDataKey<>(namespaced, type);
+    }
+
+    @Override
+    public org.bukkit.enchantments.EnchantmentOffer[] rollEnchantmentOffers(
+            org.bukkit.inventory.ItemStack target, int seed, int shelves, int amount) {
+        var stack = org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(target);
+        var registry = org.bukkit.craftbukkit.CraftRegistry.getMinecraftRegistry()
+                .lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        var tag = registry.get(net.minecraft.tags.EnchantmentTags.IN_ENCHANTING_TABLE);
+        var random = net.minecraft.util.RandomSource.create(seed);
+        int[] costs = new int[amount];
+        for (int slot = 0; slot < amount; slot++) {
+            costs[slot] = net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantmentCost(random, slot, shelves, stack);
+            if (costs[slot] < slot + 1) costs[slot] = 0;
+        }
+        var offers = new org.bukkit.enchantments.EnchantmentOffer[amount];
+        for (int slot = 0; slot < amount; slot++) {
+            if (costs[slot] <= 0 || tag.isEmpty()) continue;
+            random.setSeed(seed + slot);
+            var choices = net.minecraft.world.item.enchantment.EnchantmentHelper.selectEnchantment(random, stack, costs[slot], tag.get().stream());
+            if (stack.is(net.minecraft.world.item.Items.BOOK) && choices.size() > 1) choices.remove(random.nextInt(choices.size()));
+            if (!choices.isEmpty()) {
+                var selected = choices.get(random.nextInt(choices.size()));
+                offers[slot] = new org.bukkit.enchantments.EnchantmentOffer(
+                        org.bukkit.craftbukkit.enchantments.CraftEnchantment.minecraftHolderToBukkit(selected.enchantment()),
+                        selected.level(), costs[slot]);
+            }
+        }
+        return offers;
+    }
 }

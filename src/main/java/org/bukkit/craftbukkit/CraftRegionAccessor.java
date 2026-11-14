@@ -30,7 +30,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChorusFlowerBlock;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
@@ -213,7 +213,7 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
     }
 
     public boolean generateTree(WorldGenLevel access, ChunkGenerator chunkGenerator, BlockPos pos, net.minecraft.util.RandomSource random, TreeType treeType) {
-        ResourceKey<ConfiguredFeature<?, ?>> gen;
+        ResourceKey<Feature> gen;
         switch (treeType) {
             case BIG_TREE: {
                 gen = TreeFeatures.FANCY_OAK;
@@ -307,15 +307,29 @@ public abstract class CraftRegionAccessor implements RegionAccessor {
                 gen = TreeFeatures.OAK;
             }
         }
-        Holder<ConfiguredFeature<?, ?>> holder = access.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).get(gen).orElse(null);
+        Holder<Feature> holder = access.registryAccess().lookupOrThrow(Registries.FEATURE).get(gen).orElse(null);
         return holder != null ? (holder.value()).place(access, chunkGenerator, random, pos) : false;
     }
 
     public org.bukkit.entity.Entity spawnEntity(Location location, EntityType entityType) {
+        Preconditions.checkArgument(entityType != null, "Entity type cannot be null");
+        if (!entityType.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            return this.spawnEntity(location, entityType, true);
+        }
         return this.spawn(location, entityType.getEntityClass());
     }
 
     public org.bukkit.entity.Entity spawnEntity(Location loc, EntityType type, boolean randomizeData) {
+        Preconditions.checkArgument(loc != null, "Location cannot be null");
+        Preconditions.checkArgument(type != null, "Entity type cannot be null");
+        if (!type.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            Entity entity = org.bukkit.craftbukkit.entity.CraftEntityType.bukkitToMinecraft(type)
+                    .create(this.getHandle().getLevel(), EntitySpawnReason.COMMAND);
+            Preconditions.checkArgument(entity != null, "Entity type cannot be spawned: %s", type);
+            entity.absSnapTo(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+            entity.setYHeadRot(loc.getYaw());
+            return this.addEntity(entity, CreatureSpawnEvent.SpawnReason.CUSTOM, null, randomizeData);
+        }
         return this.spawn(loc, type.getEntityClass(), null, CreatureSpawnEvent.SpawnReason.CUSTOM, randomizeData);
     }
 

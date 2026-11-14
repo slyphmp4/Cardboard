@@ -61,7 +61,7 @@ class EventCancellationParityTest {
         assertTrue(pickup.contains("playerEvent.setCancelled(!playerEvent.getPlayer().getCanPickupItems())"));
         assertTrue(pickup.contains("ci.cancel();"));
         assertTrue(velocity.contains("PlayerVelocityEvent"));
-        assertTrue(velocity.contains("this.entity.hurtMarked = false"));
+        assertTrue(velocity.contains("this.entity.syncVelocity = false"));
         assertTrue(projectile.contains("ProjectileLaunchEvent"));
         assertTrue(projectile.contains("cir.setReturnValue(false)"));
         assertTrue(vehicle.contains("VehicleEnterEvent"));

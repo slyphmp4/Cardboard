@@ -164,7 +164,6 @@ import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.PrimaryLevelData;
@@ -361,7 +360,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	public boolean generateTree(Location loc, TreeType type) {
 		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
 
-        /*ConfiguredFeature gen;
+        /*net.minecraft.world.level.levelgen.feature.Feature gen;
         switch (type) {
             case BIG_TREE:
                 gen = ConfiguredFeatures.FANCY_OAK;
@@ -431,7 +430,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	@Override
 	public boolean generateTree(Location loc, TreeType arg1, BlockChangeDelegate arg2) {
 		BlockPos pos = new BlockPos(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-		ConfiguredFeature gen = null;
+		net.minecraft.world.level.levelgen.feature.Feature gen = null;
         /*switch (arg1) {
             case ACACIA:
                 gen = ConfiguredFeatures.ACACIA;
@@ -578,8 +577,8 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public DragonBattle getEnderDragonBattle() {
-		// TODO Auto-generated method stub
-		return null;
+		var fight = this.world.getDragonFight();
+		return fight == null ? null : new org.bukkit.craftbukkit.boss.CraftDragonBattle(fight);
 	}
 
 	@Override
@@ -1003,7 +1002,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public List<Raid> getRaids() {
-		return Collections.emptyList();
+		return ((org.cardboardpowered.bridge.world.entity.raid.RaidsBridge) this.world.getRaids())
+                .cardboard$getRaidMap().values().stream()
+                .map(raid -> (Raid) new CraftRaid(raid, this.world)).collect(Collectors.toList());
 	}
 
 	@Override
@@ -1121,11 +1122,18 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean isChunkGenerated(int x, int z) {
-		try {
-			return isChunkLoaded(x, z) || world.getChunkSource().chunkMap.read(new ChunkPos(x, z)) != null;
-		} catch(Exception ex) {
-			throw new RuntimeException(ex);
-		}
+        if (!this.world.getServer().isSameThread()) {
+            return java.util.concurrent.CompletableFuture.supplyAsync(
+                    () -> this.isChunkGenerated(x, z), this.world.getServer()).join();
+        }
+        if (this.isChunkLoaded(x, z)) return true;
+        var holder = this.world.getChunkSource().chunkMap.getUpdatingChunkIfPresent(ChunkPos.pack(x, z));
+        var chunk = holder == null ? null : holder.getLatestChunk();
+        if (chunk != null) return chunk.getPersistedStatus() == ChunkStatus.FULL;
+        // read() always returns a future, including for absent chunks. Inspect
+        // its saved status without generating terrain or adding a chunk ticket.
+        return org.cardboardpowered.util.ChunkGenerationStates.isFull(
+                this.world.getChunkSource().chunkMap.read(new ChunkPos(x, z)).join());
 	}
 
 	@Override
@@ -1182,8 +1190,10 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean loadChunk(int x, int z, boolean generate) {
+        org.spigotmc.AsyncCatcher.catchOp("chunk load");
+        if (!generate && !this.isChunkGenerated(x, z)) return false;
 		net.minecraft.world.level.chunk.ChunkAccess chunk = world.getChunkSource()
-				.getChunk(x, z, generate ? ChunkStatus.FULL : ChunkStatus.EMPTY, true);
+				.getChunk(x, z, ChunkStatus.FULL, true);
 
 		if(chunk instanceof ImposterProtoChunk)
 			chunk = world.getChunkSource().getChunk(x, z, ChunkStatus.FULL, true);
@@ -1198,19 +1208,71 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	@Override
-	public Raid locateNearestRaid(Location arg0, int arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public Raid locateNearestRaid(Location location, int radius) {
+        Preconditions.checkArgument(location != null, "Location cannot be null");
+        Preconditions.checkArgument(radius >= 0, "Radius cannot be negative");
+        location.checkFinite();
+        BlockPos origin = CraftLocation.toBlockPosition(location);
+        net.minecraft.world.entity.raid.Raid nearest = null;
+        double distance = (double) radius * radius;
+        for (var raid : ((org.cardboardpowered.bridge.world.entity.raid.RaidsBridge) this.world.getRaids())
+                .cardboard$getRaidMap().values()) {
+            double candidate = raid.getCenter().distSqr(origin);
+            if (raid.isActive() && candidate < distance) {
+                distance = candidate;
+                nearest = raid;
+            }
+        }
+        return nearest == null ? null : new CraftRaid(nearest, this.world);
 	}
 
-	@Override
-	public Location locateNearestStructure(Location origin, StructureType structureType, int radius, boolean findUnexplored) {
-		// BlockPos originPos = new BlockPos(origin.getX(), origin.getY(), origin.getZ());
-		// FIXME: 1.18.2
-		return null;
-		// BlockPos nearest = this.getHandle().getChunkManager().getChunkGenerator().locateStructure(this.getHandle(), StructureFeature..STRUCTURES.get(structureType.getName()), originPos, radius, findUnexplored);
-		// return (nearest == null) ? null : new Location(this, nearest.getX(), nearest.getY(), nearest.getZ());
-	}
+    @Override
+    public Location locateNearestStructure(Location origin, org.bukkit.StructureType structureType, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structureType != null, "Structure type cannot be null");
+        StructureSearchResult result = null;
+
+        // Manually map the mess of the old StructureType to the new StructureType and normal Structure
+        if (org.bukkit.StructureType.MINESHAFT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.MINESHAFT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.VILLAGE == structureType) {
+            result = this.locateNearestStructure(origin, List.of(Structure.VILLAGE_DESERT, Structure.VILLAGE_PLAINS, Structure.VILLAGE_SAVANNA, Structure.VILLAGE_SNOWY, Structure.VILLAGE_TAIGA), radius, findUnexplored);
+        } else if (org.bukkit.StructureType.NETHER_FORTRESS == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.FORTRESS, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.STRONGHOLD == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.STRONGHOLD, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.JUNGLE_PYRAMID == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.JUNGLE_TEMPLE, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.OCEAN_RUIN == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.OCEAN_RUIN, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.DESERT_PYRAMID == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.DESERT_PYRAMID, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.IGLOO == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.IGLOO, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.SWAMP_HUT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.SWAMP_HUT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.OCEAN_MONUMENT == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.OCEAN_MONUMENT, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.END_CITY == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.END_CITY, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.WOODLAND_MANSION == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.WOODLAND_MANSION, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.BURIED_TREASURE == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.BURIED_TREASURE, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.SHIPWRECK == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.SHIPWRECK, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.PILLAGER_OUTPOST == structureType) {
+            result = this.locateNearestStructure(origin, Structure.PILLAGER_OUTPOST, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.NETHER_FOSSIL == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.NETHER_FOSSIL, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.RUINED_PORTAL == structureType) {
+            result = this.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.RUINED_PORTAL, radius, findUnexplored);
+        } else if (org.bukkit.StructureType.BASTION_REMNANT == structureType) {
+            result = this.locateNearestStructure(origin, Structure.BASTION_REMNANT, radius, findUnexplored);
+        }
+
+        return (result == null) ? null : result.getLocation();
+    }
+
 
 	public void playEffect(Player player, Effect effect, int data) {
 		this.playEffect(player.getLocation(), effect, data, 0);
@@ -1809,7 +1871,9 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	public <T extends Entity> T spawn(Location location, Class<T> clazz, Consumer<T> function, SpawnReason reason) throws IllegalArgumentException {
-		net.minecraft.world.entity.Entity entity = Display.class.isAssignableFrom(clazz)
+		net.minecraft.world.entity.Entity entity = (Display.class.isAssignableFrom(clazz) || org.bukkit.entity.Cushion.class.isAssignableFrom(clazz)
+                || org.bukkit.entity.boat.PoplarBoat.class.isAssignableFrom(clazz)
+                || org.bukkit.entity.boat.PoplarChestBoat.class.isAssignableFrom(clazz))
 				? super.createEntity(location, clazz, true)
 				: createEntity_Old(location, clazz);
 
@@ -2223,6 +2287,10 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public Entity spawnEntity(Location loc, EntityType entityType) {
+        Preconditions.checkArgument(entityType != null, "Entity type cannot be null");
+        if (!entityType.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            return super.spawnEntity(loc, entityType);
+        }
 		return spawn(loc, entityType.getEntityClass());
 	}
 
@@ -2328,24 +2396,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public <T> void spawnParticle(Particle particle, double x, double y, double z, int count, double offsetX, double offsetY, double offsetZ, double extra, T data, boolean force) {
-		if(data != null && !particle.getDataType().isInstance(data))
-			throw new IllegalArgumentException("data should be " + particle.getDataType() + " got " + data.getClass());
-		// TODO Bukkit4Fabric: method
-		/*
-		getHandle().addParticle(
-				// null, // Sender
-				CraftParticle.createParticleParam(particle, data), // Particle
-				x, y, z, // Position
-				(double) count,  // Count
-				offsetX, offsetY//, offsetZ // Random offset
-				// extra // Speed?
-				// force
-		);
-		*/
-		
-		// TODO: 1.21.8
-		
-        // this.getHandle().spawnParticles(this.getHandle().getPlayers(), null, CraftParticle.createParticleParam(particle, data), force, false, x, y, z, count, offsetX, offsetY, offsetZ);
+        this.spawnParticle(particle, null, null, x, y, z, count, offsetX, offsetY, offsetZ, extra, data, force);
 
 	}
 
@@ -2985,11 +3036,11 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 		 */
 		biomeSource = gen.getBiomeSource();
 
-		final Climate.Sampler sampler = serverCache.randomState().sampler();
+		final net.minecraft.world.level.biome.BiomeResolver resolver = biomeSource.createUncachedResolver(serverCache.randomState());
 		final List<Biome> possibleBiomes = biomeSource.possibleBiomes().stream().map(CraftBiome::minecraftHolderToBukkit).toList();
 		return new BiomeProvider() {
 			public Biome getBiome(WorldInfo worldInfo, int x, int y, int z) {
-				return CraftBiome.minecraftHolderToBukkit(biomeSource.getNoiseBiome(x >> 2, y >> 2, z >> 2, sampler));
+				return CraftBiome.minecraftHolderToBukkit(resolver.getNoiseBiome(x >> 2, y >> 2, z >> 2));
 			}
 
 			public List<Biome> getBiomes(WorldInfo worldInfo) {
@@ -3050,6 +3101,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public StructureSearchResult locateNearestStructure(Location origin, org.bukkit.generator.structure.StructureType structureType, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structureType != null, "Structure type cannot be null");
 		List<Structure> structures = new ArrayList<>();
 		for (Structure structure : RegistryAccess.registryAccess().getRegistry(RegistryKey.STRUCTURE)) {
 			if (structure.getStructureType() == structureType) {
@@ -3062,16 +3114,17 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public StructureSearchResult locateNearestStructure(Location origin, Structure structure, int radius, boolean findUnexplored) {
+        Preconditions.checkArgument(structure != null, "Structure cannot be null");
 		return this.locateNearestStructure(origin, List.of(structure), radius, findUnexplored);
 	}
 
 	private StructureSearchResult locateNearestStructure(Location origin, List<Structure> structures, int radius, boolean findUnexplored) {
-		// Cardboard: TODO
-		return null;
-		/*
+        Preconditions.checkArgument(origin != null, "Origin cannot be null");
+        Preconditions.checkArgument(radius >= 0, "Radius cannot be negative");
+        origin.checkFinite();
 		Pair<BlockPos, Holder<net.minecraft.world.level.levelgen.structure.Structure>> found = this.getHandle().getChunkSource().getGenerator().findNearestMapStructure(
 				this.getHandle(),
-				HolderSet.direct(CraftStructure::bukkitToMinecraftHolder, structures),
+				net.minecraft.core.HolderSet.direct(CraftStructure::bukkitToMinecraftHolder, structures),
 				CraftLocation.toBlockPosition(origin),
 				radius,
 				findUnexplored
@@ -3080,8 +3133,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 			return null;
 		}
 
-		return new CraftStructureSearchResult(CraftStructure.minecraftHolderToBukkit(found.getSecond()), CraftLocation.toBukkit(found.getFirst(), this));
-		*/
+		return new org.bukkit.craftbukkit.util.CraftStructureSearchResult(CraftStructure.minecraftHolderToBukkit(found.getSecond()), CraftLocation.toBukkit(found.getFirst(), this));
 	}
 
 	// 1.19.4
@@ -3111,14 +3163,10 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public boolean hasStructureAt(@NotNull Position position, @NotNull Structure structure) {
-		// TODO Auto-generated method stub
-        net.minecraft.world.level.levelgen.structure.Structure stru =
-        		this.getHandle().registryAccess().lookupOrThrow(Registries.STRUCTURE)
-        		.get(
-        				CraftNamespacedKey.toMinecraft(structure.getStructureType().getKey())
-        		).orElseThrow().value();
-
-        return this.getHandle().structureManager().getStructureWithPieceAt(MCUtil_toBlockPos(position), stru).isValid();
+        Preconditions.checkArgument(position != null, "Position cannot be null");
+        Preconditions.checkArgument(structure != null, "Structure cannot be null");
+        var stru = CraftStructure.bukkitToMinecraft(structure);
+        return this.getHandle().structureManager().getStructureWithPieceAt(MCUtil_toBlockPos(position), holder -> holder.value() == stru).isValid();
 
 	}
 	
@@ -3169,7 +3217,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
             holders.add(CraftBiome.bukkitToMinecraftHolder(biome));
         }
 
-        Climate.Sampler sampler = this.getHandle().getChunkSource().randomState().sampler();
+        net.minecraft.world.level.levelgen.RandomState sampler = this.getHandle().getChunkSource().randomState();
         Pair<BlockPos, Holder<net.minecraft.world.level.biome.Biome>> found = this.getHandle().getChunkSource().getGenerator().getBiomeSource().findClosestBiome3d(originPos, radius, horizontalInterval, verticalInterval, holders::contains, sampler, this.getHandle());
         if (found == null) {
             return null;
@@ -3376,8 +3424,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public @Nullable Raid getRaid(int id) {
-		// TODO Auto-generated method stub
-		return null;
+        var raid = this.world.getRaids().get(id);
+        return raid == null ? null : new CraftRaid(raid, this.world);
 	}
 
 	@Override
@@ -3395,7 +3443,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	
     private List<GeneratedStructure> getStructures(int x, int z, Predicate<net.minecraft.world.level.levelgen.structure.Structure> predicate) {
         List<GeneratedStructure> structures = new ArrayList<>();
-        for (StructureStart start : this.getHandle().structureManager().startsForStructure(new ChunkPos(x, z), predicate)) {
+        for (StructureStart start : this.getHandle().structureManager().startsForStructure(x, z, predicate)) {
             structures.add(new CraftGeneratedStructure(start));
         }
 
@@ -3567,4 +3615,61 @@ this.world.getServer().execute(cb);
         this.world.getChunkSource().setSpawnSettings(allow);
     }
 
+
+    @Override
+    public <T> void spawnParticle(Particle particle, List<Player> receivers, Player sender,
+            double x, double y, double z, int count, double offsetX, double offsetY, double offsetZ,
+            double speedX, double speedY, double speedZ, T data, boolean force,
+            Particle.RandomizationType randomizationType) {
+        Preconditions.checkArgument(particle != null, "particle cannot be null");
+        Preconditions.checkArgument(randomizationType != null, "randomizationType cannot be null");
+        data = CraftParticle.convertLegacy(data);
+        Preconditions.checkArgument(data == null || particle.getDataType().isInstance(data), "Invalid particle data");
+        var packet = new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(
+                CraftParticle.createParticleParam(particle, data), force, false, x, y, z,
+                (float) offsetX, (float) offsetY, (float) offsetZ,
+                (float) speedX, (float) speedY, (float) speedZ, count,
+                net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket.RandomizationType.valueOf(randomizationType.name()));
+        List<Player> targets = receivers == null ? this.getPlayers() : receivers;
+        for (Player target : targets) {
+            if (sender == null || target.canSee(sender)) {
+                this.getHandle().sendParticles(((CraftPlayer) target).getHandle(), force, x, y, z, packet);
+            }
+        }
+    }
+
+    @Override
+    public io.papermc.paper.world.chunk.ChunkGenerationState getChunkGenerationState(int x, int z) {
+        return this.getChunkGenerationStateAsync(x, z).join();
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<io.papermc.paper.world.chunk.ChunkGenerationState> getChunkGenerationStateAsync(int x, int z) {
+        var result = new java.util.concurrent.CompletableFuture<io.papermc.paper.world.chunk.ChunkGenerationState>();
+        Runnable query = () -> {
+            try {
+                var chunkMap = this.getHandle().getChunkSource().chunkMap;
+                var holder = chunkMap.getUpdatingChunkIfPresent(ChunkPos.pack(x, z));
+                var chunk = holder == null ? null : holder.getLatestChunk();
+                if (chunk != null) {
+                    result.complete(chunk.getPersistedStatus() == net.minecraft.world.level.chunk.status.ChunkStatus.FULL
+                            ? io.papermc.paper.world.chunk.ChunkGenerationState.GENERATED
+                            : io.papermc.paper.world.chunk.ChunkGenerationState.PARTIAL);
+                    return;
+                }
+                int currentVersion = net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version();
+                chunkMap.read(new ChunkPos(x, z))
+                        .thenApply(saved -> org.cardboardpowered.util.ChunkGenerationStates.fromSaved(saved, currentVersion))
+                        .whenComplete((state, error) -> {
+                            if (error == null) result.complete(state);
+                            else result.completeExceptionally(error);
+                        });
+            } catch (Throwable error) {
+                result.completeExceptionally(error);
+            }
+        };
+        if (this.getHandle().getServer().isSameThread()) query.run();
+        else this.getHandle().getServer().execute(query);
+        return result;
+    }
 }

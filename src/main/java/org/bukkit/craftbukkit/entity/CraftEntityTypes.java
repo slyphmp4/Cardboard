@@ -265,6 +265,10 @@ public final class CraftEntityTypes {
         register(new EntityTypeData<>(EntityType.SPRUCE_BOAT, SpruceBoat.class, CraftSpruceBoat::new, createAndMove(net.minecraft.world.entity.EntityTypes.SPRUCE_BOAT)));
         register(new EntityTypeData<>(EntityType.SPRUCE_CHEST_BOAT, SpruceChestBoat.class, CraftSpruceChestBoat::new, createAndMove(net.minecraft.world.entity.EntityTypes.SPRUCE_CHEST_BOAT)));
 
+        register(new EntityTypeData<>(EntityType.POPLAR_BOAT, PoplarBoat.class, CraftPoplarBoat::new, createAndMove(net.minecraft.world.entity.EntityTypes.POPLAR_BOAT)));
+        register(new EntityTypeData<>(EntityType.POPLAR_CHEST_BOAT, PoplarChestBoat.class, CraftPoplarChestBoat::new, createAndMove(net.minecraft.world.entity.EntityTypes.POPLAR_CHEST_BOAT)));
+        register(new EntityTypeData<>(EntityType.CUSHION, Cushion.class, CraftCushion::new, createAndMoveEmptyRot(net.minecraft.world.entity.EntityTypes.CUSHION)));
+
         // Set pos
         register(new EntityTypeData<>(EntityType.MARKER, Marker.class, CraftMarker::new, createAndSetPos(net.minecraft.world.entity.EntityTypes.MARKER)));
         register(new EntityTypeData<>(EntityType.BLOCK_DISPLAY, BlockDisplay.class, CraftBlockDisplay::new, combine(createAndSetPos(net.minecraft.world.entity.EntityTypes.BLOCK_DISPLAY), ROT))); // Paper

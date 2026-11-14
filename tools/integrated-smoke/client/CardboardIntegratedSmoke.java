@@ -99,7 +99,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                     // Disposable CI profiles have no Microsoft session. Still use vanilla LAN publication and real TCP login.
                     server.setUsesAuthentication(false);
                     int port = 25576 + world;
-                    require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, GameType.SURVIVAL, false, port), "LAN publication failed");
+                    require(server.publishServer(MinecraftServer.MultiplayerScope.LAN, false, port), "LAN publication failed");
                     Files.createDirectories(EXCHANGE);
                     Files.writeString(EXCHANGE.resolve("ready-" + world), Integer.toString(port));
                     System.out.println("INTEGRATED_LAN_HOST_READY " + world);
@@ -197,7 +197,9 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             require(Bukkit.getPluginCommand("smokeworld") != null
                     && Bukkit.getPluginCommand("smokeworld").getPlugin() == plugin, "Stale command owner");
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, owner);
+            DedicatedLuckPermsSmoke.verifyWhitelistSettings(server);
             EntityEventSmoke.verifyServer(server.getPlayerList().getPlayer(owner), plugin);
+            DragonBattleSmoke.verify(server.getPlayerList().getPlayer(owner));
             require(player.hasPermission("cardboard.smoke.fabric"), "Fabric permission grant was lost");
             require(!player.hasPermission("cardboard.smoke.denied"), "Fabric denial was lost");
             // Exercise property-backed API methods against an IntegratedServer.

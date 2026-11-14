@@ -9,6 +9,8 @@ import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -69,6 +71,27 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
 
     public String probeReason(UUID entity, String kind) {
         return entityEventReasons.get(entity + ":" + kind);
+    }
+
+    @EventHandler
+    public void drop(PlayerDropItemEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":drop", 1, Integer::sum);
+        entityEventReasons.put(id + ":drop", event.getItemDrop().getUniqueId().toString());
+        if (behavior.equals("DROP_CANCEL")) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void sign(SignChangeEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":sign", 1, Integer::sum);
+        entityEventReasons.put(id + ":sign", event.getSide().name());
+        if (behavior.equals("SIGN_CANCEL")) event.setCancelled(true);
+        if (behavior.equals("SIGN_MODIFY")) event.setLine(0, "plugin edit");
     }
 
     @EventHandler

@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import com.llamalad7.mixinextras.sugar.Local;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.crafting.*;
@@ -50,22 +49,10 @@ public abstract class RecipeMapMixin implements RecipeMapBridge {
     }
     */
     
-    /**
-     * Use @ModifyReturnValue here so fabric-api can inject during HEAD.
-     * 
-     * @see {@link net.fabricmc.fabric.impl.recipe.sync.SyncedSerializerAwarePreparedRecipe}
-     * 
-     * @author Cardboard Mod
-     */
     @ModifyReturnValue(method = "create", at = @At("RETURN"))
-    private static RecipeMap cardboard$recipemap_create_make_return_mutable(
-    		RecipeMap original,
-    		@Local ImmutableMultimap.Builder<RecipeType<?>, RecipeHolder<?>> byType,
-            @Local ImmutableMap.Builder<ResourceKey<Recipe<?>>, RecipeHolder<?>> byKey
-        ) {
-
-
-        return new RecipeMap(com.google.common.collect.LinkedHashMultimap.create(byType.build()), com.google.common.collect.Maps.newLinkedHashMap(byKey.build()));
+    private static RecipeMap cardboard$makeMutable(RecipeMap original) {
+        return new RecipeMap(LinkedHashMultimap.create(original.byType),
+                new LinkedHashMap<>(original.byKey));
     }
 
     @Override

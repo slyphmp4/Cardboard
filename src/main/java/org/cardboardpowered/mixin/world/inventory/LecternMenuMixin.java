@@ -68,13 +68,13 @@ public class LecternMenuMixin extends AbstractContainerMenuMixin implements Lect
                 case 3:
                     if (!entityhuman.mayBuild()) return false;
 
-                    PlayerTakeLecternBookEvent event = new PlayerTakeLecternBookEvent(player, ((CraftInventoryLectern) getBukkitView().getTopInventory()).getHolder());
+                    PlayerTakeLecternBookEvent event = new PlayerTakeLecternBookEvent(player, (org.bukkit.inventory.LecternInventory) getBukkitView().getTopInventory(), ((CraftInventoryLectern) getBukkitView().getTopInventory()).getHolder());
                     Bukkit.getServer().getPluginManager().callEvent(event);
                     if (event.isCancelled()) return false;
 
                     ItemStack itemstack = this.lectern.removeItemNoUpdate(0);
                     this.lectern.setChanged();
-                    if (!entityhuman.getInventory().add(itemstack))  entityhuman.drop(itemstack, false);
+                    if (!entityhuman.getInventory().add(itemstack))  entityhuman.drop(itemstack, false, net.minecraft.util.Prediction.SERVER_ONLY);
 
                     return true;
                 default:

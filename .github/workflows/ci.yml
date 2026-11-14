@@ -3,10 +3,10 @@ name: Cardboard CI
 on:
   pull_request:
     branches:
-      - ver/26.2
+      - ver/26.3
   push:
     branches:
-      - ver/26.2
+      - ver/26.3
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  port263-hardening:
+    name: Production JAR + custom mod (${{ matrix.stack }})
+    needs: cardboard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [stock, performance]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+      - name: Build production JAR and independent regression fixtures
+        run: |
+          ./gradlew build --no-daemon --max-workers=2
+          ./gradlew -p tools/port263-fixture build --no-daemon --max-workers=2
+          ./gradlew -p tools/compatibility/plugin build --no-daemon --max-workers=2
+          ./gradlew -p tools/torture/plugin build --no-daemon --max-workers=2
+      - name: Check RCON framing
+        run: python3 -m unittest discover -s tools/ci/tests -v
+      - name: Verify APIs, mod content, workload and saved world restart
+        run: python3 tools/ci/port263_hardening.py --stack ${{ matrix.stack }} --directory build/hardening-server --duration 1800
+      - name: Upload hardening diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: port263-hardening-${{ matrix.stack }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            build/hardening-server/console-*.log
+            build/hardening-server/*.json
+            build/hardening-server/*.txt
+            build/hardening-server/acceptance/**
+            build/hardening-server/logs/**
+            build/hardening-server/crash-reports/**
+            build/hardening-server/plugins/CardboardPort263Audit/*.json
+          if-no-files-found: ignore
+
+  port263-runtime:
+    name: Minecraft 26.3 API runtime smoke
+    needs: cardboard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+      - name: Verify new entities, brewing, particles and chunk queries
+        run: bash tools/ci/port-263-smoke.sh
+      - name: Upload runtime diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: port263-runtime-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            port263-smoke.log
+            run/logs/**
+            run/crash-reports/**
+          if-no-files-found: ignore
+
   integrated-client:
     name: Integrated client two-world lifecycle smoke
     needs: cardboard
@@ -53,11 +125,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: integrated-client-smoke-${{ github.run_id }}
+          name: integrated-client-smoke-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             integrated-client-smoke.log
             run-integrated-smoke/logs/**
             run-integrated-smoke/crash-reports/**
+            run-integrated-smoke/hs_err_pid*.log
             run-integrated-smoke/integrated-smoke.success
           if-no-files-found: ignore
           retention-days: 7
@@ -95,7 +168,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: integrated-lan-luckperms-${{ github.run_id }}
+          name: integrated-lan-luckperms-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             integrated-lan-*.log
             run-integrated-smoke/logs/**
@@ -104,6 +177,9 @@ jobs:
             run-integrated-smoke/crash-reports/**
             run-integrated-guest/crash-reports/**
             run-luckperms-smoke/crash-reports/**
+            run-integrated-smoke/hs_err_pid*.log
+            run-integrated-guest/hs_err_pid*.log
+            run-luckperms-smoke/hs_err_pid*.log
             build/integrated-lan-exchange/**
           if-no-files-found: ignore
           retention-days: 7
@@ -130,7 +206,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
-          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.2' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.3' }}
 
       - name: Build and test Cardboard
         run: ./gradlew clean build --no-daemon --stacktrace
@@ -139,7 +215,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-${{ github.sha }}
+          name: cardboard-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: build/libs/Cardboard-*.jar
           if-no-files-found: error
           compression-level: 0
@@ -149,7 +225,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-failure-reports-${{ github.run_id }}
+          name: cardboard-failure-reports-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             build/reports/tests/**
             build/test-results/**
@@ -158,7 +234,7 @@ jobs:
           retention-days: 7
 
   nightcore-compatibility:
-    name: NightCore 2.16.4 + ExcellentEnchants 5.4.3 smoke
+    name: NightCore 2.16.7 + ExcellentEnchants 5.4.3 smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -197,9 +273,9 @@ jobs:
           pause-when-empty-seconds=0
           EOF
           curl --fail --location --retry 3 \
-            https://api.modrinth.com/maven/maven/modrinth/Y4NRwMW5/vDmXDRvE/Y4NRwMW5-vDmXDRvE.jar \
-            --output run/plugins/nightcore-2.16.4.jar
-          echo '0449d8700b41f13a458caedb68f9959db35f89d01ea05ef0d0907812484aa8ab  run/plugins/nightcore-2.16.4.jar' | sha256sum --check
+            https://cdn.modrinth.com/data/Y4NRwMW5/versions/HwbIRRCo/nightcore-2.16.7.jar \
+            --output run/plugins/nightcore-2.16.7.jar
+          echo '645c643635ef0add0e38fa82cf6609a2350b5ea28e257ab2fc93a017864bc301  run/plugins/nightcore-2.16.7.jar' | sha256sum --check
           curl --fail --location --retry 3 \
             https://cdn.modrinth.com/data/QufNAmjx/versions/AT68K28Z/ExcellentEnchants-5.4.3.jar \
             --output run/plugins/ExcellentEnchants-5.4.3.jar
@@ -268,7 +344,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: nightcore-compatibility-${{ github.run_id }}
+          name: nightcore-compatibility-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: nightcore-compatibility.log
           if-no-files-found: ignore
           retention-days: 7
@@ -303,7 +379,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: common-plugins-smoke-${{ github.run_id }}
+          name: common-plugins-smoke-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: common-plugins-smoke.log
           if-no-files-found: ignore
           retention-days: 7
@@ -312,7 +388,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-passive-effects-probe-${{ github.sha }}
+          name: cardboard-passive-effects-probe-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: run/plugins/CardboardPassiveEffectsProbe.jar
           if-no-files-found: error
           compression-level: 0
@@ -355,7 +431,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
-          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.2' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.3' }}
 
       - name: Test reproducibility verifier
         run: >-
@@ -373,7 +449,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: reproducibility-failure-${{ github.run_id }}
+          name: reproducibility-failure-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: checkout-a/build/reports/reproducibility/**
           if-no-files-found: ignore
           compression-level: 0
@@ -405,7 +481,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
-          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.2' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/ver/26.3' }}
 
       - name: Build and test torture plugin
         run: ./gradlew -p tools/torture/plugin clean build --no-daemon --stacktrace
@@ -424,7 +500,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-torture-plugin-${{ github.sha }}
+          name: cardboard-torture-plugin-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: tools/torture/plugin/build/libs/cardboard-torture-plugin-*.jar
           if-no-files-found: error
           compression-level: 0
@@ -434,7 +510,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: torture-harness-failure-reports-${{ github.run_id }}
+          name: torture-harness-failure-reports-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             tools/torture/plugin/build/reports/tests/**
             tools/torture/plugin/build/test-results/**

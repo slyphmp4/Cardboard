@@ -81,7 +81,6 @@ accessible	field	net/minecraft/world/entity/LivingEntity	lastDamageStamp	J
 mutable	field	net/minecraft/world/entity/LivingEntity	lastDamageStamp	J
 accessible	field	net/minecraft/world/entity/LivingEntity	brain	Lnet/minecraft/world/entity/ai/Brain;
 accessible	method	net/minecraft/world/entity/LivingEntity	isAlwaysExperienceDropper	()Z
-accessible	method	net/minecraft/world/entity/LivingEntity	blockedByItem	(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/damagesource/DamageSource;F)V
 accessible	method	net/minecraft/world/entity/LivingEntity	createWitherRose	(Lnet/minecraft/world/entity/LivingEntity;)V
 accessible	method	net/minecraft/world/entity/LivingEntity	jumpFromGround	()V
 accessible	method	net/minecraft/world/entity/LivingEntity	doAutoAttackOnTouch	(Lnet/minecraft/world/entity/LivingEntity;)V
@@ -108,9 +107,6 @@ mutable	field	net/minecraft/world/entity/item/ItemEntity	target	Ljava/util/UUID;
 accessible	method	net/minecraft/world/entity/item/ItemEntity	merge	(Lnet/minecraft/world/entity/item/ItemEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)V
 accessible	method	net/minecraft/world/entity/item/ItemEntity	merge	(Lnet/minecraft/world/entity/item/ItemEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/entity/item/ItemEntity;Lnet/minecraft/world/item/ItemStack;)V
 accessible	class	net/minecraft/world/entity/monster/zombie/Zombie$ZombieAttackTurtleEggGoal
-accessible	field	net/minecraft/world/entity/monster/zombie/Zombie	conversionTime	I
-mutable	field	net/minecraft/world/entity/monster/zombie/Zombie	conversionTime	I
-accessible	method	net/minecraft/world/entity/monster/zombie/Zombie	startUnderWaterConversion	(I)V
 # accessible	field	net/minecraft/entity/player/PlayerInventory	combinedInventory	Ljava/util/List;
 # mutable	field	net/minecraft/entity/player/PlayerInventory	combinedInventory	Ljava/util/List;
 accessible	method	net/minecraft/world/entity/player/Inventory	hasRemainingSpaceForItem	(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z
@@ -276,9 +272,6 @@ extendable	class	net/minecraft/core/BlockPos$1
 extendable	class	net/minecraft/core/BlockPos$2
 accessible	field	net/minecraft/core/BlockPos$2	nextPos	Lnet/minecraft/core/BlockPos$MutableBlockPos;
 mutable	field	net/minecraft/core/BlockPos$2	nextPos	Lnet/minecraft/core/BlockPos$MutableBlockPos;
-extendable	class	net/minecraft/core/Direction$Axis$1
-extendable	class	net/minecraft/core/Direction$Axis$2
-extendable	class	net/minecraft/core/Direction$Axis$3
 # accessible	field	net/minecraft/util/math/Direction$Axis	name	Ljava/lang/String;
 # mutable	field	net/minecraft/util/math/Direction$Axis	name	Ljava/lang/String;
 extendable	class	net/minecraft/core/Direction
@@ -743,7 +736,6 @@ accessible method net/minecraft/world/item/crafting/RecipeMap <init> (Lcom/googl
 accessible field net/minecraft/world/item/crafting/RecipeManager recipes Lnet/minecraft/world/item/crafting/RecipeMap;
 accessible field net/minecraft/world/item/crafting/RecipeMap byType Lcom/google/common/collect/Multimap;
 accessible field net/minecraft/world/item/crafting/RecipeMap byKey Ljava/util/Map;
-accessible field net/minecraft/world/item/crafting/TransmuteRecipe result Lnet/minecraft/world/item/ItemStackTemplate;
 accessible field net/minecraft/world/item/crafting/TransmuteRecipe input Lnet/minecraft/world/item/crafting/Ingredient;
 accessible field net/minecraft/world/item/crafting/TransmuteRecipe material Lnet/minecraft/world/item/crafting/Ingredient;
 accessible field net/minecraft/world/item/crafting/SmithingTrimRecipe template Lnet/minecraft/world/item/crafting/Ingredient;
@@ -841,13 +833,9 @@ accessible field net/minecraft/world/entity/animal/turtle/Turtle goingHome Z
 accessible method net/minecraft/world/entity/animal/turtle/Turtle setHasEgg (Z)V
 accessible field net/minecraft/world/entity/item/PrimedTnt explosionPower F
 accessible field net/minecraft/world/entity/item/PrimedTnt owner Lnet/minecraft/world/entity/EntityReference;
-accessible field net/minecraft/world/entity/monster/skeleton/Skeleton conversionTime I
 accessible field net/minecraft/world/entity/monster/skeleton/Skeleton DATA_STRAY_CONVERSION_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
-accessible field net/minecraft/world/entity/monster/skeleton/Skeleton inPowderSnowTime I
 accessible method net/minecraft/world/entity/animal/feline/Ocelot isTrusting ()Z
 accessible method net/minecraft/world/entity/animal/feline/Ocelot setTrusting (Z)V
-accessible method net/minecraft/world/entity/monster/EnderMan teleport ()Z
-accessible method net/minecraft/world/entity/monster/EnderMan teleportTowards (Lnet/minecraft/world/entity/Entity;)Z
 accessible field net/minecraft/world/entity/monster/Endermite life I
 accessible field net/minecraft/world/entity/animal/cow/MushroomCow stewEffects Lnet/minecraft/world/item/component/SuspiciousStewEffects;
 accessible field net/minecraft/world/entity/monster/zombie/Zombie DATA_DROWNED_CONVERSION_ID Lnet/minecraft/network/syncher/EntityDataAccessor;
@@ -963,3 +951,26 @@ accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$Cube
 accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobFloatGoal
 accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobRandomDirectionGoal
 accessible	class	net/minecraft/world/entity/monster/cubemob/AbstractCubeMob$CubeMobKeepOnJumpingGoal
+
+# 26.3: expose vanilla entity physics and attack eligibility for Bukkit.
+accessible method net/minecraft/world/entity/Entity getAirDrag ()F
+accessible method net/minecraft/world/entity/player/Player canCriticalAttack (Lnet/minecraft/world/entity/Entity;)Z
+
+accessible method net/minecraft/world/entity/Entity getGravity ()D
+accessible method net/minecraft/world/entity/monster/Enderman teleport ()Z
+accessible method net/minecraft/world/entity/monster/Enderman teleportTowards (Lnet/minecraft/world/entity/Entity;)Z
+mutable field net/minecraft/server/ServerAdvancementManager advancements Ljava/util/Map;
+
+# 26.3: context-aware fuel and component APIs.
+accessible method net/minecraft/world/level/storage/loot/LootContext <init> (Lnet/minecraft/world/level/storage/loot/LootParams;Lnet/minecraft/util/RandomSource;Lnet/minecraft/core/HolderGetter$Provider;)V
+accessible field net/minecraft/world/level/block/entity/SignBlockEntity allowOpFeatures Z
+accessible field net/minecraft/world/entity/monster/zombie/Zombie drowningTracker Lnet/minecraft/world/entity/ConversionTracker;
+accessible field net/minecraft/world/entity/monster/skeleton/Skeleton freezingTracker Lnet/minecraft/world/entity/ConversionTracker;
+accessible field net/minecraft/world/entity/ConversionTracker conversionTime I
+accessible field net/minecraft/world/entity/ConversionTracker afflictionTime I
+accessible method net/minecraft/world/entity/ConversionTracker setConverting (Z)V
+accessible method net/minecraft/world/item/crafting/TransmuteRecipe resultDisplay (I)Lnet/minecraft/world/item/crafting/display/SlotDisplay;
+accessible field net/minecraft/world/item/crafting/TransmuteRecipe result Lnet/minecraft/world/item/crafting/TransmuteResult;
+accessible method net/minecraft/server/level/ServerLevel sendParticles (Lnet/minecraft/server/level/ServerPlayer;ZDDDLnet/minecraft/network/protocol/Packet;)Z
+
+accessible method net/minecraft/world/entity/Entity getDefaultGravity ()D

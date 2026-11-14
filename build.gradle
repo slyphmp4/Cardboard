@@ -13,7 +13,7 @@ import java.nio.file.Files
 import java.time.Instant
 
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17.11'
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
     id 'maven-publish'
     id 'com.gradleup.shadow' version '9.6.1'
     id 'java-library'
@@ -163,8 +163,8 @@ configurations.all {
 }
 
 // Paper-API
-def PAPER_VER_A = "26.2.build.129-stable" // "26.1.2.build.69-stable"
-def PAPER_VER_B = "26.2.build.129-stable" // "26.1.2.build.69-stable"
+def PAPER_VER_A = "26.3.build.249-stable"
+def PAPER_VER_B = "26.3.build.249-stable"
 
 def PAPER_API_VER = "io.papermc.paper:paper-api:" + PAPER_VER_B
 
@@ -398,7 +398,7 @@ modrinth {
     versionNumber = project.mod_version + "-" + System.env.BUILD_NUMBER
     versionType = "beta"
     uploadFile = reproducibleJar
-    gameVersions = ["26.2"]
+    gameVersions = ["26.3"]
     loaders = ["fabric"]
 }
 
@@ -447,7 +447,7 @@ if (project.hasProperty('integratedSmoke')) {
     }
     if (project.hasProperty('lanSmoke')) {
         repositories { maven { url = 'https://api.modrinth.com/maven' } }
-        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2
+        dependencies { runtimeOnly 'maven.modrinth:Vebnzrzj:DzQPkkXY' } // LuckPerms Fabric 5.5.85, supports 26.2 and 26.3
     }
     loom {
         mods {
@@ -523,10 +523,18 @@ if (project.hasProperty('integratedSmoke')) {
                 copy { from fixtureJar; from bootstrapFixtureJar; into new File(hostDir, 'plugins') }
                 copy { from fixtureJar; into new File(serverDir, 'plugins') }
                 new File(serverDir, 'eula.txt').text = 'eula=true\n'
-                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\n'
+                new File(serverDir, 'server.properties').text = 'online-mode=false\nserver-port=25579\nlevel-name=luckperms-smoke\nview-distance=2\nsimulation-distance=3\npause-when-empty-seconds=-1\nwhite-list=true\nenforce-whitelist=false\n'
+                // 26.3 enables the whitelist by default. Admit only this fixture's
+                // offline guest, retaining the native login and permission checks.
+                def guestId = UUID.nameUUIDFromBytes('OfflinePlayer:SmokeGuest'.getBytes(StandardCharsets.UTF_8))
+                new File(serverDir, 'whitelist.json').text = groovy.json.JsonOutput.toJson([[uuid: guestId.toString(), name: 'SmokeGuest']])
                 def launches = ['runClient', 'runSmokeGuest', 'runLuckPermsServer'].withIndex().collect { name, i ->
                     def run = tasks.named(name).get()
                     run.maxHeapSize = '2G'
+                    // Each concurrent JVM owns its extracted libraries; a loaded
+                    // native library must not be overwritten by another launch.
+                    def nativeDir = new File([hostDir, guestDir, serverDir][i], 'native-libraries')
+                    run.jvmArgs "-Dorg.lwjgl.system.SharedLibraryExtractPath=${nativeDir.absolutePath}"
                     def args = [run.javaLauncher.get().executablePath.asFile.absolutePath] + run.allJvmArgs + [run.mainClass.get()] + run.args
                     run.argumentProviders.each { args.addAll(it.asArguments()) }
                     [command: args, cwd: [hostDir, guestDir, serverDir][i].absolutePath]

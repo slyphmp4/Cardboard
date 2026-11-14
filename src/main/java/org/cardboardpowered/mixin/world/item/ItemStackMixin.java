@@ -299,7 +299,7 @@ public abstract class ItemStackMixin implements ItemStackBridge {
         // Paper end - add param to skip infinite mats check
         if (entity.level() instanceof ServerLevel serverLevel) {
             this.hurtAndBreak(
-                    amount, serverLevel, entity, item -> {if (slot != null) entity.onEquippedItemBroken(item, slot); }, force // Paper - Add EntityDamageItemEvent & itemstack damage API - do not process entity related callbacks when damaging from API
+                    amount, serverLevel, entity, item -> {if (slot != null) entity.onEquippedItemBroken(new ItemStack(item), slot); }, force // Paper - Add EntityDamageItemEvent & itemstack damage API - do not process entity related callbacks when damaging from API
             );
         }
     }

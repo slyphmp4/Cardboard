@@ -5,8 +5,8 @@ import net.minecraft.world.item.Item;
 
 public class CardboardModdedItem implements CardboardModdedMaterial {
 
-    private Item item;
-    private String id;
+    private final Item item;
+    private final String id;
 
     public CardboardModdedItem(String id) {
         this.id = id;
@@ -15,14 +15,12 @@ public class CardboardModdedItem implements CardboardModdedMaterial {
 
     public CardboardModdedItem(Item item) {
         this.item = item;
+        this.id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
     }
 
     @Override
     public short getDamage() {
-    	
-    	return item.components().get(DataComponents.MAX_DAMAGE).shortValue();
-    	
-        // return (short) item.getMaxDamage();
+        return item.components().getOrDefault(DataComponents.MAX_DAMAGE, 0).shortValue();
     }
 
     @Override
