@@ -234,6 +234,142 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
         } else {
             results.put("custom-mod", "SKIP: independent Fabric fixture not installed");
         }
+        if (fixtureInstalled) {
+            verifyWorldQueries(world);
+            verifyDragon(this::verifyRecipes);
+        } else {
+            verifyRecipes();
+        }
+    }
+
+    private Object nativeWorld(World world) throws Exception {
+        return world.getClass().getMethod("getHandle").invoke(world);
+    }
+
+    private void verifyWorldQueries(World world) {
+        check("structure-locate-overloads", () -> {
+            var fixture = Class.forName("org.cardboardpowered.test.Port263Fixture");
+            var level = Class.forName("net.minecraft.server.level.ServerLevel");
+            var origin = world.getSpawnLocation();
+            var expected = (int[]) fixture.getMethod("nearestVillage", level, int.class, int.class, int.class)
+                    .invoke(null, nativeWorld(world), origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
+            var result = world.locateNearestStructure(origin, org.bukkit.generator.structure.Structure.VILLAGE_PLAINS, 32, false);
+            require(result != null, "Structure API did not locate native village");
+            require(result.getStructure().equals(org.bukkit.generator.structure.Structure.VILLAGE_PLAINS), "Wrong structure variant");
+            require(result.getLocation().getBlockX() == expected[0] && result.getLocation().getBlockZ() == expected[2], "Native and Bukkit locations disagree");
+            var byType = world.locateNearestStructure(origin, org.bukkit.generator.structure.StructureType.JIGSAW, 32, false);
+            require(byType != null && byType.getLocation().equals(result.getLocation()), "Structure type overload disagrees");
+            require(result.getLocation().equals(world.locateNearestStructure(origin, org.bukkit.StructureType.VILLAGE, 32, false)), "Legacy village mapping disagrees");
+            require(world.locateNearestStructure(origin, org.bukkit.StructureType.MINESHAFT, 0, false) == null, "Flat fixture unexpectedly has mineshafts");
+            var changed = result.getLocation(); changed.setX(0);
+            require(result.getLocation().getBlockX() == expected[0], "Search result location aliases mutable caller state");
+            expectIllegal(() -> world.locateNearestStructure(origin, org.bukkit.generator.structure.Structure.VILLAGE_PLAINS, -1, false));
+        });
+        check("structure-presence-key", () -> {
+            var origin = world.getSpawnLocation();
+            var fixture = Class.forName("org.cardboardpowered.test.Port263Fixture");
+            var expected = (boolean) fixture.getMethod("hasVillageAt", Class.forName("net.minecraft.server.level.ServerLevel"), int.class, int.class, int.class)
+                    .invoke(null, nativeWorld(world), origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
+            require(world.hasStructureAt(origin, org.bukkit.generator.structure.Structure.VILLAGE_PLAINS) == expected, "Structure presence differs from native manager");
+        });
+        check("raid-enumeration-id-radius", () -> {
+            var fixture = Class.forName("org.cardboardpowered.test.Port263Fixture");
+            var install = fixture.getMethod("installRaidProbe", Class.forName("net.minecraft.server.level.ServerLevel"), int.class, int.class, int.class, boolean.class);
+            var origin = world.getSpawnLocation();
+            try (var ignored = (AutoCloseable) install.invoke(null, nativeWorld(world), origin.getBlockX(), origin.getBlockY(), origin.getBlockZ(), false)) {
+                var near = world.getRaid(941263);
+                require(near != null && near.getId() == 941263, "Native raid ID lookup is missing");
+                require(world.getRaids().contains(near), "Native raid is absent from enumeration");
+                require(near.equals(world.locateNearestRaid(origin, 6)), "Nearest active raid differs");
+                require(world.locateNearestRaid(origin, 3) == null, "Out-of-radius raid was returned");
+            }
+            try (var ignored = (AutoCloseable) install.invoke(null, nativeWorld(world), origin.getBlockX(), origin.getBlockY(), origin.getBlockZ(), true)) {
+                var far = world.locateNearestRaid(origin, 60_000);
+                require(far != null && far.getId() == 941264, "Squared raid radius overflowed");
+            }
+            require(world.getRaid(941263) == null && world.getRaid(941264) == null, "Raid fixture leaked state");
+            expectIllegal(() -> world.locateNearestRaid(origin, -1));
+        });
+    }
+
+    private void verifyDragon(Runnable continuation) {
+        World end = Bukkit.getWorlds().stream().filter(w -> w.getEnvironment() == World.Environment.THE_END).findFirst().orElseThrow();
+        Object[] state;
+        int[] position = null;
+        Class<?> fixture;
+        Class<?> level;
+        Object nativeEnd;
+        try {
+            require(end.getEnderDragonBattle() != null, "End world exposes no native dragon battle");
+            fixture = Class.forName("org.cardboardpowered.test.Port263Fixture");
+            level = Class.forName("net.minecraft.server.level.ServerLevel");
+            nativeEnd = nativeWorld(end);
+            position = (int[]) fixture.getMethod("healingCrystalPosition", level).invoke(null, nativeEnd);
+            end.addPluginChunkTicket(position[0] >> 4, position[2] >> 4, this);
+            state = (Object[]) fixture.getMethod("prepareDragonProbe", level).invoke(null, nativeEnd);
+        } catch (Throwable failure) {
+            if (position != null) end.removePluginChunkTicket(position[0] >> 4, position[2] >> 4, this);
+            check("dragon-battle-native-state", () -> { throw new AssertionError("Dragon probe setup", failure); });
+            continuation.run();
+            return;
+        }
+        final int[] anchor = position;
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            check("dragon-battle-native-state", () -> {
+                try {
+                    var battle = end.getEnderDragonBattle();
+                    require(battle.getBossBar() != null, "Native dragon boss bar is missing");
+                    boolean killed = battle.hasBeenPreviouslyKilled();
+                    battle.setPreviouslyKilled(!killed);
+                    require(battle.hasBeenPreviouslyKilled() != killed, "Dragon history setter did nothing");
+                    battle.setPreviouslyKilled(killed);
+                    require(battle.getRespawnPhase() == org.bukkit.boss.DragonBattle.RespawnPhase.NONE, "Unexpected initial respawn phase");
+                    require(!battle.setRespawnPhase(org.bukkit.boss.DragonBattle.RespawnPhase.START), "Phase setter succeeded without active respawn");
+                    expectIllegal(() -> battle.setRespawnPhase(org.bukkit.boss.DragonBattle.RespawnPhase.NONE));
+                    if (battle.getEndPortalLocation() == null) require(battle.generateEndPortal(false), "Portal generation did nothing");
+                    require(battle.getEndPortalLocation() != null && !battle.generateEndPortal(false), "Portal getter/idempotence is broken");
+                    var crystal = (org.bukkit.entity.EnderCrystal) Bukkit.getEntity((java.util.UUID) state[1]);
+                    require(crystal != null && crystal.isValid(), "Probe crystal did not enter entity tracking");
+                    var healers = battle.getHealingCrystals();
+                    require(healers.contains(crystal), "Live spike crystal is absent from healing snapshot");
+                    try { healers.clear(); throw new AssertionError("Mutable healing snapshot"); } catch (UnsupportedOperationException expected) { }
+                    battle.resetCrystals();
+                    require(crystal.getBeamTarget() == null && !crystal.isInvulnerable(), "Crystal reset did not reach native entity");
+                    int gateways = battle.getGatewayCount();
+                    require(gateways >= 0 && gateways <= 20, "Invalid gateway count");
+                    require(battle.spawnNewGateway() == (gateways < 20), "Native gateway spawn result differs");
+                    require(battle.getGatewayCount() == Math.min(20, gateways + 1), "Gateway count did not advance");
+                    var customGateway = new org.bukkit.Location(end, 24, 80, 24);
+                    customGateway.getBlock().setType(Material.AIR, false);
+                    battle.spawnNewGateway(customGateway);
+                    require(customGateway.getBlock().getType() == Material.END_GATEWAY, "Custom-position gateway was not placed");
+                    fixture.getMethod("readyDragonRespawn", level).invoke(null, nativeEnd);
+                    require(battle.initiateRespawn(List.of(crystal)), "Crystal respawn was not initiated");
+                    var respawn = battle.getRespawnCrystals();
+                    require(respawn.contains(crystal), "EntityReference crystal did not resolve");
+                    try { respawn.clear(); throw new AssertionError("Mutable respawn snapshot"); } catch (UnsupportedOperationException expected) { }
+                    crystal.remove();
+                    require(!battle.getRespawnCrystals().contains(crystal), "Removed crystal remained in live lookup");
+                    fixture.getMethod("readyDragonRespawn", level).invoke(null, nativeEnd);
+                    require(battle.initiateRespawn((java.util.Collection<org.bukkit.entity.EnderCrystal>) null), "Empty-crystal respawn was not initiated");
+                    require(battle.getRespawnCrystals().isEmpty(), "Empty-crystal respawn invented crystals");
+                    require(battle.setRespawnPhase(org.bukkit.boss.DragonBattle.RespawnPhase.PREPARING_TO_SUMMON_PILLARS)
+                            && battle.getRespawnPhase() == org.bukkit.boss.DragonBattle.RespawnPhase.PREPARING_TO_SUMMON_PILLARS, "Native respawn phase did not change");
+                } finally {
+                    try { fixture.getMethod("cleanupDragonProbe", level, Object[].class).invoke(null, nativeEnd, state); }
+                    finally { end.removePluginChunkTicket(anchor[0] >> 4, anchor[2] >> 4, this); }
+                }
+            });
+            continuation.run();
+        }, 20);
+    }
+
+    private static void expectIllegal(Runnable action) {
+        try { action.run(); } catch (IllegalArgumentException expected) { return; }
+        throw new AssertionError("Invalid API argument was accepted");
+    }
+
+    private void verifyRecipes() {
         var original = Bukkit.getRecipe(NamespacedKey.minecraft("oak_planks"));
         var customKey = new NamespacedKey(this, "reset_probe");
         check("recipe-reset-start", () -> {

@@ -113,7 +113,7 @@ def production_jar(root=ROOT):
 
 
 def write_server_properties(directory, password):
-    flat = json.dumps({'biome': 'minecraft:plains', 'layers': [
+    flat = json.dumps({'biome': 'minecraft:plains', 'structure_overrides': ['minecraft:villages'], 'layers': [
         {'block': 'minecraft:bedrock', 'height': 1},
         {'block': 'minecraft:dirt', 'height': 2},
         {'block': 'minecraft:grass_block', 'height': 1},
@@ -121,7 +121,7 @@ def write_server_properties(directory, password):
     (directory / 'server.properties').write_text(
         f'online-mode=false\nserver-ip=127.0.0.1\nserver-port=25589\nenable-rcon=true\n'
         f'rcon.port=25590\nrcon.password={password}\nbroadcast-rcon-to-ops=false\n'
-        f'level-name=audit-world\nlevel-type=minecraft:flat\ngenerator-settings={flat}\ngenerate-structures=false\n'
+        f'level-name=audit-world\nlevel-type=minecraft:flat\ngenerator-settings={flat}\ngenerate-structures=true\n'
         'spawn-protection=0\nview-distance=3\nsimulation-distance=3\npause-when-empty-seconds=0\nwhite-list=true\n')
 
 
@@ -219,7 +219,7 @@ def probe(directory, rcon, command):
     result = directory / 'plugins/CardboardPort263Audit/results.json'
     result.unlink(missing_ok=True)
     print(rcon.command('port263audit ' + command), flush=True)
-    wait_until(result.exists, 45, 'API probe did not finish')
+    wait_until(result.exists, 120, 'API probe did not finish')
     values = json.loads(result.read_text())
     (directory / f'probe-{command}.json').write_text(json.dumps(values, indent=2))
     if not values or any(value != 'PASS' for value in values.values()):

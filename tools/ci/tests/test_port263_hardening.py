@@ -36,6 +36,8 @@ class ServerFixtureTests(unittest.TestCase):
             self.assertEqual('minecraft:flat', values['level-type'])
             settings = json.loads(values['generator-settings'])
             self.assertEqual('minecraft:plains', settings['biome'])
+            self.assertEqual(['minecraft:villages'], settings['structure_overrides'])
+            self.assertEqual('true', values['generate-structures'])
             self.assertTrue(settings['layers'])
             self.assertTrue(all(layer['height'] > 0 and layer['block'].startswith('minecraft:')
                                 for layer in settings['layers']))
