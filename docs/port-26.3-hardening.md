@@ -134,8 +134,7 @@ Fixture-only commit `d9bf0342` reproduced two failures on both stock and
 performance matrices: Location biome reads and stored biome mutation. All other
 17 groups passed on that unchanged production baseline (CI run `43627571714`).
 
-Next batches remain separate: item-drop/explosion/tree
-overloads; POI/legacy biome searches and structure templates; raid PDC; world
+Next batches remain separate: tree generation; explosions; POI/legacy biome searches and structure templates; raid PDC; world
 settings/effects; player time/sleep behavior; server restart/command aliases.
 
 ## Ray tracing and line of sight
@@ -164,6 +163,28 @@ test-runner flag and shuts down its fresh disposable reference world after the
 probes. Its Jar is isolated from the production mod and normal API audit plugin.
 Implementation and test setup alone are not a runtime pass; validation belongs
 to the exact-head CI record in the PR.
+
+## Item drop overloads
+
+All exact and natural drop overloads share the existing callback-aware spawn
+gate. The callback runs once before ItemSpawnEvent, so listeners see its stack
+and pickup-delay edits. Cancellation leaves the returned Item unspawned, and a
+callback exception propagates before either the event or entity addition.
+
+The natural callback overload was previously stubbed; the two-argument paths
+also bypassed the common item-spawn event gate. Natural offsets now match Paper
+26.3: X/Z are within -0.25 to 0.25 of the supplied point, and Y includes the same
+centered offset minus half the item entity's type height. Caller Location and
+ItemStack values are preserved. The exact drop path retains its coordinates and
+default ten-tick pickup delay. Null location/stack arguments keep Paper's argument
+validation rather than silently returning null.
+
+Five additional groups check callback/event ordering and edits, cancellation of
+all four overloads, centered jitter and input copies, exact defaults/event count,
+and callback exception/null-argument behavior. All listeners and created Item
+entities are cleaned up even when a probe fails. The same groups join the pinned
+Paper public-API control (11 groups) and production Cardboard probe (30 groups).
+Exact-head runtime and saved-world/workload results belong in the PR record.
 
 ## Limits still requiring work
 

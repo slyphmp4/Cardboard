@@ -335,23 +335,13 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	@Override
-	public Item dropItem(Location loc, ItemStack arg1) {
-		ItemEntity entity = new ItemEntity(world, loc.getX(), loc.getY(), loc.getZ(), CraftItemStack.asNMSCopy(arg1));
-		entity.pickupDelay = 10;
-		world.addEntity(entity);
-		return (org.bukkit.entity.Item) (((EntityBridge) entity).getBukkitEntity());
+	public Item dropItem(Location location, ItemStack item) {
+		return this.dropItem(location, item, null);
 	}
 
 	@Override
-	public Item dropItemNaturally(Location loc, ItemStack arg1) {
-		double xs = (world.getRandom().nextFloat() * 0.5F) + 0.25D;
-		double ys = (world.getRandom().nextFloat() * 0.5F) + 0.25D;
-		double zs = (world.getRandom().nextFloat() * 0.5F) + 0.25D;
-		loc = loc.clone();
-		loc.setX(loc.getX() + xs);
-		loc.setY(loc.getY() + ys);
-		loc.setZ(loc.getZ() + zs);
-		return dropItem(loc, arg1);
+	public Item dropItemNaturally(Location location, ItemStack item) {
+		return this.dropItemNaturally(location, item, null);
 	}
 	
 	
@@ -2692,10 +2682,15 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public @NotNull Item dropItemNaturally(@NotNull Location arg0, @NotNull ItemStack arg1,
-	                                       @Nullable java.util.function.Consumer<? super Item> arg2) {
-		// TODO Auto-generated method stub
-		return null;
+	public @NotNull Item dropItemNaturally(@NotNull Location location, @NotNull ItemStack item,
+	                                       @Nullable java.util.function.Consumer<? super Item> function) {
+		Preconditions.checkArgument(location != null, "Location cannot be null");
+		Preconditions.checkArgument(item != null, "ItemStack cannot be null");
+		var random = this.world.getRandom();
+		double x = net.minecraft.util.Mth.nextDouble(random, -0.25, 0.25);
+		double y = net.minecraft.util.Mth.nextDouble(random, -0.25, 0.25) - net.minecraft.world.entity.EntityTypes.ITEM.getHeight() / 2.0;
+		double z = net.minecraft.util.Mth.nextDouble(random, -0.25, 0.25);
+		return this.dropItem(location.clone().add(x, y, z), item, function);
 	}
 
 	@Override
