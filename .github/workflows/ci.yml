@@ -50,7 +50,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: port263-hardening-${{ matrix.stack }}-${{ github.run_id }}
+          name: port263-hardening-${{ matrix.stack }}-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             build/hardening-server/console-*.log
             build/hardening-server/*.json
@@ -82,7 +82,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: port263-runtime-${{ github.run_id }}
+          name: port263-runtime-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             port263-smoke.log
             run/logs/**
@@ -125,7 +125,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: integrated-client-smoke-${{ github.run_id }}
+          name: integrated-client-smoke-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             integrated-client-smoke.log
             run-integrated-smoke/logs/**
@@ -168,7 +168,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: integrated-lan-luckperms-${{ github.run_id }}
+          name: integrated-lan-luckperms-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             integrated-lan-*.log
             run-integrated-smoke/logs/**
@@ -215,7 +215,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-${{ github.sha }}
+          name: cardboard-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: build/libs/Cardboard-*.jar
           if-no-files-found: error
           compression-level: 0
@@ -225,7 +225,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-failure-reports-${{ github.run_id }}
+          name: cardboard-failure-reports-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             build/reports/tests/**
             build/test-results/**
@@ -344,7 +344,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: nightcore-compatibility-${{ github.run_id }}
+          name: nightcore-compatibility-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: nightcore-compatibility.log
           if-no-files-found: ignore
           retention-days: 7
@@ -379,7 +379,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: common-plugins-smoke-${{ github.run_id }}
+          name: common-plugins-smoke-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: common-plugins-smoke.log
           if-no-files-found: ignore
           retention-days: 7
@@ -388,7 +388,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-passive-effects-probe-${{ github.sha }}
+          name: cardboard-passive-effects-probe-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: run/plugins/CardboardPassiveEffectsProbe.jar
           if-no-files-found: error
           compression-level: 0
@@ -449,7 +449,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: reproducibility-failure-${{ github.run_id }}
+          name: reproducibility-failure-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: checkout-a/build/reports/reproducibility/**
           if-no-files-found: ignore
           compression-level: 0
@@ -500,7 +500,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cardboard-torture-plugin-${{ github.sha }}
+          name: cardboard-torture-plugin-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: tools/torture/plugin/build/libs/cardboard-torture-plugin-*.jar
           if-no-files-found: error
           compression-level: 0
@@ -510,7 +510,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: torture-harness-failure-reports-${{ github.run_id }}
+          name: torture-harness-failure-reports-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             tools/torture/plugin/build/reports/tests/**
             tools/torture/plugin/build/test-results/**
