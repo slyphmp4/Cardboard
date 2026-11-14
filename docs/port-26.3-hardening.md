@@ -109,6 +109,33 @@ reported as expected compatibility warnings. The original log retains them.
 The same lines at ERROR level, other missing classes, or the stock matrix still
 fail the gate. This does not claim that ScalableLux/Starlight itself was tested.
 
+## Inherited API stubs: first incremental batch
+
+The first batch restores Location-based biome/block-state reads and all biome
+write paths in CraftWorld. Reads reuse CraftRegionAccessor and preserve floored
+negative coordinates and block-state snapshots. Writes update the stored 4x4x4
+biome cell, clamp Y like Paper, mark the chunk unsaved, and leave absent chunks
+unloaded. The legacy column setter includes the world's negative build heights.
+A narrow section bridge retains all neighboring palette entries and supports a
+read-only biome container by copying it before mutation.
+
+Three additional public API groups cover reads/snapshots, cell/column/height
+boundaries and no-load writes. The native fixture independently reads stored
+biomes, and the process-restart gate now verifies a changed biome alongside the
+existing custom entity/block/item component. All mutations in API probes restore
+the original blocks/biomes and release their chunk tickets. These checks are
+repeated on both stock and performance configurations after a full restart.
+Validation results for this batch are recorded separately from the earlier
+16-group run; adding probes alone is not evidence that they pass.
+
+Fixture-only commit `d9bf0342` reproduced two failures on both stock and
+performance matrices: Location biome reads and stored biome mutation. All other
+17 groups passed on that unchanged production baseline (CI run `43627571714`).
+
+Next batches remain separate: ray tracing/line of sight; item-drop/explosion/tree
+overloads; POI/legacy biome searches and structure templates; raid PDC; world
+settings/effects; player time/sleep behavior; server restart/command aliases.
+
 ## Limits still requiring work
 
 Cardboard contains inherited API stubs independent of this version migration.

@@ -174,6 +174,7 @@ import net.minecraft.world.phys.Vec3;
 import org.bukkit.*;
 import org.cardboardpowered.ChunkTicketBridge;
 import org.cardboardpowered.bridge.world.level.chunk.LevelChunkBridge;
+import org.cardboardpowered.bridge.world.level.chunk.LevelChunkSectionBridge;
 
 @SuppressWarnings("deprecation")
 /**
@@ -1626,14 +1627,15 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 	}
 
 	@Override
-	public void setBiome(int arg0, int arg1, Biome arg2) {
-		for(int y = 0; y < getMaxHeight(); y++)
-			setBiome(arg0, y, arg1, arg2);
+	public void setBiome(int x, int z, Biome biome) {
+		for (int y = getMinHeight(); y < getMaxHeight(); y++) {
+			setBiome(x, y, z, biome);
+		}
 	}
 
 	@Override
 	public void setBiome(int x, int y, int z, Biome bio) {
-		// TODO Auto-generated method stub
+		super.setBiome(x, y, z, bio);
 	}
 
 	@Override
@@ -2832,9 +2834,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public @NotNull Biome getBiome(@NotNull Location arg0) {
-		// TODO Auto-generated method stub
-		return null;
+	public @NotNull Biome getBiome(@NotNull Location location) {
+		return super.getBiome(location);
 	}
 
 	@Override
@@ -2848,9 +2849,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public @NotNull BlockState getBlockState(@NotNull Location arg0) {
-		// TODO Auto-generated method stub
-		return null;
+	public @NotNull BlockState getBlockState(@NotNull Location location) {
+		return super.getBlockState(location);
 	}
 
 	@Override
@@ -2869,9 +2869,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public void setBiome(@NotNull Location arg0, @NotNull Biome arg1) {
-		// TODO Auto-generated method stub
-
+	public void setBiome(@NotNull Location location, @NotNull Biome biome) {
+		super.setBiome(location, biome);
 	}
 
 	@Override
@@ -3226,9 +3225,16 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
     }
 
 	@Override
-	public void setBiome(int var1, int var2, int var3, Holder<net.minecraft.world.level.biome.Biome> var4) {
-		// TODO Auto-generated method stub
-		
+	public void setBiome(int x, int y, int z, Holder<net.minecraft.world.level.biome.Biome> biome) {
+		// Match Paper: changing a biome must not load or generate an absent chunk.
+		LevelChunk chunk = this.world.getChunkSource().getChunkNow(x >> 4, z >> 4);
+		if (chunk == null) {
+			return;
+		}
+		int clampedY = Math.clamp(y, this.getMinHeight(), this.getMaxHeight() - 1);
+		var section = chunk.getSection(chunk.getSectionIndex(clampedY));
+		((LevelChunkSectionBridge) section).cardboard$setBiome((x >> 2) & 3, (clampedY >> 2) & 3, (z >> 2) & 3, biome);
+		chunk.markUnsaved();
 	}
 
 	@Override
