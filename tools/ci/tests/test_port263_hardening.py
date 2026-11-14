@@ -49,6 +49,23 @@ class ServerFixtureTests(unittest.TestCase):
             log.write_text('[Server thread/INFO]: Done\n')
             hardening.verify_console_log(log)
 
+    def test_only_exact_pinned_optional_warnings_are_accepted_on_performance_stack(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / 'console-initial.log'
+            for target in ['integration/v0/ChunkSystemHooks', 'thread/SchedulingUtil']:
+                name = 'ca/spottedleaf/starlight/common/' + target
+                warning = f'[15:55:11] [main/WARN]: Error loading class: {name} (java.lang.ClassNotFoundException: {name})'
+                log.write_text(warning + '\n')
+                self.assertEqual([warning], hardening.verify_console_log(log, 'performance'))
+                with self.assertRaises(AssertionError):
+                    hardening.verify_console_log(log, 'stock')
+                for invalid in [warning.replace('/WARN', '/ERROR'),
+                                warning.replace(name, 'another/missing/Class'),
+                                warning + ' unexpected failure']:
+                    log.write_text(invalid + '\n')
+                    with self.assertRaises(AssertionError):
+                        hardening.verify_console_log(log, 'performance')
+
 
 class RconTests(unittest.TestCase):
     def test_collects_every_fragment_before_decoding_utf8(self):

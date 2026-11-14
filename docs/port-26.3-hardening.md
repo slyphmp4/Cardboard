@@ -102,6 +102,13 @@ checked immediately after startup as well as after shutdown, with matching
 lines included in failures. A complete run must also pass the subsequent restart
 and persisted-content checks; the partial runs are not full hardening passes.
 
+The pinned C2ME build probes two optional ScalableLux/Starlight classes at
+startup (`ChunkSystemHooks` and `SchedulingUtil`). Only their exact
+`main/WARN` class-not-found lines are accepted in the performance matrix and
+reported as expected compatibility warnings. The original log retains them.
+The same lines at ERROR level, other missing classes, or the stock matrix still
+fail the gate. This does not claim that ScalableLux/Starlight itself was tested.
+
 ## Limits still requiring work
 
 Cardboard contains inherited API stubs independent of this version migration.

@@ -21,6 +21,10 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = json.loads((Path(__file__).with_name('port263-mods.lock.json')).read_text())
+OPTIONAL_COMPAT_WARNING_RE = re.compile(
+    r'^\[\d{2}:\d{2}:\d{2}\] \[main/WARN\]: Error loading class: '
+    r'(?P<target>ca/spottedleaf/starlight/common/(?:integration/v0/ChunkSystemHooks|thread/SchedulingUtil)) '
+    r'\(java\.lang\.ClassNotFoundException: (?P=target)\)$')
 
 
 def download(url, target, algorithm=None, digest=None):
@@ -121,12 +125,23 @@ def write_server_properties(directory, password):
         'spawn-protection=0\nview-distance=3\nsimulation-distance=3\npause-when-empty-seconds=0\nwhite-list=true\n')
 
 
-def verify_console_log(path):
+def verify_console_log(path, stack='stock'):
     lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
-    errors = [line for line in lines if re.search(
-        r'\[(?:[^\]]*/)?(?:ERROR|SEVERE|FATAL)\]|Mixin apply failed|Exception', line)]
+    errors, expected = [], []
+    for line in lines:
+        if not re.search(r'\[(?:[^\]]*/)?(?:ERROR|SEVERE|FATAL)\]|Mixin apply failed|Exception', line):
+            continue
+        # The checksum-pinned C2ME JAR probes these two absent optional targets.
+        # Match the complete WARN line, never an ERROR or another missing class.
+        if stack == 'performance' and OPTIONAL_COMPAT_WARNING_RE.fullmatch(line):
+            expected.append(line)
+        else:
+            errors.append(line)
     if errors:
         raise AssertionError(f'Server errors in {path.name}:\n' + '\n'.join(errors[:10]))
+    if expected:
+        print(f'EXPECTED_OPTIONAL_COMPAT_WARNINGS {path.name}: {len(expected)} C2ME ScalableLux/Starlight probes', flush=True)
+    return expected
 
 
 def prepare(directory, stack):
@@ -268,7 +283,7 @@ def main():
     for phase in ['initial', 'restart']:
         process, output = start(directory, phase, java)
         try:
-            verify_console_log(directory / f'console-{phase}.log')
+            verify_console_log(directory / f'console-{phase}.log', args.stack)
             if phase == 'initial':
                 probe(directory, rcon, 'run')
                 rcon.command('minecraft:reload')
@@ -282,7 +297,7 @@ def main():
                 probe(directory, rcon, 'run')
         finally:
             stop(process, output)
-        verify_console_log(directory / f'console-{phase}.log')
+        verify_console_log(directory / f'console-{phase}.log', args.stack)
     (directory / 'success.json').write_text(json.dumps({'passed': True, 'duration_seconds': args.duration, 'stack': args.stack}))
     print('PORT263_HARDENING_PASS', flush=True)
 
