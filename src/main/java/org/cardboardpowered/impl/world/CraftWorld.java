@@ -1424,21 +1424,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public RayTraceResult rayTrace(Location start, Vector direction, double maxDistance, FluidCollisionMode mode, boolean ignorePassableBlocks, double raySize, Predicate<? super Entity> filter) {
-		RayTraceResult blockHit = this.rayTraceBlocks(start, direction, maxDistance, mode, ignorePassableBlocks);
-		Vector startVec = null;
-		double blockHitDistance = maxDistance;
-
-		if(blockHit != null) {
-			startVec = start.toVector();
-			blockHitDistance = startVec.distance(blockHit.getHitPosition());
-		}
-
-		RayTraceResult entityHit = this.rayTraceEntities(start, direction, blockHitDistance, raySize, filter);
-		if(blockHit == null) return entityHit;
-		if(entityHit == null) return blockHit;
-
-		double entityHitDistanceSquared = startVec.distanceSquared(entityHit.getHitPosition());
-		return (entityHitDistanceSquared < (blockHitDistance * blockHitDistance)) ? entityHit : blockHit;
+		return this.rayTrace((Position) start, direction, maxDistance, mode, ignorePassableBlocks, raySize, filter, null);
 	}
 
 	@Override
@@ -1453,25 +1439,7 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public RayTraceResult rayTraceBlocks(Location start, Vector direction, double maxDistance, FluidCollisionMode mode, boolean ignorePassableBlocks) {
-		Validate.notNull(start, "Start location equals null");
-		Validate.isTrue(this.equals(start.getWorld()), "Start location a different world");
-		start.checkFinite();
-
-		Validate.notNull(direction, "Direction equals null");
-		direction.checkFinite();
-
-		Validate.isTrue(direction.lengthSquared() > 0, "Direction's magnitude is 0");
-		Validate.notNull(mode, "mode equals null");
-
-		if(maxDistance < 0.0D) return null;
-
-		Vector dir = direction.clone().normalize().multiply(maxDistance);
-		Vec3 startPos = new Vec3(start.getX(), start.getY(), start.getZ());
-		Vec3 endPos = new Vec3(start.getX() + dir.getX(), start.getY() + dir.getY(), start.getZ() + dir.getZ());
-		HitResult nmsHitResult = this.getHandle().clip(new ClipContext(startPos, endPos, ignorePassableBlocks ?
-				ClipContext.Block.COLLIDER : ClipContext.Block.OUTLINE, CraftFluidCollisionMode.toFluid(mode), (net.minecraft.world.entity.Entity) null));
-
-		return CraftRayTraceResult.convertFromInternal((LevelAccessor) this, nmsHitResult);
+		return this.rayTraceBlocks((Position) start, direction, maxDistance, mode, ignorePassableBlocks, null);
 	}
 
 	@Override
@@ -2803,9 +2771,8 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	}
 
 	@Override
-	public boolean lineOfSightExists(@NotNull Location arg0, @NotNull Location arg1) {
-		// TODO Auto-generated method stub
-		return false;
+	public boolean lineOfSightExists(@NotNull Location from, @NotNull Location to) {
+		return super.lineOfSightExists(from, to);
 	}
 
 	@Override
@@ -3177,24 +3144,57 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	@Override
 	public @Nullable RayTraceResult rayTraceEntities(@NotNull Position start, @NotNull Vector direction,
 			double maxDistance, double raySize, @Nullable Predicate<? super Entity> filter) {
-		// TODO Auto-generated method stub
-		return null;
+		return this.rayTraceEntities(this.rayTraceStart(start), direction, maxDistance, raySize, filter);
 	}
 
 	@Override
 	public @Nullable RayTraceResult rayTraceBlocks(@NotNull Position start, @NotNull Vector direction,
 			double maxDistance, @NotNull FluidCollisionMode fluidCollisionMode, boolean ignorePassableBlocks,
 			@Nullable Predicate<? super Block> canCollide) {
-		// TODO Auto-generated method stub
-		return null;
+		return this.rayTraceBlocks(start, direction, maxDistance, fluidCollisionMode,
+				ignorePassableBlocks ? io.papermc.paper.raytracing.BlockCollisionMode.COLLIDER : io.papermc.paper.raytracing.BlockCollisionMode.OUTLINE, canCollide);
+	}
+
+	private Location rayTraceStart(Position start) {
+		Preconditions.checkArgument(start != null, "Location start cannot be null");
+		Preconditions.checkArgument(!(start instanceof Location location) || this.equals(location.getWorld()), "Location start cannot be in a different world");
+		Preconditions.checkArgument(start.isFinite(), "Location start is not finite");
+		return new Location(this, start.x(), start.y(), start.z());
+	}
+
+	public @Nullable RayTraceResult rayTraceBlocks(Position start, Vector direction, double maxDistance,
+			FluidCollisionMode fluids, io.papermc.paper.raytracing.BlockCollisionMode blocks, Predicate<? super Block> filter) {
+		Location location = this.rayTraceStart(start);
+		Preconditions.checkArgument(direction != null, "Vector direction cannot be null");
+		direction.checkFinite();
+		Preconditions.checkArgument(direction.lengthSquared() > 0, "Direction magnitude must be greater than zero");
+		Preconditions.checkArgument(fluids != null, "FluidCollisionMode cannot be null");
+		Preconditions.checkArgument(blocks != null, "BlockCollisionMode cannot be null");
+		if (maxDistance < 0) return null;
+		Vector delta = direction.clone().normalize().multiply(maxDistance);
+		Vec3 from = new Vec3(location.getX(), location.getY(), location.getZ());
+		Vec3 to = from.add(delta.getX(), delta.getY(), delta.getZ());
+		var context = new CardboardRayTraceContext(this.world, from, to, ClipContext.Block.valueOf(blocks.name()), CraftFluidCollisionMode.toFluid(fluids), filter);
+		return CraftRayTraceResult.convertFromInternal(this.world, this.world.clip(context));
 	}
 
 	@Override
 	public @Nullable RayTraceResult rayTrace(@NotNull Position start, @NotNull Vector direction, double maxDistance,
 			@NotNull FluidCollisionMode fluidCollisionMode, boolean ignorePassableBlocks, double raySize,
 			@Nullable Predicate<? super Entity> filter, @Nullable Predicate<? super Block> canCollide) {
-		// TODO Auto-generated method stub
-		return null;
+		return this.rayTrace(start, direction, maxDistance, fluidCollisionMode,
+				ignorePassableBlocks ? io.papermc.paper.raytracing.BlockCollisionMode.COLLIDER : io.papermc.paper.raytracing.BlockCollisionMode.OUTLINE, raySize, filter, canCollide);
+	}
+
+	public @Nullable RayTraceResult rayTrace(Position start, Vector direction, double maxDistance, FluidCollisionMode fluids,
+			io.papermc.paper.raytracing.BlockCollisionMode blocks, double raySize, Predicate<? super Entity> entities, Predicate<? super Block> blockFilter) {
+		RayTraceResult blockHit = this.rayTraceBlocks(start, direction, maxDistance, fluids, blocks, blockFilter);
+		Vector origin = start.toVector();
+		double entityDistance = blockHit == null ? maxDistance : origin.distance(blockHit.getHitPosition());
+		RayTraceResult entityHit = this.rayTraceEntities(start, direction, entityDistance, raySize, entities);
+		if (blockHit == null) return entityHit;
+		if (entityHit == null) return blockHit;
+		return origin.distanceSquared(entityHit.getHitPosition()) < entityDistance * entityDistance ? entityHit : blockHit;
 	}
 
 	@Override
@@ -3574,20 +3574,20 @@ this.world.getServer().execute(cb);
 	@Override
 	public @Nullable RayTraceResult rayTrace(
 			java.util.function.@NotNull Consumer<PositionedRayTraceConfigurationBuilder> builderConsumer) {
-		// TODO Auto-generated method stub
-		
-		// PositionedRayTraceConfigurationBuilderImpl builder = new PositionedRayTraceConfigurationBuilderImpl();
-		/*
-		final double maxDistance = builder.maxDistance.getAsDouble();
-        if (builder.targets.contains(RayTraceTarget.ENTITY)) {
-            if (builder.targets.contains(RayTraceTarget.BLOCK)) {
-                return this.rayTrace(builder.start, builder.direction, maxDistance, builder.fluidCollisionMode, builder.ignorePassableBlocks, builder.raySize, builder.entityFilter, builder.blockFilter);
-            }
-            return this.rayTraceEntities(builder.start, builder.direction, maxDistance, builder.raySize, builder.entityFilter);
-        }
-        return this.rayTraceBlocks(builder.start, builder.direction, maxDistance, builder.fluidCollisionMode, builder.ignorePassableBlocks, builder.blockFilter);
-		*/
-		return null;
+		var builder = new io.papermc.paper.raytracing.PositionedRayTraceConfigurationBuilderImpl();
+		builderConsumer.accept(builder);
+		Preconditions.checkArgument(builder.start != null, "Start location cannot be null");
+		Preconditions.checkArgument(builder.direction != null, "Direction vector cannot be null");
+		Preconditions.checkArgument(builder.maxDistance.isPresent(), "Max distance must be set");
+		Preconditions.checkArgument(!builder.targets.isEmpty(), "At least one target must be set");
+		double distance = builder.maxDistance.getAsDouble();
+		if (builder.targets.contains(io.papermc.paper.raytracing.RayTraceTarget.ENTITY)) {
+			if (builder.targets.contains(io.papermc.paper.raytracing.RayTraceTarget.BLOCK)) {
+				return this.rayTrace(builder.start, builder.direction, distance, builder.fluidCollisionMode, builder.blockCollisionMode, builder.raySize, builder.entityFilter, builder.blockFilter);
+			}
+			return this.rayTraceEntities(builder.start, builder.direction, distance, builder.raySize, builder.entityFilter);
+		}
+		return this.rayTraceBlocks(builder.start, builder.direction, distance, builder.fluidCollisionMode, builder.blockCollisionMode, builder.blockFilter);
 	}
 
 	@Override

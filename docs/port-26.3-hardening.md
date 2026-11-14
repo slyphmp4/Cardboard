@@ -134,16 +134,43 @@ Fixture-only commit `d9bf0342` reproduced two failures on both stock and
 performance matrices: Location biome reads and stored biome mutation. All other
 17 groups passed on that unchanged production baseline (CI run `43627571714`).
 
-Next batches remain separate: ray tracing/line of sight; item-drop/explosion/tree
+Next batches remain separate: item-drop/explosion/tree
 overloads; POI/legacy biome searches and structure templates; raid PDC; world
 settings/effects; player time/sleep behavior; server restart/command aliases.
+
+## Ray tracing and line of sight
+
+The next batch replaces Position and builder ray stubs and reconnects the
+Location overloads to the same implementation. The legacy block path previously
+cast a Bukkit CraftWorld to native LevelAccessor, which fails at runtime even
+when the ray misses. Conversion now receives the native world.
+
+Native clipping uses COLLIDER/OUTLINE/VISUAL and the requested fluid mode. A
+narrow ClipContext adapter applies the block predicate to both solid and fluid
+shapes, allowing the ray to continue past excluded blocks. Entity predicates,
+expanded hit boxes and the closest block/entity result are preserved. Builder
+configuration snapshots caller Location/Vector values and checks required fields
+and target selection. Line of sight uses the existing RegionAccessor collision
+query, including its cross-world and 128-block range behavior.
+
+Six additional public API groups exercise legacy/Position rays, hit faces and
+distances, filtered foreground blocks and fluids, entity radius and nearest
+selection, builder modes/targets/copies, argument validation and line of sight.
+All scene blocks and entities are restored/removed, and existing anchor tickets
+are retained. The same helper runs on checksum-pinned Paper 26.3 build 249 via
+`./gradlew -p tools/port263-fixture paperRayReferenceJar` followed by
+`python3 tools/ci/paper_ray_reference.py`. The control plugin requires an explicit
+test-runner flag and shuts down its fresh disposable reference world after the
+probes. Its Jar is isolated from the production mod and normal API audit plugin.
+Implementation and test setup alone are not a runtime pass; validation belongs
+to the exact-head CI record in the PR.
 
 ## Limits still requiring work
 
 Cardboard contains inherited API stubs independent of this version migration.
 The source audit found 939 TODO/unsupported markers; that count is **not** a count
 of confirmed defects. Examples requiring separate implementation/verification
-include raid persistent data, Position-based ray tracing and the full native
+include raid persistent data and the full native
 Brigadier argument provider. Existing dialog/click callback
 implementations also need end-to-end client verification; the presence of a
 builder/provider alone does not establish working callbacks.
