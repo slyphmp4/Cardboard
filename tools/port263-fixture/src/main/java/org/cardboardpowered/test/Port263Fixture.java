@@ -29,6 +29,11 @@ public final class Port263Fixture implements ModInitializer {
             new Block(BlockBehaviour.Properties.of().setId(ResourceKey.create(Registries.BLOCK, ID))));
     public static final Item ITEM = Registry.register(BuiltInRegistries.ITEM, ID,
             new BlockItem(BLOCK, new Item.Properties().setId(ResourceKey.create(Registries.ITEM, ID))));
+    // A non-vanilla namespace with the same path as a vanilla item. It also
+    // catches code which mistakes every namespace starting with minecraft for vanilla.
+    public static final Identifier ITEM_ONLY_ID = Identifier.fromNamespaceAndPath("minecraft_fixture", "dirt");
+    public static final Item ITEM_ONLY = Registry.register(BuiltInRegistries.ITEM, ITEM_ONLY_ID,
+            new Item(new Item.Properties().stacksTo(16).setId(ResourceKey.create(Registries.ITEM, ITEM_ONLY_ID))));
     public static final DataComponentType<Integer> COMPONENT = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE,
             ID, DataComponentType.<Integer>builder().persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT).build());
 

@@ -2,12 +2,28 @@ import importlib.util
 from pathlib import Path
 import socket
 import struct
+import tempfile
 import threading
 import unittest
 
 SPEC = importlib.util.spec_from_file_location('hardening', Path(__file__).resolve().parents[1] / 'port263_hardening.py')
 hardening = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(hardening)
+
+
+class ProductionJarTests(unittest.TestCase):
+    def test_uses_canonical_jar_with_shadow_and_stale_artifacts_present(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'gradle.properties').write_text(' archives_base_name = Cardboard\n mod_version = 26.3.0-alpha.1\n')
+            (root / 'build/libs').mkdir(parents=True)
+            canonical = root / 'build/libs/Cardboard-26.3.0-alpha.1.jar'
+            for name in [canonical.name, 'Cardboard-26.3.0-alpha.1-all.jar', 'Cardboard-26.2.27.jar']:
+                (canonical.parent / name).touch()
+            self.assertEqual(canonical, hardening.production_jar(root))
+            canonical.unlink()
+            with self.assertRaises(FileNotFoundError):
+                hardening.production_jar(root)
 
 
 class RconTests(unittest.TestCase):

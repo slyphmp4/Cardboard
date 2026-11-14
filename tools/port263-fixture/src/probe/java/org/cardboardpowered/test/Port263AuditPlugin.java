@@ -169,6 +169,24 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             fixtureInstalled = false;
         }
         if (fixtureInstalled) {
+            check("item-only-namespace-isolation", () -> {
+                var key = new NamespacedKey("minecraft_fixture", "dirt");
+                var type = Registry.ITEM.get(key);
+                require(type != null, "Mod item-only type is missing");
+                var stack = type.createItemStack();
+                var material = stack.getType();
+                require(material != Material.DIRT && material.getKey().equals(key), "Mod dirt aliases vanilla dirt");
+                require(material.asItemType() == type && material.asBlockType() == null && material.isItem() && !material.isBlock(),
+                        "Item-only Material was treated as a block");
+                require(material.getMaxStackSize() == 16 && material.asItemType().getMaxStackSize() == 16,
+                        "Mod stack-size properties were replaced with vanilla defaults");
+                require(material.getMaxDurability() == 0, "Item without MAX_DAMAGE must have zero durability");
+                var modded = (Map<?, ?>) Class.forName("org.cardboardpowered.impl.util.CardboardMagicNumbers")
+                        .getMethod("getModdedMaterials").invoke(null);
+                require(modded.get("MINECRAFT_FIXTURE_DIRT") == material, "Mod namespace was excluded from material enumeration");
+                require(ItemStack.deserializeBytes(stack.serializeAsBytes()).getType() == material,
+                        "Item-only namespace changed in byte round-trip");
+            });
             check("custom-entity-spawn-wrapper", () -> {
                 var type = Registry.ENTITY_TYPE.get(modKey);
                 require(type != null, "Registered mod entity is absent from Bukkit registry");

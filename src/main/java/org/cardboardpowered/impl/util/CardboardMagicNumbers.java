@@ -283,7 +283,7 @@ public class CardboardMagicNumbers {
             Identifier id = BuiltInRegistries.BLOCK.getKey(block);
             String name = standardize(id);
 
-            if (id.getNamespace().startsWith("minecraft")) {
+            if (id.getNamespace().equals("minecraft")) {
                 continue;
             }
 
@@ -301,7 +301,7 @@ public class CardboardMagicNumbers {
             Identifier id = BuiltInRegistries.ITEM.getKey(item);
             String name = standardize(id);
 
-            if (id.getNamespace().startsWith("minecraft")) {
+            if (id.getNamespace().equals("minecraft")) {
                 continue;
             }
 

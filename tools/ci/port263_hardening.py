@@ -99,7 +99,17 @@ def wait_until(check, timeout, description):
     raise TimeoutError(description)
 
 
+def production_jar(root=ROOT):
+    properties = dict(re.findall(r'^\s*(archives_base_name|mod_version)\s*=\s*(\S+)\s*$',
+                                (root / 'gradle.properties').read_text(), re.MULTILINE))
+    jar = root / 'build/libs' / f"{properties['archives_base_name']}-{properties['mod_version']}.jar"
+    if not jar.is_file():
+        raise FileNotFoundError(f'Build the canonical production Cardboard JAR first: {jar}')
+    return jar
+
+
 def prepare(directory, stack):
+    jar = production_jar()
     if directory.exists():
         raise FileExistsError(f'Use a fresh disposable server directory: {directory}')
     (directory / 'mods').mkdir(parents=True)
@@ -113,10 +123,7 @@ def prepare(directory, stack):
                     f"{LOCK['minecraft']}/{LOCK['loader']}/{LOCK['installer']}/server/jar")
     download(launcher_url, directory / 'fabric-server-launch.jar')
     copy = lambda source, target: shutil.copy2(source, directory / target)
-    jars = list((ROOT / 'build/libs').glob('Cardboard-*.jar'))
-    if len(jars) != 1:
-        raise AssertionError(f'Expected exactly one production Cardboard JAR, found {len(jars)}')
-    copy(jars[0], 'mods/Cardboard.jar')
+    copy(jar, 'mods/Cardboard.jar')
     fabric = next((cache / 'modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.166.2+26.3').rglob('*.jar'))
     copy(fabric, 'mods/FabricAPI.jar')
     copy(ROOT / 'tools/port263-fixture/build/libs/cardboard-port263-fixture-1.0.0.jar', 'mods/Fixture.jar')
