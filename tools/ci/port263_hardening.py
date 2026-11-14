@@ -108,6 +108,27 @@ def production_jar(root=ROOT):
     return jar
 
 
+def write_server_properties(directory, password):
+    flat = json.dumps({'biome': 'minecraft:plains', 'layers': [
+        {'block': 'minecraft:bedrock', 'height': 1},
+        {'block': 'minecraft:dirt', 'height': 2},
+        {'block': 'minecraft:grass_block', 'height': 1},
+    ]}, separators=(',', ':'))
+    (directory / 'server.properties').write_text(
+        f'online-mode=false\nserver-ip=127.0.0.1\nserver-port=25589\nenable-rcon=true\n'
+        f'rcon.port=25590\nrcon.password={password}\nbroadcast-rcon-to-ops=false\n'
+        f'level-name=audit-world\nlevel-type=minecraft:flat\ngenerator-settings={flat}\ngenerate-structures=false\n'
+        'spawn-protection=0\nview-distance=3\nsimulation-distance=3\npause-when-empty-seconds=0\nwhite-list=true\n')
+
+
+def verify_console_log(path):
+    lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
+    errors = [line for line in lines if re.search(
+        r'\[(?:[^\]]*/)?(?:ERROR|SEVERE|FATAL)\]|Mixin apply failed|Exception', line)]
+    if errors:
+        raise AssertionError(f'Server errors in {path.name}:\n' + '\n'.join(errors[:10]))
+
+
 def prepare(directory, stack):
     jar = production_jar()
     if directory.exists():
@@ -135,11 +156,7 @@ def prepare(directory, stack):
         for mod in LOCK['performance']:
             download(mod['url'], directory / 'mods' / mod['file'], 'sha512', mod['sha512'])
     password = secrets.token_hex(24)
-    (directory / 'server.properties').write_text(
-        f'online-mode=false\nserver-ip=127.0.0.1\nserver-port=25589\nenable-rcon=true\n'
-        f'rcon.port=25590\nrcon.password={password}\nbroadcast-rcon-to-ops=false\n'
-        'level-name=audit-world\nlevel-type=minecraft:flat\ngenerate-structures=false\n'
-        'spawn-protection=0\nview-distance=3\nsimulation-distance=3\npause-when-empty-seconds=0\nwhite-list=true\n')
+    write_server_properties(directory, password)
     (directory / 'eula.txt').write_text('eula=true\n')
     hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (directory / 'mods').glob('*.jar')}
     (directory / 'tested-artifacts.json').write_text(json.dumps({'stack': stack, 'sha256': hashes}, indent=2))
@@ -251,6 +268,7 @@ def main():
     for phase in ['initial', 'restart']:
         process, output = start(directory, phase, java)
         try:
+            verify_console_log(directory / f'console-{phase}.log')
             if phase == 'initial':
                 probe(directory, rcon, 'run')
                 rcon.command('minecraft:reload')
@@ -264,9 +282,7 @@ def main():
                 probe(directory, rcon, 'run')
         finally:
             stop(process, output)
-        log = (directory / f'console-{phase}.log').read_text(encoding='utf-8', errors='replace')
-        if re.search(r'\[(?:[^\]]*/)?(?:ERROR|SEVERE|FATAL)\]|Mixin apply failed|Exception', log):
-            raise AssertionError(f'Server errors in console-{phase}.log')
+        verify_console_log(directory / f'console-{phase}.log')
     (directory / 'success.json').write_text(json.dumps({'passed': True, 'duration_seconds': args.duration, 'stack': args.stack}))
     print('PORT263_HARDENING_PASS', flush=True)
 

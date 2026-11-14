@@ -82,6 +82,26 @@ and 256 verified chunk cycles without errors; that run preceded the other API
 fixes and is not presented as validation of the final head. Final-head CI and
 longer-run results belong in the PR's validation record.
 
+## Artifact and fixture follow-up
+
+The runner selects the canonical JAR using the checked-in Gradle coordinates;
+Shadow's `-all.jar` and old-version artifacts cannot be selected instead. The
+independent mod also registers `minecraft_fixture:dirt`, an item without a block
+or damage component and with a stack size of 16. Public API checks cover its
+namespace, Material enumeration, item/block classification, stack size, zero
+durability and byte serialization. Native-wrapper constructors retain their
+registry IDs. Unit tests explicitly bind 26.3's registry components after
+bootstrap before checking item durability.
+
+On `7f7167cb`, both stock and performance configurations passed 12 API cases,
+the compatibility matrices, five-minute workloads and persistence preparation.
+The strict console gate then correctly rejected a native startup error: the
+flat-world fixture omitted its required generator layers. The fixture now writes
+explicit plains/bedrock/dirt/grass settings. Console errors remain fatal and are
+checked immediately after startup as well as after shutdown, with matching
+lines included in failures. A complete run must also pass the subsequent restart
+and persisted-content checks; the partial runs are not full hardening passes.
+
 ## Limits still requiring work
 
 Cardboard contains inherited API stubs independent of this version migration.

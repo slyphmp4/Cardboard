@@ -123,11 +123,12 @@ Bukkit with native state, and restore the original settings.
 2. Re-run 26.2's compatibility scenarios against 26.3, especially registry
    bootstrap, enchantments, item metadata, brewing, sign cancellation, player
    drops and world reload. Do not reuse old success reports as new results.
-3. Verify custom mod entities on a real 26.3 fixture. Fourmisain/DirTNT currently
-   has a 26.2 branch and no 26.3 branch, so the original issue-30 workflow remains
-   scoped to 26.2 and supplies no 26.3 result.
-4. Run the runtime workload/soak procedure and audit inherited TODO API methods
-   before claiming broad Paper parity or recommending production deployment.
+3. Require the stock and performance production-JAR gates with the independent
+   26.3 entity/block/item/component fixture, including saved-world restart. See
+   [the hardening procedure](port-26.3-hardening.md). Fourmisain/DirTNT's original
+   issue-30 workflow remains scoped to 26.2 and supplies no 26.3 result for that mod.
+4. Run the bounded workload gates, extended soak procedure and inherited TODO
+   API audit before claiming broad Paper parity or recommending production deployment.
 
 Go for port development and review. No-go for a stable release until these
 checks provide actual 26.3 evidence. No release is published by this change.

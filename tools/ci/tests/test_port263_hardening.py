@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import socket
 import struct
@@ -24,6 +25,29 @@ class ProductionJarTests(unittest.TestCase):
             canonical.unlink()
             with self.assertRaises(FileNotFoundError):
                 hardening.production_jar(root)
+
+
+class ServerFixtureTests(unittest.TestCase):
+    def test_flat_world_has_explicit_layers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            hardening.write_server_properties(root, 'test-password')
+            values = dict(line.split('=', 1) for line in (root / 'server.properties').read_text().splitlines())
+            self.assertEqual('minecraft:flat', values['level-type'])
+            settings = json.loads(values['generator-settings'])
+            self.assertEqual('minecraft:plains', settings['biome'])
+            self.assertTrue(settings['layers'])
+            self.assertTrue(all(layer['height'] > 0 and layer['block'].startswith('minecraft:')
+                                for layer in settings['layers']))
+
+    def test_log_gate_reports_native_errors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / 'console-initial.log'
+            log.write_text('[Worker-Main-2/ERROR]: No key layers in MapLike[{}]\n')
+            with self.assertRaisesRegex(AssertionError, 'No key layers'):
+                hardening.verify_console_log(log)
+            log.write_text('[Server thread/INFO]: Done\n')
+            hardening.verify_console_log(log)
 
 
 class RconTests(unittest.TestCase):
