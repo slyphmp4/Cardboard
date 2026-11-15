@@ -6,7 +6,7 @@ from pathlib import Path
 import shlex
 import shutil
 import signal
-import time
+import subprocess
 import port263_hardening as h
 
 ROOT = h.ROOT
@@ -23,8 +23,10 @@ def clean_children(directory):
             for value in path.read_text().splitlines():
                 try:
                     pid = int(value)
-                    os.kill(pid, signal.SIGTERM)
-                except (ProcessLookupError, ValueError):
+                    process = Path('/proc') / str(pid)
+                    if (process / 'cwd').resolve() == directory and any(token in (process / 'cmdline').read_bytes() for token in [b'fabric-server-launch.jar', b'restart launcher.sh']):
+                        os.kill(pid, signal.SIGTERM)
+                except (ProcessLookupError, FileNotFoundError, ValueError):
                     pass
 
 
@@ -60,7 +62,7 @@ def one(mode, java):
             raise AssertionError(reply)
         try:
             original.wait(timeout=30)
-        except TimeoutError as failure:
+        except subprocess.TimeoutExpired as failure:
             raise AssertionError(f'{mode}: restart entry point did not stop the original server') from failure
         if original.returncode != 0:
             raise AssertionError(f'{mode}: original JVM exited {original.returncode}')

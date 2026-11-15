@@ -47,7 +47,8 @@ final class ServerAliasProbes {
             try (var scope = new Scope()) {
                 scope.load(Map.of(PREFIX + "Mixed", PREFIX + "target fixed $1-",
                         PREFIX + "multi", List.of(PREFIX + "target first $1", PREFIX + "target second $2-")));
-                require(Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "P263ALIAS_MIXED alpha beta"), "Case-insensitive alias dispatch failed");
+                require(map().getCommand("P263ALIAS_MIXED") == map().getCommand(PREFIX + "mixed"), "Alias lookup did not normalize case");
+                require(Bukkit.dispatchCommand(Bukkit.getConsoleSender(), PREFIX + "mixed alpha beta"), "Alias dispatch failed");
                 require(scope.calls.equals(List.of("target:fixed,alpha,beta")), "Scalar alias argument expansion changed: " + scope.calls);
                 scope.calls.clear();
                 require(Bukkit.dispatchCommand(Bukkit.getConsoleSender(), PREFIX + "multi one two three"), "Multi-command alias dispatch failed");
