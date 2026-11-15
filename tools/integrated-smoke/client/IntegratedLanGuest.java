@@ -28,7 +28,9 @@ final class IntegratedLanGuest implements ClientModInitializer {
         try {
             require(System.nanoTime() < deadline, "Guest timeout at world " + world + " stage " + stage);
             if (stage == 1 || stage == 2) {
-                require(System.nanoTime() < phaseDeadline, "Guest connection phase timed out at world " + world + " stage " + stage);
+                require(System.nanoTime() < phaseDeadline, "Guest connection phase timed out at world " + world + " stage " + stage
+                        + ", playerLoaded=" + (client.player != null) + ", worldLoaded=" + (client.level != null)
+                        + ", radius=" + WorldSettingsSmoke.clientRadius(client) + ", expected=" + WorldSettingsSmoke.RADIUS);
             }
             String ready = world == 3 ? "dedicated-ready" : "ready-" + world;
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null

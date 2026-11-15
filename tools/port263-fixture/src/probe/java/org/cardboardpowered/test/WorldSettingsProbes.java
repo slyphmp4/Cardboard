@@ -52,6 +52,24 @@ final class WorldSettingsProbes {
                         && world.getVoidDamageMinBuildHeightOffset() == -16.25, "Disabling void damage discarded its settings");
             }
         });
+        check.accept("living-damage-cooldown-native-getter-setter", () -> {
+            var pig = world.spawn(air(world), Pig.class);
+            pig.setGravity(false);
+            pig.setAI(false);
+            try {
+                var handle = pig.getClass().getMethod("getHandle").invoke(pig);
+                var cooldown = Class.forName("net.minecraft.world.entity.LivingEntity").getDeclaredField("damageCooldownTime");
+                cooldown.setAccessible(true);
+                for (int ticks : new int[] {0, 1, 19, 20, -1}) {
+                    pig.setNoDamageTicks(ticks);
+                    require(cooldown.getInt(handle) == ticks && pig.getNoDamageTicks() == ticks,
+                            "No-damage ticks did not update the native damage cooldown: " + ticks);
+                }
+                cooldown.setInt(handle, 7);
+                require(pig.getNoDamageTicks() == 7, "No-damage getter read a different native timer");
+                pig.setNoDamageTicks(0);
+            } finally { pig.remove(); }
+        });
         check.accept("world-void-native-damage-threshold-and-cancellation", () -> {
             try (var original = new VoidSettings(world)) {
                 var pig = world.spawn(air(world), Pig.class);
@@ -81,7 +99,7 @@ final class WorldSettingsProbes {
                     events.replacement = 1.5;
                     pig.setNoDamageTicks(0);
                     below(pig, world.getMinHeight() - 17);
-                    require(events.observed.size() == 3 && Math.abs(pig.getHealth() - (health - 1.5)) < 1e-6, "Void event damage edits were ignored");
+                    require(events.observed.size() == 3 && Math.abs(pig.getHealth() - (health - 1.5)) < 1e-6, "Void event damage edits were ignored: events=" + events.observed + ", health=" + pig.getHealth() + ", expected=" + (health - 1.5) + ", cooldown=" + pig.getNoDamageTicks());
                 } finally { pig.remove(); }
             }
         });
