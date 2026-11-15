@@ -35,6 +35,8 @@ CASES = {
     'world-void-native-damage-threshold-and-cancellation', 'world-void-disabled-and-enabled-nonliving-removal',
     'living-damage-cooldown-native-getter-setter',
     'world-note-default-contracts', 'world-classic-particle-validation-and-inputs',
+    'player-personal-time-default-relative-fixed-reset-and-isolation',
+    'player-personal-weather-default-no-override', 'player-sleeping-ignored-flags-and-native-status',
 }
 
 
