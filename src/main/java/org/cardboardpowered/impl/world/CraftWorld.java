@@ -41,6 +41,7 @@ import net.minecraft.server.level.*;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.LevelAccessor;
 import org.apache.commons.lang.Validate;
 import org.bukkit.block.Biome;
@@ -113,6 +114,8 @@ import org.cardboardpowered.bridge.server.level.ChunkMapBridge;
 import com.mojang.datafixers.util.Pair;
 
 import io.papermc.paper.block.fluid.FluidData;
+import io.papermc.paper.entity.poi.PaperPoiSearchResult;
+import io.papermc.paper.entity.poi.PaperPoiType;
 import io.papermc.paper.entity.poi.PoiSearchResult;
 import io.papermc.paper.entity.poi.PoiType;
 import io.papermc.paper.entity.poi.PoiType.Occupancy;
@@ -2668,14 +2671,12 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public @Nullable Location locateNearestBiome(@NotNull Location arg0, @NotNull Biome arg1, int arg2) {
-		// TODO Auto-generated method stub
-		return null;
+		return World.super.locateNearestBiome(arg0, arg1, arg2);
 	}
 
 	@Override
 	public @Nullable Location locateNearestBiome(@NotNull Location arg0, @NotNull Biome arg1, int arg2, int arg3) {
-		// TODO Auto-generated method stub
-		return null;
+		return World.super.locateNearestBiome(arg0, arg1, arg2, arg3);
 	}
 
 	@Override
@@ -3482,15 +3483,31 @@ this.world.getServer().execute(cb);
 	@Override
 	public @Nullable Location locateNearestPoi(@NotNull Location origin, @NotNull PoiType poiType, @Positive int radius,
 			@NotNull Occupancy occupancy) {
-		// TODO Auto-generated method stub
-		return null;
+        Preconditions.checkArgument(origin != null, "Location cannot be null");
+        Preconditions.checkArgument(this.equals(origin.getWorld()), "The provided location must be in the same world");
+        Preconditions.checkArgument(poiType != null, "PoiType cannot be null");
+        Preconditions.checkArgument(radius > 0, "The provided radius must be greater than 0");
+        Preconditions.checkArgument(occupancy != null, "Occupancy cannot be null");
+        Holder<net.minecraft.world.entity.ai.village.poi.PoiType> type = PaperPoiType.bukkitToMinecraftHolder(poiType);
+        PoiManager.Occupancy state = PaperPoiType.PaperOccupancy.bukkitToMinecraft(occupancy);
+        return this.getHandle().getPoiManager().findClosestWithType(holder -> holder.is(type),
+                CraftLocation.toBlockPosition(origin), radius, state)
+                .map(found -> CraftLocation.toBukkit(found.getSecond(), this)).orElse(null);
 	}
 
 	@Override
 	public @NotNull List<PoiSearchResult> locateAllPoiInRange(@NotNull Location origin,
 			@NotNull Predicate<PoiType> poiTypePredicate, @Positive int radius, @NotNull Occupancy occupancy) {
-		// TODO Auto-generated method stub
-		return null;
+        Preconditions.checkArgument(origin != null, "Location cannot be null");
+        Preconditions.checkArgument(this.equals(origin.getWorld()), "The provided location must be in the same world");
+        Preconditions.checkArgument(poiTypePredicate != null, "The predicate filter must not be null");
+        Preconditions.checkArgument(radius > 0, "The provided radius must be greater than 0");
+        Preconditions.checkArgument(occupancy != null, "Occupancy cannot be null");
+        Predicate<Holder<net.minecraft.world.entity.ai.village.poi.PoiType>> filter =
+                holder -> poiTypePredicate.test(PaperPoiType.minecraftHolderToBukkit(holder));
+        return this.getHandle().getPoiManager().getInRange(filter, CraftLocation.toBlockPosition(origin),
+                radius, PaperPoiType.PaperOccupancy.bukkitToMinecraft(occupancy))
+                .map(record -> PaperPoiSearchResult.from(record, this)).toList();
 	}
 	
 

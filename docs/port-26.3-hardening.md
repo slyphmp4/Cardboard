@@ -273,6 +273,24 @@ zero yield, ignition, TNT chain cancellation and nested invocation state. One
 additional Cardboard case calls Minecraft's native explosion entrypoint directly.
 The control runs the same seven public groups on official Paper 26.3 build 249.
 All scenes guard a high air volume in a disposable world and clean their blocks,
-entities and listeners. Runtime validation of this explosion batch is pending;
-these scenarios do not establish full player-driven combat or arbitrary modpack
+entities and listeners. On `fc2c7ecd`, all 12 checks passed, including 44 API
+groups before/after process restart, persistence and both 30-minute workloads.
+These scenarios do not establish full player-driven combat or arbitrary modpack
 compatibility.
+
+## Legacy biome and POI searches
+
+The two deprecated biome overloads defer to World's public defaults: 8x8 search
+intervals for the default overload, and the caller's step for both axes in the
+explicit-step overload. This preserves their behavior while using the existing
+native biome search.
+
+Nearest/all POI queries use the world's actual PoiManager and existing registered
+PoiType/Occupancy conversions. They validate input, retain type/radius/occupancy
+filtering and propagate predicate errors. List results are immutable snapshots;
+each result returns a defensive location. No separate POI registry is created.
+
+Four shared public groups compare legacy biome overloads with their modern
+equivalents, query real fixture workstations, check occupancy/radius/filtering,
+validate inputs and verify result isolation and predicate recovery. The same
+source runs on the pinned Paper control. Runtime validation is pending.
