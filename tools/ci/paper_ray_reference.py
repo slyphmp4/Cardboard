@@ -28,7 +28,7 @@ CASES = {
     'template-stream-and-file-pdc-roundtrip', 'template-keyed-load-save-and-delete-contracts',
     'template-native-placement-rotation-mirror-and-integrity', 'template-captured-entities-and-placement-flags',
     'template-block-and-entity-transformer-contracts', 'template-validation-and-transformer-failure-cleanup',
-    'template-entity-spawn-events-and-cancellation',
+    'template-entity-spawn-events-and-cancellation', 'template-region-spawn-queue-and-failure',
 }
 
 

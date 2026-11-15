@@ -251,6 +251,44 @@ final class StructureTemplateProbes {
                 }
             }
         });
+        check.accept("template-region-spawn-queue-and-failure", () -> {
+            manager();
+            try (var scene = new Scene(world)) {
+                var template = scene.capture(false);
+                try (var events = new SpawnEvents(scene, plugin)) {
+                    var first = new java.util.concurrent.atomic.AtomicBoolean(true);
+                    BlockTransformer enqueue = (region, x, y, z, current, state) -> {
+                        if (first.getAndSet(false)) region.spawn(scene.target.clone().add(3.25, .25, .25), ArmorStand.class, entity -> {
+                            entity.setGravity(false);
+                            entity.addScoreboardTag(ENTITY_TAG);
+                        });
+                        return current;
+                    };
+                    template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of(enqueue), List.of());
+                    require(events.calls == 1 && events.reason == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.DEFAULT
+                            && scene.entitiesAtTarget().size() == 1, "Callback region spawn bypassed its native addition event");
+                    scene.entitiesAtTarget().forEach(org.bukkit.entity.Entity::remove);
+                    events.cancel = true;
+                    first.set(true);
+                    template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of(enqueue), List.of());
+                    require(events.calls == 2 && scene.entitiesAtTarget().isEmpty(), "Cancelled callback-region spawn reached the world");
+                    events.cancel = false;
+                    first.set(true);
+                    var marker = new IllegalStateException("Queued region spawn failure marker");
+                    try {
+                        template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of((region, x, y, z, current, state) -> {
+                            enqueue.transform(region, x, y, z, current, state);
+                            throw marker;
+                        }), List.of());
+                        throw new AssertionError("Queued region callback failure was swallowed");
+                    } catch (RuntimeException failure) { require(failure == marker, "Queued region callback failure was replaced"); }
+                    require(events.calls == 2 && scene.entitiesAtTarget().isEmpty(), "Failed template placement committed queued region entities");
+                    first.set(true);
+                    template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of(enqueue), List.of());
+                    require(events.calls == 3 && scene.entitiesAtTarget().size() == 1, "Failed region queue leaked into a later placement");
+                }
+            }
+        });
     }
 
     private static final class SpawnEvents implements org.bukkit.event.Listener, AutoCloseable {
