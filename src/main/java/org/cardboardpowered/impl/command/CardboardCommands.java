@@ -64,7 +64,7 @@ public final class CardboardCommands implements Commands {
     public Set<String> registerWithFlags(PluginMeta meta, LiteralCommandNode<CommandSourceStack> node, String description,
                                          Collection<String> aliases, Set<CommandRegistrationFlag> flags) {
         LiteralCommandNode<net.minecraft.commands.CommandSourceStack> vanillaNode =
-                (LiteralCommandNode<net.minecraft.commands.CommandSourceStack>) (LiteralCommandNode<?>) node;
+                (LiteralCommandNode<net.minecraft.commands.CommandSourceStack>) (LiteralCommandNode<?>) NativeCommandTree.copy(node);
 
         List<String> aliasList = (aliases == null) ? List.of() : List.copyOf(aliases);
         String namespace = meta.getName().toLowerCase(Locale.ROOT);
@@ -190,3 +190,4 @@ public final class CardboardCommands implements Commands {
         return owner.getPluginMeta();
     }
 }
+

@@ -20,6 +20,7 @@
     "commands.Commands_NodeInspectorMixin",
     "commands.CommandSourceMixin",
     "commands.CommandSourceStackMixin",
+    "commands.BlockInputAccessor",
     "commands.PermissionProviderCheckMixin",
     "core.HolderLookup_RegistryLookupMixin",
     "core.MappedRegistryMixin",
@@ -302,3 +303,4 @@
   }
 
 }
+
