@@ -22,6 +22,8 @@ CASES = {
     'explosion-block-interactions-and-source-null-drop-decay', 'explosion-source-first-overloads-and-damage-exclusion',
     'explosion-yield-and-ignite-cancellation', 'explosion-nested-cancellation-and-location-contract',
     'explosion-tnt-chain-prime-cancellation',
+    'legacy-biome-search-overloads', 'poi-nearest-type-radius-and-occupancy',
+    'poi-list-filter-and-snapshot-isolation', 'poi-search-validation-and-predicate-errors',
 }
 
 
