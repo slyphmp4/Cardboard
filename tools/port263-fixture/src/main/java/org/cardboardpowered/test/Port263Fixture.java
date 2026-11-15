@@ -49,26 +49,6 @@ public final class Port263Fixture implements ModInitializer {
         return stack;
     }
 
-    /** Temporary shape evidence for the unpatched 26.3 template implementation. */
-    public static String describeTemplateShape() {
-        var result = new StringBuilder("TEMPLATE_NATIVE_SHAPE ");
-        for (var type : java.util.List.of(
-                net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager.class,
-                net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.class,
-                net.minecraft.world.level.levelgen.structure.templatesystem.loader.TemplateSource.class)) {
-            result.append(type.getName()).append(" FIELDS ");
-            for (var field : type.getDeclaredFields()) {
-                result.append(field.toGenericString()).append("; ");
-                if (type.getSimpleName().equals("StructureTemplateManager") && field.getName().toLowerCase(java.util.Locale.ROOT).contains("source")) {
-                    for (var method : field.getType().getDeclaredMethods()) result.append(method.toGenericString()).append("; ");
-                }
-            }
-            result.append(" METHODS ");
-            for (var method : type.getDeclaredMethods()) result.append(method.toGenericString()).append("; ");
-        }
-        return result.toString();
-    }
-
     public static int readMarker(net.minecraft.world.item.ItemStack stack) {
         return stack.getOrDefault(COMPONENT, -1);
     }

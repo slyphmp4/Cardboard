@@ -258,6 +258,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public final String bukkitVersion = API_VERSION;
 
     private final Logger logger = BukkitLogger.getLogger();
+    private StructureManager structureManager;
 
     private final CommandMapImpl commandMap;
 
@@ -2392,9 +2393,12 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     }
 
     @Override
-    public StructureManager getStructureManager() {
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized StructureManager getStructureManager() {
+        if (this.structureManager == null) {
+            this.structureManager = new org.bukkit.craftbukkit.structure.CraftStructureManager(
+                    this.getServer().getStructureManager(), this.getServer().registryAccess());
+        }
+        return this.structureManager;
     }
 
     @Override

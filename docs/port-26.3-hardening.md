@@ -293,4 +293,33 @@ each result returns a defensive location. No separate POI registry is created.
 Four shared public groups compare legacy biome overloads with their modern
 equivalents, query real fixture workstations, check occupancy/radius/filtering,
 validate inputs and verify result isolation and predicate recovery. The same
-source runs on the pinned Paper control. Runtime validation is pending.
+source runs on the pinned Paper control. Exact head `3b47bd62` passed all 12
+checks, 48 API groups before/after a full process restart, persistence and both
+1,800.6-second workloads, with zero connection/protocol/workload errors.
+
+
+## Structure templates (runtime validation pending)
+
+The cached StructureManager uses Minecraft's actual template repository, resource
+loader/data fixer and validated world-template paths. Registration and snapshots
+share the same native objects used by structure blocks; empty cache entries do
+not appear in public maps. File overloads close owned streams. Copying clones NBT.
+
+CraftStructure/CraftPalette capture real native block, tile and entity data and
+place it through the native algorithm, including palettes, mirror/rotation and
+integrity. Each native template owns a stable PDC persisted under BukkitValues;
+loading an older template clears any previously held PDC values.
+
+API placement attaches transformers to its settings. A scoped native frame also
+covers calls nested from callbacks, so a vanilla placement cannot inherit an
+outer API transform. Only real template block writes and captured entity additions
+are transformed. Tile NBT edits and loot seeds survive native placement; barrier
+clearing and neighbour updates retain their native order. Callback regions retain
+the original WorldGenLevel and release their link in finally, including errors.
+Region fluid snapshots are implemented as a required callback dependency.
+
+Eight shared groups cover cache semantics, fill/copy/palettes, tile/structure PDC,
+streams/files/resources, placement/rotation/mirror/integrity, entity flags and
+transformers/exception recovery. The same source runs on pinned Paper 249.
+A separate template file (not a registered cached object) is saved, then loaded
+and placed after a complete server-process restart. Final runtime gates pending.
