@@ -42,6 +42,7 @@ public final class PaperRayReference extends JavaPlugin {
                     WorldEffectsProbes.verify(world, check);
                     PlayerStateProbes.verify(world, check);
                     ServerAliasProbes.verify(check);
+                    BrigadierArgumentProbes.verify(world, check);
                     Files.createDirectories(getDataFolder().toPath());
                     Files.writeString(getDataFolder().toPath().resolve("results.json"),
                             new GsonBuilder().setPrettyPrinting().create().toJson(results));
@@ -56,3 +57,4 @@ public final class PaperRayReference extends JavaPlugin {
         }, 20);
     }
 }
+

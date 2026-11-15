@@ -56,6 +56,8 @@ tasks.register('paperRayReferenceJar', Jar) {
         include 'org/cardboardpowered/test/WorldEffectsProbes*.class'
         include 'org/cardboardpowered/test/PlayerStateProbes*.class'
         include 'org/cardboardpowered/test/ServerAliasProbes*.class'
+        include 'org/cardboardpowered/test/BrigadierArgumentProbes*.class'
     }
 }
 tasks.named('build') { dependsOn 'probePluginJar' }
+

@@ -273,6 +273,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             PlayerStateProbes.verify(world, (name, action) -> check(name, action::run));
             ServerAliasProbes.verify((name, action) -> check(name, action::run));
             ServerAliasProbes.verifyNative((name, action) -> check(name, action::run));
+            BrigadierArgumentProbes.verify(world, (name, action) -> check(name, action::run));
             verifyWorldQueries(world);
             verifyDragon(this::verifyRecipes);
         } else {
@@ -554,3 +555,4 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
     @FunctionalInterface
     interface Checked { void run() throws Exception; }
 }
+

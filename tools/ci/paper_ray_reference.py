@@ -39,6 +39,10 @@ CASES = {
     'player-personal-weather-default-no-override', 'player-sleeping-ignored-flags-and-native-status',
     'server-command-alias-startup-config', 'server-command-alias-values-defensive-order',
     'server-command-alias-expansion-and-replacement', 'server-command-alias-failed-reload-contract',
+    'brigadier-all-argument-factories', 'brigadier-values-ranges-and-validation',
+    'brigadier-position-rotation-and-source-resolution', 'brigadier-entity-player-and-profile-resolvers',
+    'brigadier-block-item-components-and-predicates', 'brigadier-registry-world-and-component-conversions',
+    'brigadier-custom-conversion-and-message-resolution', 'brigadier-command-source-context-and-identity',
 }
 
 
@@ -84,3 +88,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
