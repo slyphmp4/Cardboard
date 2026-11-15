@@ -24,6 +24,10 @@ CASES = {
     'explosion-tnt-chain-prime-cancellation',
     'legacy-biome-search-overloads', 'poi-nearest-type-radius-and-occupancy',
     'poi-list-filter-and-snapshot-isolation', 'poi-search-validation-and-predicate-errors',
+    'template-manager-native-cache-and-snapshots', 'template-fill-palettes-tiles-and-copy-isolation',
+    'template-stream-and-file-pdc-roundtrip', 'template-keyed-load-save-and-delete-contracts',
+    'template-native-placement-rotation-mirror-and-integrity', 'template-captured-entities-and-placement-flags',
+    'template-block-and-entity-transformer-contracts', 'template-validation-and-transformer-failure-cleanup',
 }
 
 
