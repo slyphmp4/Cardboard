@@ -29,6 +29,8 @@ CASES = {
     'template-native-placement-rotation-mirror-and-integrity', 'template-captured-entities-and-placement-flags',
     'template-block-and-entity-transformer-contracts', 'template-validation-and-transformer-failure-cleanup',
     'template-entity-spawn-events-and-cancellation', 'template-region-spawn-queue-and-failure',
+    'raid-pdc-stable-container-and-independent-raids', 'raid-pdc-arrays-nested-copy-and-byte-contracts',
+    'raid-pdc-native-nbt-codec-roundtrip', 'raid-pdc-old-empty-malformed-nbt-and-validation',
 }
 
 

@@ -53,6 +53,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             Bukkit.getScheduler().runTask(this, () -> atLoadedSpawn(() -> {
                 check(verify ? "persisted-mod-content" : "prepare-persisted-mod-content", () -> persistence(verify));
                 check(verify ? "persisted-template-content" : "prepare-persisted-template-content", () -> StructureTemplateProbes.persistence(Bukkit.getWorlds().getFirst(), verify));
+                check(verify ? "persisted-raid-pdc" : "prepare-persisted-raid-pdc", () -> RaidPdcProbes.persistence(Bukkit.getWorlds().getFirst(), verify));
                 finish();
             }));
         }
@@ -260,6 +261,8 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             StructureTemplateProbes.verify(world, this, (name, action) -> check(name, action::run));
             StructureTemplateProbes.verifySpawnEvents(world, this, (name, action) -> check(name, action::run));
             StructureTemplateProbes.verifyNative(world, (name, action) -> check(name, action::run));
+            RaidPdcProbes.verify(world, (name, action) -> check(name, action::run));
+            RaidPdcProbes.verifyNative(world, (name, action) -> check(name, action::run));
             verifyWorldQueries(world);
             verifyDragon(this::verifyRecipes);
         } else {

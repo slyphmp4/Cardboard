@@ -51,6 +51,7 @@ tasks.register('paperRayReferenceJar', Jar) {
         include 'org/cardboardpowered/test/ExplosionProbes*.class'
         include 'org/cardboardpowered/test/WorldSearchProbes*.class'
         include 'org/cardboardpowered/test/StructureTemplateProbes*.class'
+        include 'org/cardboardpowered/test/RaidPdcProbes*.class'
     }
 }
 tasks.named('build') { dependsOn 'probePluginJar' }
