@@ -162,6 +162,8 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
             require(guest.hasPermission("cardboard.smoke.fabric"), "Guest Fabric permission grant was lost");
             require(!guest.hasPermission("cardboard.smoke.denied"), "Guest Fabric denial was lost");
+            var owner = Bukkit.getOnlinePlayers().stream().filter(online -> !online.getUniqueId().equals(id)).findFirst().orElseThrow();
+            WorldEffectsSmoke.verify((org.bukkit.craftbukkit.entity.CraftPlayer) owner, (org.bukkit.craftbukkit.entity.CraftPlayer) guest);
             WorldSettingsSmoke.finishGuest();
             System.out.println("INTEGRATED_LAN_HOST_PASS " + world + " guest=" + id);
         } catch (ReflectiveOperationException error) {

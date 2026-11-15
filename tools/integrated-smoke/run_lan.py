@@ -38,6 +38,8 @@ try:
     for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2']:
         if marker not in host:
             raise AssertionError(f'Missing host marker: {marker}')
+    if host.count('WORLD_EFFECT_PACKETS_PASS ') != 2:
+        raise AssertionError('Both LAN worlds must verify world note and particle packets')
     if 'INTEGRATED_LAN_GUEST_PASS' not in guest:
         raise AssertionError('Missing guest PASS marker')
     dedicated = logs[2].read_text(errors='replace')
@@ -56,7 +58,7 @@ finally:
     for log in logs:
         if log.exists():
             for line in log.read_text(errors='replace').splitlines():
-                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_']):
+                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_']):
                     print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)
