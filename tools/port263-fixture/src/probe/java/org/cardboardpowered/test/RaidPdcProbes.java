@@ -101,6 +101,10 @@ final class RaidPdcProbes {
                 invalid(() -> container.set(NUMBER, null, 1));
                 invalid(() -> container.set(NUMBER, PersistentDataType.INTEGER, null));
                 invalid(() -> container.copyTo(null, true));
+                var missingNativeField = old.copy();
+                missingNativeField.remove("center");
+                require(fixture.codec.parse(NbtOps.INSTANCE, missingNativeField).error().isPresent(),
+                        "Optional PDC wrapper hid a required native raid field error");
             }
         });
     }
@@ -144,6 +148,11 @@ final class RaidPdcProbes {
                     fixture.mark(false);
                     item.getPersistentDataContainer().copyTo(container, true);
                     require(fixture.dirty() && "readonly-replaced".equals(container.get(CHILD, PersistentDataType.STRING)), "Readonly view copyTo(true) bypassed target dirty observer");
+                    fixture.raids.put(Fixture.FIRST, fixture.decode(fixture.encode(fixture.firstNative())));
+                    var decoded = pdc(fixture.first());
+                    fixture.mark(false);
+                    decoded.set(NUMBER, PersistentDataType.INTEGER, 104);
+                    require(fixture.dirty(), "Decoded raid PDC lost its saved-data observer");
                 } finally { fixture.mark(previous); }
             }
         });
