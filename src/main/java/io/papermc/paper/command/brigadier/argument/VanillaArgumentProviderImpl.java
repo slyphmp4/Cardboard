@@ -15,6 +15,7 @@ import org.bukkit.craftbukkit.CraftServer;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
 import org.cardboardpowered.mixin.commands.BlockInputAccessor;
+import org.cardboardpowered.mixin.commands.DimensionArgumentAccessor;
 import io.papermc.paper.command.brigadier.argument.predicate.BlockInWorldPredicate;
 import io.papermc.paper.command.brigadier.argument.predicate.ItemStackPredicate;
 import io.papermc.paper.command.brigadier.argument.range.DoubleRangeProvider;
@@ -187,7 +188,7 @@ public class VanillaArgumentProviderImpl implements VanillaArgumentProvider {
             result -> (block, loadChunk) -> {
                 final BlockInWorld blockInWorld = new BlockInWorld(
                     ((CraftWorld) block.getWorld()).getHandle(),
-                    CraftLocation.toBlockPos(block.getLocation()),
+                    CraftLocation.toBlockPosition(block.getLocation()),
                     loadChunk
                 );
                 // Get state lazy loads the state, will remain null if chunk is unloaded.
@@ -248,7 +249,7 @@ public class VanillaArgumentProviderImpl implements VanillaArgumentProvider {
         return this.wrap(SwizzleArgument.swizzle(), (result) -> {
             final EnumSet<Axis> bukkitAxes = EnumSet.noneOf(Axis.class);
             for (final Direction.Axis nmsAxis : result) {
-                bukkitAxes.add(CraftBlockData.fromVanilla(nmsAxis, Axis.class));
+                bukkitAxes.add(Axis.valueOf(nmsAxis.name()));
             }
             return new AxisSetImpl(bukkitAxes);
         });
@@ -349,7 +350,7 @@ public class VanillaArgumentProviderImpl implements VanillaArgumentProvider {
             final ResourceKey<Level> resourceKey = ResourceKey.create(Registries.DIMENSION, dimensionLocation);
             final @org.jspecify.annotations.Nullable ServerLevel serverLevel = CraftServer.server.getLevel(resourceKey);
             if (serverLevel == null) {
-                throw DimensionArgument.ERROR_INVALID_VALUE.create(dimensionLocation);
+                throw DimensionArgumentAccessor.cardboard$invalidValue().create(dimensionLocation);
             } else {
                 return ((LevelBridge) serverLevel).cardboard$getWorld();
             }
