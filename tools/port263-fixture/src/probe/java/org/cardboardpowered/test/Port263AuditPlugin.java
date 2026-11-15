@@ -31,7 +31,10 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
     @Override
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(this, this);
+        ServerRestartFixture.started();
     }
+
+    @Override public void onDisable() { ServerRestartFixture.stopped(); }
 
     @org.bukkit.event.EventHandler
     public void onResourcesReloaded(io.papermc.paper.event.server.ServerResourcesReloadedEvent event) {
@@ -40,6 +43,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (ServerRestartFixture.command(this, sender, args)) return true;
         if (args.length == 1 && args[0].equals("run")) {
             if (running) throw new IllegalStateException("Audit is already running");
             running = true;
