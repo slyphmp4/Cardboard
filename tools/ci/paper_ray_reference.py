@@ -31,6 +31,8 @@ CASES = {
     'template-entity-spawn-events-and-cancellation', 'template-region-spawn-queue-and-failure',
     'raid-pdc-stable-container-and-independent-raids', 'raid-pdc-arrays-nested-copy-and-byte-contracts',
     'raid-pdc-native-nbt-codec-roundtrip', 'raid-pdc-old-empty-malformed-nbt-and-validation',
+    'world-view-distance-aliases-validation-and-isolation', 'world-void-settings-roundtrip-and-isolation',
+    'world-void-native-damage-threshold-and-cancellation', 'world-void-disabled-and-enabled-nonliving-removal',
 }
 
 

@@ -324,7 +324,7 @@ transformers, spawn events and callback-region queue recovery. The same source r
 A Cardboard-only native oracle verifies the actual template cache, stable PDC
 clearing on old-NBT reload, and a nested vanilla placement inside a callback.
 A separate template file (not a registered cached object) is saved, then loaded
-and placed after a complete server-process restart. Final runtime gates pending.
+and placed after a complete server-process restart.
 
 Core head `125146a6` passed all 12 checks, 57 API groups before/after full process
 restart, both persistence groups and two 1,800.5-second workloads, with zero
@@ -346,7 +346,7 @@ Stock: 1,800.4 seconds, heap change after Full GC -14.4 MB. Performance:
 workload errors.
 
 
-## Raid persistent data (runtime validation pending)
+## Raid persistent data (validated on b5ee2e65)
 
 Each native raid owns one stable observed PDC, shared by every Bukkit wrapper.
 The getter binds that state to the actual Raids SavedData owner using a weak
@@ -371,5 +371,21 @@ position, then changes ONLY its held PDC and checks immediate dirtiness. A full
 server-process restart must load its string/long-array values and stable
 container. The fixture does not load terrain and removes its owned raids.
 
-Final gates pending: 64 API groups before/after full restart, three persistence
-groups, 42 pinned-Paper groups and both 30-minute production-JAR workloads.
+Exact head `b5ee2e65` passed all 12 checks, 64 API groups before/after full
+process restart, all three persistence groups and the 42-group pinned-Paper
+control. Both production configurations completed 1,800.5-second workloads with
+zero connection/protocol/workload errors. Heap change after Full GC: stock
+-261.7 MB; performance -132.6 MB. The extra native-codec probes also require
+mandatory vanilla fields to remain mandatory and decoded containers to retain
+their dirty observer after binding.
+
+
+## World settings (fixture-only; implementation pending)
+
+Four shared groups exercise per-world view distance and deprecated no-tick
+aliases, validation/isolation, void settings, real native living-entity damage
+and cancellable VOID events, and nonliving entity removal. A Cardboard-only
+oracle reads the actual native chunk tracker's distance. The shared source
+runs on pinned Paper 249. Disposable client probes additionally require the
+connected owner and a fresh LAN guest to receive the world-specific radius in
+two successive integrated worlds. No successful implementation is claimed yet.

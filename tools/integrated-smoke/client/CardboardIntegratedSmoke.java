@@ -93,6 +93,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 2;
             } else if (stage == 2 && verification.isDone()) {
                 verification.join();
+                if (!WorldSettingsSmoke.finishClient(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -161,6 +162,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
             require(guest.hasPermission("cardboard.smoke.fabric"), "Guest Fabric permission grant was lost");
             require(!guest.hasPermission("cardboard.smoke.denied"), "Guest Fabric denial was lost");
+            WorldSettingsSmoke.finishGuest();
             System.out.println("INTEGRATED_LAN_HOST_PASS " + world + " guest=" + id);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(error);
@@ -223,6 +225,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             previousMaterialCount = materials;
             previousRegistry = registry;
             previousPlugin = plugin;
+            WorldSettingsSmoke.begin(server.getPlayerList().getPlayer(owner), LAN);
             System.out.println("INTEGRATED_SMOKE_WORLD_PASS " + world + " owner=" + owner);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
