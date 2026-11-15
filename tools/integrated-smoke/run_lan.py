@@ -38,6 +38,10 @@ try:
     for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2']:
         if marker not in host:
             raise AssertionError(f'Missing host marker: {marker}')
+    if host.count('SERVER_ALIAS_CLIENT_PASS') != 2 or host.count('INTEGRATED_RESTART_PASS ') != 2:
+        raise AssertionError('Alias/restart client scopes did not pass in both worlds')
+    if (ROOT / 'run-integrated-smoke/integrated-script-ran').exists():
+        raise AssertionError('Integrated restart armed an external launcher')
     if host.count('PLAYER_STATE_PACKETS_PASS ') != 2:
         raise AssertionError('Personal player state was not verified in both LAN worlds')
     if host.count('WORLD_EFFECT_PACKETS_PASS ') != 2:
@@ -60,7 +64,7 @@ finally:
     for log in logs:
         if log.exists():
             for line in log.read_text(errors='replace').splitlines():
-                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_']):
+                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_', 'SERVER_ALIAS_']):
                     print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)

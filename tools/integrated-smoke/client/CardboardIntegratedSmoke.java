@@ -38,6 +38,9 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private Object previousRegistry;
     private int previousMaterialCount = -1;
     private long closeDeadline;
+    private MinecraftServer restartServer;
+    private CompletableFuture<Void> restartRequest;
+    private long restartDeadline;
     private static final boolean LAN = Boolean.getBoolean("cardboard.smoke.lan");
     private static final Path EXCHANGE = Path.of(System.getProperty("cardboard.smoke.exchange", "."));
     private final long deadline = System.nanoTime() + 600_000_000_000L;
@@ -93,7 +96,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 2;
             } else if (stage == 2 && verification.isDone()) {
                 verification.join();
-                if (!WorldSettingsSmoke.finishClient(client)) return;
+                if (!WorldSettingsSmoke.finishClient(client) || !ServerAliasClientSmoke.finish(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -118,6 +121,18 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 }
                 Files.writeString(EXCHANGE.resolve("verified-" + world), "PASS");
                 if (Files.exists(EXCHANGE.resolve("left-" + world))) closeWorld(client);
+            } else if (stage == 8) {
+                require(System.nanoTime() < restartDeadline, "Integrated restart API did not stop its world");
+                if (!restartRequest.isDone()) return;
+                restartRequest.join();
+                if (!restartServer.isStopped()) return;
+                client.disconnect(new TitleScreen(), false);
+                require(CraftServer.INSTANCE == null && Bukkit.getServer() == null, "Bukkit singleton survived restart");
+                require(!org.cardboardpowered.CardboardMod.isAfterWorldLoad, "World-loaded flag survived restart");
+                restartServer = null; restartRequest = null;
+                closeDeadline = System.nanoTime() + 5_000_000_000L;
+                stage = 3;
+                System.out.println("INTEGRATED_RESTART_PASS " + world);
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
                 var remaining = Thread.getAllStackTraces().keySet().stream()
                         .filter(Thread::isAlive).map(Thread::getName)
@@ -148,11 +163,21 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     }
 
     private void closeWorld(Minecraft client) {
-        client.disconnect(new TitleScreen(), false);
-        require(CraftServer.INSTANCE == null && Bukkit.getServer() == null, "Bukkit singleton survived world close");
-        require(!org.cardboardpowered.CardboardMod.isAfterWorldLoad, "World-loaded flag survived world close");
-        closeDeadline = System.nanoTime() + 5_000_000_000L;
-        stage = 3;
+        restartServer = client.getSingleplayerServer();
+        var bukkit = Bukkit.getServer();
+        int closingWorld = world;
+        restartDeadline = System.nanoTime() + 60_000_000_000L;
+        restartRequest = CompletableFuture.runAsync(() -> {
+            String previous = org.spigotmc.SpigotConfig.restartScript;
+            try {
+                Path script = Path.of("integrated-restart-fixture.sh").toAbsolutePath();
+                Files.writeString(script, "#!/bin/sh\nprintf bad > integrated-script-ran\n");
+                org.spigotmc.SpigotConfig.restartScript = script.toString();
+                if (closingWorld == 1) bukkit.restart(); else bukkit.spigot().restart();
+            } catch (Exception failure) { throw new IllegalStateException(failure); }
+            finally { org.spigotmc.SpigotConfig.restartScript = previous; }
+        }, restartServer);
+        stage = 8;
     }
 
     private void verifyLanGuest(MinecraftServer server) {
@@ -162,6 +187,9 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             require(guest != null && guest.isOnline(), "TCP guest did not reach Bukkit with its offline UUID");
             require(Bukkit.getOnlinePlayers().size() == 2, "Owner and guest are not online together");
             require(!guest.isOp(), "LAN guest unexpectedly became an operator");
+            var restart = Bukkit.getServer().getCommandMap().getCommand("restart");
+            require(restart != null && !restart.testPermissionSilent(guest), "LAN guest can use the restart command");
+            restart.execute(guest, "restart", new String[0]);
             Plugin plugin = Bukkit.getPluginManager().getPlugin("IntegratedSmoke");
             plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
             require(guest.hasPermission("cardboard.smoke.fabric"), "Guest Fabric permission grant was lost");
@@ -233,6 +261,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             previousRegistry = registry;
             previousPlugin = plugin;
             WorldSettingsSmoke.begin(server.getPlayerList().getPlayer(owner), LAN);
+            ServerAliasClientSmoke.begin(server);
             System.out.println("INTEGRATED_SMOKE_WORLD_PASS " + world + " owner=" + owner);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);

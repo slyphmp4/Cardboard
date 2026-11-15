@@ -281,6 +281,8 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     private final StandardMessenger messenger = new StandardMessenger();
     private final MobGoals mobGoals = new PaperMobGoals();
     private final YamlConfiguration configuration;
+    private YamlConfiguration commandsConfiguration;
+    private final org.cardboardpowered.impl.util.ServerRestart restartController;
 
     public static MinecraftServer console;
     protected final PlayerList playerList;
@@ -343,6 +345,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         INSTANCE = this;
         server = nms;
         console = nms;
+        this.restartController = new org.cardboardpowered.impl.util.ServerRestart(nms);
         CardboardTranslations.register();
         commandMap = new CommandMapImpl(this);
 
@@ -361,6 +364,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         configuration.options().copyDefaults(true);
         configuration.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/bukkit.yml"), Charsets.UTF_8)));
         saveConfig();
+        this.loadCommandsConfiguration();
 
         this.playerView = Collections.unmodifiableList(Lists.transform(server.playerList.players, new Function<ServerPlayer, CraftPlayer>() {
             @Override
@@ -412,6 +416,27 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public File getConfigFile() {
         return new File("bukkit.yml");
     }
+
+    private File getCommandsConfigFile() { return new File("commands.yml"); }
+
+    private void loadCommandsConfiguration() {
+        this.commandsConfiguration = new YamlConfiguration();
+        boolean valid = true;
+        try { this.commandsConfiguration.load(this.getCommandsConfigFile()); }
+        catch (java.io.FileNotFoundException missing) { }
+        catch (IOException | org.bukkit.configuration.InvalidConfigurationException failure) {
+            this.getLogger().log(Level.SEVERE, "Cannot load " + this.getCommandsConfigFile(), failure);
+            valid = false;
+        }
+        var defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/commands.yml"), Charsets.UTF_8));
+        if (this.commandsConfiguration.contains("aliases")) defaults.set("aliases", null);
+        this.commandsConfiguration.setDefaults(defaults);
+        this.commandsConfiguration.options().copyDefaults(true).header(defaults.options().header());
+        if (valid) try { this.commandsConfiguration.save(this.getCommandsConfigFile()); }
+        catch (IOException failure) { this.getLogger().log(Level.SEVERE, "Could not save " + this.getCommandsConfigFile(), failure); }
+    }
+
+    public boolean cardboard$armRestartScript(String script) { return this.restartController.arm(script); }
 
     @Override
     public CardboardCachedServerIcon loadServerIcon(File file) throws Exception {
@@ -496,6 +521,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
             return;
         }
         if (!this.brigadierCommandsRegistered) return;
+        this.commandMap.cardboard$clearServerAliases();
         // Old native nodes retain the previous registry/command build context.
         this.commandMap.getKnownCommands().entrySet().removeIf(entry -> entry.getValue() instanceof MinecraftCommandWrapper);
         this.setVanillaCommands();
@@ -1199,7 +1225,13 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public Map<String, String[]> getCommandAliases() {
-        return new HashMap<String, String[]>();
+        var section = this.commandsConfiguration.getConfigurationSection("aliases");
+        Map<String, String[]> result = new LinkedHashMap<>();
+        if (section != null) for (String key : section.getKeys(false)) {
+            List<String> commands = section.isList(key) ? section.getStringList(key) : List.of(section.getString(key));
+            result.put(key, commands.toArray(String[]::new));
+        }
+        return result;
     }
 
     @Override
@@ -2012,7 +2044,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
         @Override
         public void restart() {
-            // TODO
+            CraftServer.this.restart();
         }
 
         @Override
@@ -2211,8 +2243,19 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
     @Override
     public boolean reloadCommandAliases() {
-        // TODO Auto-generated method stub
-        return false;
+        var loaded = new YamlConfiguration();
+        try { loaded.load(this.getCommandsConfigFile()); }
+        catch (java.io.FileNotFoundException missing) { return false; }
+        catch (IOException | org.bukkit.configuration.InvalidConfigurationException failure) {
+            Bukkit.getLogger().log(Level.SEVERE, "Cannot load " + this.getCommandsConfigFile(), failure);
+            return false;
+        }
+        loaded.setDefaults(this.commandsConfiguration.getDefaults());
+        loaded.options().copyDefaults(this.commandsConfiguration.options().copyDefaults());
+        this.commandsConfiguration = loaded;
+        this.commandMap.registerServerAliases();
+        this.syncCommands();
+        return true;
     }
 
     @Override
@@ -2895,7 +2938,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
 
 	@Override
 	public void restart() {
-		// TODO Auto-generated method stub
+		this.restartController.request();
 	}
 
 	@Override

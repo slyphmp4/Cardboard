@@ -23,10 +23,14 @@ def clean_children(directory):
             for value in path.read_text().splitlines():
                 try:
                     pid = int(value)
-                    process = Path('/proc') / str(pid)
-                    if (process / 'cwd').resolve() == directory and any(token in (process / 'cmdline').read_bytes() for token in [b'fabric-server-launch.jar', b'restart launcher.sh']):
-                        os.kill(pid, signal.SIGTERM)
-                except (ProcessLookupError, FileNotFoundError, ValueError):
+                    handle = os.pidfd_open(pid)
+                    try:
+                        process = Path('/proc') / str(pid)
+                        if (process / 'cwd').resolve() == directory and any(token in (process / 'cmdline').read_bytes() for token in [b'fabric-server-launch.jar', b'restart launcher.sh']):
+                            signal.pidfd_send_signal(handle, signal.SIGTERM)
+                    finally:
+                        os.close(handle)
+                except (OSError, ValueError):
                     pass
 
 
@@ -112,9 +116,11 @@ def one(mode, java):
         print('SERVER_OPERATIONS_RESTART_PASS ' + json.dumps(result), flush=True)
         return result
     finally:
-        if original is not None and output is not None:
-            h.stop(original, output)
-        clean_children(directory)
+        try:
+            if original is not None and output is not None:
+                h.stop(original, output)
+        finally:
+            clean_children(directory)
 
 
 def main():

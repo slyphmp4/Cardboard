@@ -184,6 +184,9 @@ jobs:
           timeout 900s xvfb-run -a ./gradlew -PintegratedSmoke runClient --no-daemon --stacktrace 2>&1 | tee integrated-client-smoke.log
           grep -q '^.*INTEGRATED_SMOKE_PASS$' integrated-client-smoke.log
           test -f run-integrated-smoke/integrated-smoke.success
+          test "$(grep -c 'SERVER_ALIAS_CLIENT_PASS' integrated-client-smoke.log)" -eq 2
+          test "$(grep -c 'INTEGRATED_RESTART_PASS ' integrated-client-smoke.log)" -eq 2
+          test ! -e run-integrated-smoke/integrated-script-ran
       - name: Upload client smoke diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

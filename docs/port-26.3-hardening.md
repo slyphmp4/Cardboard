@@ -462,7 +462,7 @@ GC -15.3 MB); performance completed 1,800.4 seconds (89,105 successes, -13.8 MB)
 Both reported zero connection/protocol/workload errors.
 
 
-## Personal player time, weather and sleep (runtime validation pending)
+## Personal player time, weather and sleep (validated on c6cfad2d)
 
 Nine CraftPlayer accessors/mutators now use transient state on the native player.
 Relative time adds a signed offset to the native default clock; fixed time uses
@@ -497,6 +497,62 @@ live world's ignored/spectator counts. Two 65-tick rain phases check gradual
 changes and repeated native clock syncs. Every observer and setting is cleaned
 up; a new proof marker is required in both successive LAN worlds.
 
-Validation targets: all 12 checks, 75 API groups before/after restart, 52 shared
-Paper groups, three persistence groups, both client lifecycles and two full
-1,800-second production-JAR workloads. Runtime validation is pending.
+Exact head `c6cfad2d` passed all 12 checks, 75 API groups before/after full
+process restart, all 52 pinned-Paper groups, three persistence groups and both
+client lifecycles. The real personal-state scopes ran 136/159 server ticks with
+10 native clock samples each. Both workloads lasted 1,800.5 seconds with zero
+connection/protocol/workload errors. Stock: 89,014 STATUS successes, heap delta
+after Full GC -20.5 MB; performance: 88,329 successes, -123.0 MB.
+
+
+## Server aliases and graceful restart (runtime validation pending)
+
+commands.yml is loaded per CraftServer with the existing defaults and defensive
+ordered scalar/list aliases. Explicit alias sections do not force the bundled
+default alias. Missing/malformed reloads return false before replacing the live
+configuration, aliases or native tree; malformed startup files are not overwritten.
+SimpleCommandMap retains its existing macro/target validation implementation.
+
+CommandMapImpl records only aliases it installed and their displaced commands.
+Removal restores a displaced command only while the label still belongs to that
+alias, preserving replacements made by other plugins. Empty aliases are tracked
+as well. Data-pack reload removes the overlay before replacing native wrappers,
+avoiding stale registry/dispatcher references. Successful alias reload rebuilds
+the native dispatcher and refreshes connected clients.
+
+Server.restart(), Server.Spigot.restart() and the permission-gated restart command
+share one controller per server. Requests are deduplicated; async callers marshal
+kicks and native halt to the server thread. The normal server lifecycle disables
+plugins, saves worlds and closes listeners. A validated dedicated startup script
+is armed once as a JVM shutdown hook; Unix file paths and arguments use an argv
+vector rather than shell evaluation. A missing script still stops normally so an
+external supervisor can own relaunch. No forced System.exit is introduced.
+
+Integrated restart saves/closes the world and leaves the client JVM running; it
+does not arm an external launcher or automatically reopen that world. The client
+fixture invokes the ordinary API in its first world and Spigot API in the second,
+joins native shutdown, checks global/thread cleanup and opens the next world.
+A valid sentinel script must never execute at final client exit. Windows launcher
+construction is retained, while actual process restart coverage currently runs
+on Linux.
+
+Fixture-only head `9fa6a006` reproduced five new alias groups on both Cardboard
+configurations with all previous 75 passing; pinned official Paper build 249
+passed all 56 shared groups. Separate disposable JVM cases proved the API,
+async Spigot API and command paths did not stop the old server before the fix.
+Shared contracts check startup loading, order/defensive copies, macro expansion,
+replacement and failed-reload return/file behavior. A Cardboard-only oracle
+checks native dispatch, command ownership/restoration and staged failure behavior.
+
+The dedicated restart runner requires a script-created second JVM with a new PID,
+exact literal arguments, one launch despite duplicate requests, primary-thread
+plugin shutdown and all three saved-data groups. The missing-script command case
+uses a separate supervisor launch. Cleanup signals only verified owned processes
+through pidfds. Actual clients observe alias add/replace/remove command trees and
+a non-operator LAN guest is denied restart.
+
+Validation targets: all 13 checks, 80 Cardboard API groups before/after full restart,
+56 shared Paper groups, three persistence groups, both 1,800-second workloads,
+three dedicated restart cases and both integrated alias/restart lifecycles.
+Runtime validation is pending.
+
