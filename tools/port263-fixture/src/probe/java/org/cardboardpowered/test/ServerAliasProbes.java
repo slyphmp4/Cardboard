@@ -161,7 +161,7 @@ final class ServerAliasProbes {
                 if (this.original == null) Files.deleteIfExists(this.file); else Files.write(this.file, this.original);
                 Bukkit.getServer().reloadCommandAliases();
             } finally {
-                map().getKnownCommands().entrySet().removeIf(entry -> entry.getKey().startsWith(PREFIX) || entry.getKey().startsWith("p263:" + PREFIX));
+                map().getKnownCommands().keySet().removeIf(key -> key.startsWith(PREFIX) || key.startsWith("p263:" + PREFIX));
                 this.target.unregister(map()); this.collision.unregister(map());
             }
         }
