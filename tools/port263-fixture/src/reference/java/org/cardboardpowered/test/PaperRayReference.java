@@ -43,18 +43,28 @@ public final class PaperRayReference extends JavaPlugin {
                     PlayerStateProbes.verify(world, check);
                     ServerAliasProbes.verify(check);
                     BrigadierArgumentProbes.verify(world, check);
-                    Files.createDirectories(getDataFolder().toPath());
-                    Files.writeString(getDataFolder().toPath().resolve("results.json"),
-                            new GsonBuilder().setPrettyPrinting().create().toJson(results));
-                    getLogger().info("PAPER_RAY_REFERENCE_RESULTS " + results);
+                    BrigadierArgumentProbes.verifyMessages(world, this, check, () -> finish(world, x, z, results));
                 } catch (Exception failure) {
-                    throw new IllegalStateException("Unable to finish reference probes", failure);
-                } finally {
                     world.removePluginChunkTicket(x, z, this);
                     Bukkit.shutdown();
+                    throw new IllegalStateException("Unable to finish reference probes", failure);
                 }
             }, 20);
         }, 20);
     }
+    private void finish(org.bukkit.World world, int x, int z, java.util.Map<String, String> results) {
+        try {
+            Files.createDirectories(getDataFolder().toPath());
+            Files.writeString(getDataFolder().toPath().resolve("results.json"),
+                    new GsonBuilder().setPrettyPrinting().create().toJson(results));
+            getLogger().info("PAPER_RAY_REFERENCE_RESULTS " + results);
+        } catch (Exception failure) {
+            throw new IllegalStateException("Unable to write reference results", failure);
+        } finally {
+            world.removePluginChunkTicket(x, z, this);
+            Bukkit.shutdown();
+        }
+    }
+
 }
 

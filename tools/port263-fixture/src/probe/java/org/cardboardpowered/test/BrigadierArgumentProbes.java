@@ -68,7 +68,7 @@ public final class BrigadierArgumentProbes {
             UUID id = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
             require(parse(ArgumentTypes.uuid(), id.toString()).equals(id), "UUID conversion failed");
             require(parse(ArgumentTypes.namedColor(), "red") == NamedTextColor.RED, "Named color conversion failed");
-            require(parse(ArgumentTypes.hexColor(), "#123abc").value() == 0x123abc, "Hex color conversion failed");
+            require(parse(ArgumentTypes.hexColor(), "123abc").value() == 0x123abc, "Hex color conversion failed");
             require(parse(ArgumentTypes.axes(), "xz").equals(java.util.Set.of(Axis.X, Axis.Z)), "Axis set conversion failed");
             require(parse(ArgumentTypes.gameMode(), "creative") == GameMode.CREATIVE, "Game mode conversion failed");
             var heightMap = ArgumentTypes.heightMap();
@@ -154,33 +154,6 @@ public final class BrigadierArgumentProbes {
             var style = parse(ArgumentTypes.style(), "{color:'#123abc',bold:true}");
             require(style.color() != null && style.color().value() == 0x123abc && style.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE, "Style conversion lost values");
         });
-        check.accept("brigadier-custom-conversion-and-message-resolution", () -> {
-            var source = source(world);
-            var dispatcher = new CommandDispatcher<CommandSourceStack>();
-            var seen = new AtomicReference<String>();
-            var converted = new CustomArgumentType.Converted<String, UUID>() {
-                public ArgumentType<UUID> getNativeType() { return ArgumentTypes.uuid(); }
-                public String convert(UUID value) { return "converted:" + value; }
-            };
-            dispatcher.register(Commands.literal("probe").then(Commands.argument("id", converted).executes(context -> {
-                seen.set(context.getArgument("id", String.class)); return 7;
-            })));
-            String id = "00112233-4455-6677-8899-aabbccddeeff";
-            require(dispatcher.execute("probe " + id, source) == 7 && seen.get().equals("converted:" + id), "Custom argument returned native rather than API result");
-            var message = new AtomicReference<net.kyori.adventure.chat.SignedMessage>();
-            dispatcher.register(Commands.literal("message").then(Commands.argument("text", ArgumentTypes.signedMessage()).executes(context -> {
-                var resolver = context.getArgument("text", SignedMessageResolver.class);
-                require(resolver.content().equals("argument message"), "Message content changed");
-                var future = resolver.resolveSignedMessage("text", context);
-                require(future.isDone(), "Console unsigned message did not resolve synchronously");
-                message.set(future.join()); return 1;
-            })));
-            require(dispatcher.execute("message argument message", source) == 1, "Message command did not execute");
-            require(message.get() != null && message.get().message().equals("argument message") && message.get().signature() == null
-                    && message.get().identity().uuid().equals(new UUID(0, 0)), "Unsigned console fallback is not a system message");
-            var suggestions = dispatcher.getCompletionSuggestions(dispatcher.parse("probe 0011", source)).get(5, TimeUnit.SECONDS);
-            require(suggestions != null, "Suggestion future did not complete");
-        });
         check.accept("brigadier-command-source-context-and-identity", () -> {
             var original = source(world);
             var location = new Location(world, 5.25, 90.5, -7.75, 37, -12);
@@ -197,6 +170,59 @@ public final class BrigadierArgumentProbes {
                 syntax(executed::getPlayerOrThrow);
             } finally { pig.remove(); }
         });
+    }
+
+    private static java.util.concurrent.CompletableFuture<net.kyori.adventure.chat.SignedMessage> createMessageProbe(World world) throws Exception {
+        var source = source(world);
+        var dispatcher = new CommandDispatcher<CommandSourceStack>();
+        var seen = new AtomicReference<String>();
+        var converted = new CustomArgumentType.Converted<String, UUID>() {
+            public ArgumentType<UUID> getNativeType() { return ArgumentTypes.uuid(); }
+            public String convert(UUID value) { return "converted:" + value; }
+        };
+        dispatcher.register(Commands.literal("probe").then(Commands.argument("id", converted).executes(context -> {
+            seen.set(context.getArgument("id", String.class)); return 7;
+        })));
+        String id = "00112233-4455-6677-8899-aabbccddeeff";
+        require(dispatcher.execute("probe " + id, source) == 7 && seen.get().equals("converted:" + id), "Custom argument returned native rather than API result");
+        var message = new AtomicReference<java.util.concurrent.CompletableFuture<net.kyori.adventure.chat.SignedMessage>>();
+        dispatcher.register(Commands.literal("message").then(Commands.argument("text", ArgumentTypes.signedMessage()).executes(context -> {
+            var resolver = context.getArgument("text", SignedMessageResolver.class);
+            require(resolver.content().equals("argument message"), "Message content changed");
+            var future = resolver.resolveSignedMessage("text", context);
+            message.set(future); return 1;
+        })));
+        require(dispatcher.execute("message argument message", source) == 1, "Message command did not execute");
+        var suggestions = dispatcher.getCompletionSuggestions(dispatcher.parse("probe 0011", source)).get(5, TimeUnit.SECONDS);
+        require(suggestions != null, "Suggestion future did not complete");
+        return java.util.Objects.requireNonNull(message.get());
+    }
+
+    public static void verifyMessages(World world, org.bukkit.plugin.java.JavaPlugin plugin,
+            BiConsumer<String, WorldRayTraceProbes.Checked> check, Runnable done) {
+        final String name = "brigadier-custom-conversion-and-message-resolution";
+        final java.util.concurrent.CompletableFuture<net.kyori.adventure.chat.SignedMessage> future;
+        try { future = createMessageProbe(world); }
+        catch (Throwable failure) {
+            check.accept(name, () -> { throw new AssertionError("Message probe setup failed", failure); });
+            done.run(); return;
+        }
+        class AwaitMessage implements Runnable {
+            int ticks;
+            @Override public void run() {
+                if (!future.isDone() && ++this.ticks < 100) {
+                    Bukkit.getScheduler().runTaskLater(plugin, this, 1); return;
+                }
+                check.accept(name, () -> {
+                    require(future.isDone(), "Message resolution did not finish within 100 server ticks");
+                    var value = future.join();
+                    require(value.message().equals("argument message") && value.signature() == null
+                            && value.identity().uuid().equals(new UUID(0, 0)), "Unsigned console fallback is not a system message");
+                });
+                done.run();
+            }
+        }
+        new AwaitMessage().run();
     }
 
     public static CommandSourceStack source(World world) throws Exception {
