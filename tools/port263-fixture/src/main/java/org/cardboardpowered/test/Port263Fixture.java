@@ -49,6 +49,27 @@ public final class Port263Fixture implements ModInitializer {
         return stack;
     }
 
+    public static void placeNativeTemplate(net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate template, int x, int y, int z) {
+        var pos = new net.minecraft.core.BlockPos(x, y, z);
+        template.placeInWorld(level, pos, pos,
+                new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings().setIgnoreEntities(true),
+                net.minecraft.util.RandomSource.create(17), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+    }
+
+    public static boolean hasNativeTemplate(net.minecraft.server.level.ServerLevel level, String key,
+            net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate template) {
+        return level.getServer().getStructureTemplateManager().getOrCreate(Identifier.parse(key)) == template;
+    }
+
+    public static void reloadTemplateWithoutPdc(net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate template) {
+        var tag = template.save(new net.minecraft.nbt.CompoundTag()).copy();
+        if (tag.getCompound("BukkitValues").isEmpty()) throw new AssertionError("Native template save omitted BukkitValues");
+        tag.remove("BukkitValues");
+        template.load(level.registryAccess().lookupOrThrow(Registries.BLOCK), tag);
+    }
+
     public static int readMarker(net.minecraft.world.item.ItemStack stack) {
         return stack.getOrDefault(COMPONENT, -1);
     }

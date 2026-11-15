@@ -258,6 +258,7 @@ public final class Port263AuditPlugin extends JavaPlugin implements org.bukkit.e
             ExplosionProbes.verifyNative(world, this, (name, action) -> check(name, action::run));
             WorldSearchProbes.verify(world, this, (name, action) -> check(name, action::run));
             StructureTemplateProbes.verify(world, this, (name, action) -> check(name, action::run));
+            StructureTemplateProbes.verifyNative(world, (name, action) -> check(name, action::run));
             verifyWorldQueries(world);
             verifyDragon(this::verifyRecipes);
         } else {

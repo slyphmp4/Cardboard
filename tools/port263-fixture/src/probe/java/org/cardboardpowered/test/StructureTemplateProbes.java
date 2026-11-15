@@ -218,6 +218,45 @@ final class StructureTemplateProbes {
         });
     }
 
+    /** Independent native cache/save/load oracle; only the Fabric matrix has this helper. */
+    static void verifyNative(World world, BiConsumer<String, WorldRayTraceProbes.Checked> check) {
+        check.accept("template-native-cache-and-old-nbt-reload", () -> {
+            var manager = manager();
+            var key = key();
+            try (var scene = new Scene(world)) {
+                var template = scene.capture(false);
+                var pdc = template.getPersistentDataContainer();
+                pdc.set(DATA, PersistentDataType.INTEGER, 173);
+                manager.registerStructure(key, template);
+                var nativeWorld = world.getClass().getMethod("getHandle").invoke(world);
+                var nativeTemplate = template.getClass().getMethod("getHandle").invoke(template);
+                var levelClass = Class.forName("net.minecraft.server.level.ServerLevel");
+                var templateClass = Class.forName("net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate");
+                var fixture = Class.forName("org.cardboardpowered.test.Port263Fixture");
+                require((Boolean) fixture.getMethod("hasNativeTemplate", levelClass, String.class, templateClass)
+                        .invoke(null, nativeWorld, key.toString(), nativeTemplate), "Bukkit registration is invisible to Minecraft's actual cache");
+                fixture.getMethod("reloadTemplateWithoutPdc", levelClass, templateClass).invoke(null, nativeWorld, nativeTemplate);
+                require(template.getPersistentDataContainer() == pdc && pdc.isEmpty(), "Loading old NBT retained stale PDC or replaced held container");
+                require(template.getSize().equals(new BlockVector(3, 2, 2)), "Native old-template reload lost block data");
+                var nested = scene.target.clone().add(0, 0, -3);
+                var nativePlace = fixture.getMethod("placeNativeTemplate", levelClass, templateClass, int.class, int.class, int.class);
+                var callbacks = new AtomicInteger();
+                var first = new java.util.concurrent.atomic.AtomicBoolean(true);
+                template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of((region, x, y, z, current, state) -> {
+                    callbacks.incrementAndGet();
+                    if (first.getAndSet(false)) {
+                        try { nativePlace.invoke(null, nativeWorld, nativeTemplate, nested.getBlockX(), nested.getBlockY(), nested.getBlockZ()); }
+                        catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
+                    }
+                    if (current.getType() == Material.GOLD_BLOCK) current.setType(Material.DIAMOND_BLOCK);
+                    return current;
+                }), List.of());
+                require(callbacks.get() == 11 && nested.clone().add(1, 0, 0).getBlock().getType() == Material.GOLD_BLOCK
+                        && scene.target.clone().add(1, 0, 0).getBlock().getType() == Material.DIAMOND_BLOCK, "Nested vanilla placement inherited outer API transformers");
+            } finally { manager.deleteStructure(key); }
+        });
+    }
+
     static void persistence(World world, boolean verify) throws Exception {
         var manager = manager();
         var key = new NamespacedKey("cardboard_template_probe", "process_restart");

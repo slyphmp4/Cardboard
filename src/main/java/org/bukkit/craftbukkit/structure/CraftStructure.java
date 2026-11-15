@@ -151,7 +151,7 @@ public class CraftStructure implements Structure {
                 () -> "entity@" + entity.pos, LOGGER
             )) {
                 EntityType.create(
-                    TagValueInput.createGlobal(problemReporter, entity.nbt),
+                    TagValueInput.create(problemReporter, this.registry, entity.nbt),
                     ((CraftWorld) Bukkit.getServer().getWorlds().get(0)).getHandle(),
                     new EntitySpawnRequest(EntitySpawnReason.STRUCTURE, false)
                 ).ifPresent(dummyEntity -> {

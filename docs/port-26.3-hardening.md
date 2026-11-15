@@ -321,5 +321,7 @@ Region fluid snapshots are implemented as a required callback dependency.
 Eight shared groups cover cache semantics, fill/copy/palettes, tile/structure PDC,
 streams/files/resources, placement/rotation/mirror/integrity, entity flags and
 transformers/exception recovery. The same source runs on pinned Paper 249.
+A Cardboard-only native oracle verifies the actual template cache, stable PDC
+clearing on old-NBT reload, and a nested vanilla placement inside a callback.
 A separate template file (not a registered cached object) is saved, then loaded
 and placed after a complete server-process restart. Final runtime gates pending.

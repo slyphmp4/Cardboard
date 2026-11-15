@@ -150,6 +150,12 @@ public class CraftLimitedRegion extends CraftRegionAccessor implements LimitedRe
     }
 
     @Override
+    public java.util.Set<org.bukkit.FeatureFlag> getFeatureFlags() {
+        return org.bukkit.craftbukkit.CraftFeatureFlag.getFromNMS(this.getHandle().enabledFeatures()).stream()
+                .map(org.bukkit.FeatureFlag.class::cast).collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    @Override
     public boolean isInRegion(Location location) {
         return this.region.contains(location.getX(), location.getY(), location.getZ());
     }

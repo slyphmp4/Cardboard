@@ -2396,7 +2396,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
     public synchronized StructureManager getStructureManager() {
         if (this.structureManager == null) {
             this.structureManager = new org.bukkit.craftbukkit.structure.CraftStructureManager(
-                    this.getServer().getStructureManager(), this.getServer().registryAccess());
+                    this.getServer().getStructureTemplateManager(), this.getServer().registryAccess());
         }
         return this.structureManager;
     }
