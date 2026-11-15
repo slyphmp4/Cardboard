@@ -185,6 +185,7 @@ jobs:
           grep -q '^.*INTEGRATED_SMOKE_PASS$' integrated-client-smoke.log
           test -f run-integrated-smoke/integrated-smoke.success
           test "$(grep -c 'SERVER_ALIAS_CLIENT_PASS' integrated-client-smoke.log)" -eq 2
+          test "$(grep -c 'BRIGADIER_CLIENT_PASS ' integrated-client-smoke.log)" -eq 2
           test "$(grep -c 'INTEGRATED_RESTART_PASS ' integrated-client-smoke.log)" -eq 2
           test ! -e run-integrated-smoke/integrated-script-ran
       - name: Upload client smoke diagnostics

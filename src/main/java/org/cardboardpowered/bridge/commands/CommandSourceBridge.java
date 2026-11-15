@@ -13,28 +13,21 @@ public interface CommandSourceBridge {
 	/**
 	 */
     default CommandSender getBukkitSender(CommandSourceStack source) {
-
-    	if (source.isPlayer()) {
-    		// Cardboard Note: Redirect ServerPlayerEntity$3 to ServerPlayerEntity
-    		return ( (CommandSourceBridge) source.getPlayer() ).getBukkitSender(source);
-    	}
-
-    	if (null != source.entity) {
-    		return ( (CommandSourceBridge) source.getEntity() ).getBukkitSender(source);
-    	}
-    	
-    	CommandSource output = source.source;
-
-    	// The console has no entity behind it, so it never reached the branches above.
-    	if (output instanceof net.minecraft.server.MinecraftServer)
-    		return org.bukkit.craftbukkit.CraftServer.INSTANCE.getConsoleSender();
-
-    	// Memic Default Error
-    	String msg1 = " does not define or inherit an implementation of the resolved method 'org.bukkit.command.CommandSender";
-    	String msg2 = " getBukkitSender(net.minecraft.class_2168/ServerCommandSource)' of interface IMixinCommandOutput.";
-    	throw new AbstractMethodError(
-    			"Receiver class " + output.getClass().getName() + msg1 +  msg2
-    	);
+        return resolveSender(source);
     }
 
+    static CommandSender resolveSender(CommandSourceStack source) {
+        CommandSource output = source.source;
+        // The initiating output is stable when /execute or withExecutor changes the executor.
+        if (output instanceof net.minecraft.server.MinecraftServer) {
+            return org.bukkit.craftbukkit.CraftServer.INSTANCE.getConsoleSender();
+        }
+        if (output instanceof net.minecraft.server.network.ServerGamePacketListenerImpl listener) {
+            return (CommandSender) ((org.cardboardpowered.bridge.world.entity.EntityBridge) listener.player).getBukkitEntity();
+        }
+        if (source.isPlayer()) return ((CommandSourceBridge) source.getPlayer()).getBukkitSender(source);
+        if (source.getEntity() != null) return ((CommandSourceBridge) source.getEntity()).getBukkitSender(source);
+        throw new AbstractMethodError("No Bukkit sender for command output " + output.getClass().getName());
+    }
 }
+

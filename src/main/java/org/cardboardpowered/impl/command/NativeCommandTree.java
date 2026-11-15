@@ -19,6 +19,28 @@ import java.util.IdentityHashMap;
 public final class NativeCommandTree {
     private NativeCommandTree() { }
 
+    /** The native dispatcher owns this root; ordinary API builders keep ordinary roots. */
+    public static final class Root<S> extends RootCommandNode<S> {
+        @Override public void addChild(CommandNode<S> node) {
+            if (node instanceof LiteralCommandNode<S> literal && needsConversion(node, new IdentityHashMap<>())) {
+                node = copy(literal);
+            }
+            super.addChild(node);
+        }
+    }
+
+    private static boolean needsConversion(CommandNode<?> node, IdentityHashMap<CommandNode<?>, Boolean> seen) {
+        if (seen.put(node, Boolean.TRUE) != null) return false;
+        if (node instanceof ArgumentCommandNode<?, ?> argument && !(node instanceof NativeArgumentNode<?, ?>)) {
+            if (argument.getType() instanceof CustomArgumentType<?, ?>
+                    || argument.getType() instanceof io.papermc.paper.command.brigadier.argument.VanillaArgumentProviderImpl.NativeWrapperArgumentType<?, ?>) return true;
+        }
+        if (node.getRedirect() != null && !(node.getRedirect() instanceof RootCommandNode<?>)
+                && needsConversion(node.getRedirect(), seen)) return true;
+        for (var child : node.getChildren()) if (needsConversion(child, seen)) return true;
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     public static <S> LiteralCommandNode<S> copy(LiteralCommandNode<S> root) {
         return (LiteralCommandNode<S>) copyNode(root, new IdentityHashMap<>());

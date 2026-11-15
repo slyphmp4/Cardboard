@@ -38,6 +38,8 @@ try:
     for marker in ['INTEGRATED_SMOKE_PASS', 'INTEGRATED_LAN_HOST_PASS 1', 'INTEGRATED_LAN_HOST_PASS 2']:
         if marker not in host:
             raise AssertionError(f'Missing host marker: {marker}')
+    if host.count('BRIGADIER_CLIENT_PASS ') != 2:
+        raise AssertionError('Native Brigadier arguments did not pass in both LAN worlds')
     if host.count('SERVER_ALIAS_CLIENT_PASS') != 2 or host.count('INTEGRATED_RESTART_PASS ') != 2:
         raise AssertionError('Alias/restart client scopes did not pass in both worlds')
     if (root / 'run-integrated-smoke/integrated-script-ran').exists():

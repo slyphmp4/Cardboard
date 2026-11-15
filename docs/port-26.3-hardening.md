@@ -554,5 +554,46 @@ a non-operator LAN guest is denied restart.
 Validation targets: all 13 checks, 80 Cardboard API groups before/after full restart,
 56 shared Paper groups, three persistence groups, both 1,800-second workloads,
 three dedicated restart cases and both integrated alias/restart lifecycles.
-Runtime validation is pending.
+Exact-head validation results are recorded in PR #58.
 
+
+## Native command argument provider
+
+The missing VanillaArgumentProvider service is implemented against the pinned
+Paper 26.3 provider contract. Factories cover all 37 native types and public
+overloads. Native parsing converts entities, positions, block snapshots/NBT, item
+components, predicates, components/styles, ranges and registry values into API
+results. Registry-dependent factories use the active server registries/features
+without a static world/build-context cache.
+
+Native command nodes keep their real wire/signing type while parsing into API
+values. Per-registration graph copies preserve shared nodes, redirects, cycles,
+forks, requirements and explicit/custom suggestions. The native dispatcher's
+root also normalizes directly inserted API arguments. Ordinary API builders keep
+ordinary roots; the dispatcher's result consumer remains installed by vanilla.
+Unknown legacy arguments retain the previous client string fallback. Declared
+custom native-type cycles/nulls are rejected without recursion overflow.
+
+Command-source getters preserve the initiating output when the executor changes.
+The player output uses its captured owner; console output takes priority over the
+new executor. Reply/success/failure delegate to native delivery and feedback rules.
+Signed message resolution adapts only a private context's named argument back to
+the native Message, retaining the original signing context, source and input.
+The Adventure view preserves native time, salt, identity, signature and decoration.
+
+Fixture-only fa275556 passes all 64 shared groups on pinned official Paper while
+both Cardboard configurations reproduce exactly eight new failures and retain all
+previous 80 passing groups. The control established unsigned message resolution
+as asynchronous and hex-color grammar as six digits without a leading hash.
+
+The production target is 88 groups before/after process restart on both stacks,
+64 shared Paper groups and all existing persistence/workload/restart checks.
+Actual owner/LAN clients decode every public factory type and time/selector
+properties, execute UUID/custom/player/world/component/message commands, request
+server-backed suggestions and receive reply/success/failure packets. These scopes
+repeat after native resource reload in each successive world, with fresh lifecycle
+registration and packet-observer cleanup. Real disposable clients have offline
+profiles: their unsigned fallback is tested over the connection. A separate
+synthetic native signing context checks metadata/signature binding through the
+vanilla resolver; it does not establish authenticated-client cryptographic proof.
+Runtime validation for this stage is in progress; see PR #58 for exact-head results.

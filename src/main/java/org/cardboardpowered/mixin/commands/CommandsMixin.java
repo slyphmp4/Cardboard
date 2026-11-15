@@ -36,6 +36,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Collection;
@@ -47,6 +48,11 @@ public class CommandsMixin {
 
     @Shadow
     public com.mojang.brigadier.CommandDispatcher<CommandSourceStack> dispatcher;
+
+    @Redirect(method = "<init>", at = @At(value = "NEW", target = "com/mojang/brigadier/CommandDispatcher"))
+    private com.mojang.brigadier.CommandDispatcher<CommandSourceStack> cardboard$nativeArgumentRoot() {
+        return new com.mojang.brigadier.CommandDispatcher<>(new org.cardboardpowered.impl.command.NativeCommandTree.Root<>());
+    }
 
     @Shadow
     @Final
@@ -142,3 +148,4 @@ public class CommandsMixin {
         ci.cancel();
     }
 }
+

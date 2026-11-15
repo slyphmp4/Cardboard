@@ -35,7 +35,8 @@ final class NativeCommandTreeTest {
         var copied = NativeCommandTree.copy(original);
         assertSame(nativeType, ((ArgumentCommandNode<?, ?>) copied.getChild("word")).getType());
         assertSame(converted, ((ArgumentCommandNode<?, ?>) original.getChild("word")).getType());
-        var dispatcher = new CommandDispatcher<Object>(); dispatcher.getRoot().addChild(copied);
+        var dispatcher = new CommandDispatcher<Object>(new NativeCommandTree.Root<>()); dispatcher.getRoot().addChild(original);
+        assertSame(nativeType, ((ArgumentCommandNode<?, ?>) dispatcher.getRoot().getChild("probe").getChild("word")).getType());
         assertEquals(7, dispatcher.execute("probe example", new Object()));
         assertEquals(7, value.get());
         assertEquals("example", dispatcher.getCompletionSuggestions(dispatcher.parse("probe ex", new Object())).get().getList().getFirst().getText());

@@ -102,6 +102,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                     worldSettingsClientDone = true;
                 }
                 if (!ServerAliasClientSmoke.finish(client)) return;
+                if (!BrigadierClientSmoke.finish(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -268,6 +269,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             previousPlugin = plugin;
             WorldSettingsSmoke.begin(server.getPlayerList().getPlayer(owner), LAN);
             ServerAliasClientSmoke.begin(server);
+            BrigadierClientSmoke.begin(server, owner);
             System.out.println("INTEGRATED_SMOKE_WORLD_PASS " + world + " owner=" + owner);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
@@ -291,4 +293,5 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
         if (!condition) throw new AssertionError(message);
     }
 }
+
 

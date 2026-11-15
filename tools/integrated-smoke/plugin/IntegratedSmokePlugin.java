@@ -22,17 +22,23 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     private final ConcurrentMap<UUID, UUID> targetReplacements = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Integer> entityEventCounts = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> entityEventReasons = new ConcurrentHashMap<>();
+    private final BrigadierSmokeCommands brigadier = new BrigadierSmokeCommands();
     private volatile boolean bukkitAsyncRan;
     private volatile boolean foliaAsyncRan;
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
+        this.brigadier.install(this);
         getServer().getScheduler().runTaskAsynchronously(this, () -> bukkitAsyncRan = true);
         getServer().getAsyncScheduler().runNow(this, task -> foliaAsyncRan = true);
         // Start the timer executor too; it must be released when the world closes.
         getServer().getAsyncScheduler().runDelayed(this, task -> {}, 1, java.util.concurrent.TimeUnit.HOURS);
     }
+
+    public int beginBrigadier(UUID owner, int round) { return this.brigadier.begin(owner, round); }
+    public java.util.Map<String, String> readBrigadier() { return this.brigadier.snapshot(); }
+    public void endBrigadier() { this.brigadier.end(); }
 
     @EventHandler
     public void preLogin(AsyncPlayerPreLoginEvent event) {
@@ -134,3 +140,4 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
         }
     }
 }
+
