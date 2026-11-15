@@ -172,7 +172,8 @@ final class StructureTemplateProbes {
                 var entities = new AtomicInteger();
                 BlockTransformer transformer = (region, x, y, z, current, state) -> {
                     require(region.isInRegion(x, y, z) && region.getWorld().equals(world), "Transformer has wrong region");
-                    require(state.getWorld().getType().isAir(), "Transformer world snapshot is not the pre-placement block");
+                    // Native placement temporarily clears a tile with BARRIER before its transformer.
+                    require(state.getWorld().getType() == (current instanceof Chest ? Material.BARRIER : Material.AIR), "Transformer world snapshot differs from native placement order");
                     require(state.getOriginal().getType() == current.getType(), "Transformer original is not the template state");
                     if (current instanceof Chest chest) {
                         require(chest.getPersistentDataContainer().get(TILE, PersistentDataType.INTEGER) == 73, "Transformer did not receive template tile NBT");
