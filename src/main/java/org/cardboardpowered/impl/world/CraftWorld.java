@@ -3154,7 +3154,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
     * Paper-compatible Bukkit spawn-event bridge for entities
     * created through CraftRegionAccessor / CraftWorld.
     */
-    private boolean cardboard$callSpawnEvent(
+    public boolean cardboard$callSpawnEvent(
             net.minecraft.world.entity.Entity entity,
             SpawnReason reason
     ) {

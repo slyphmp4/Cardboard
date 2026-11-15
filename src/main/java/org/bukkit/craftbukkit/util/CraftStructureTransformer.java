@@ -108,8 +108,12 @@ public class CraftStructureTransformer {
     }
 
     public void discard() {
+        this.discard(true);
+    }
+
+    public void discard(boolean commit) {
         try {
-            this.limitedRegion.saveEntities();
+            if (commit) this.limitedRegion.saveEntities();
         } finally {
             this.limitedRegion.breakLink();
             this.limitedRegion = null;

@@ -131,7 +131,11 @@ public class CraftLimitedRegion extends CraftRegionAccessor implements LimitedRe
             if (entity.isAlive()) {
                 // check if entity is still in region or if it got teleported outside it
                 Preconditions.checkState(this.region.contains(entity.getX(), entity.getY(), entity.getZ()), "Entity %s is not in the region", entity);
-                access.addFreshEntityWithPassengers(entity);
+                if (access instanceof net.minecraft.server.level.ServerLevel) {
+                    org.cardboardpowered.impl.world.StructureEntitySpawner.add(access, entity, null);
+                } else {
+                    access.addFreshEntityWithPassengers(entity);
+                }
             }
         }
 

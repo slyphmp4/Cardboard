@@ -318,10 +318,27 @@ clearing and neighbour updates retain their native order. Callback regions retai
 the original WorldGenLevel and release their link in finally, including errors.
 Region fluid snapshots are implemented as a required callback dependency.
 
-Eight shared groups cover cache semantics, fill/copy/palettes, tile/structure PDC,
-streams/files/resources, placement/rotation/mirror/integrity, entity flags and
-transformers/exception recovery. The same source runs on pinned Paper 249.
+Ten shared groups cover cache semantics, fill/copy/palettes, tile/structure PDC,
+streams/files/resources, placement/rotation/mirror/integrity, entity flags,
+transformers, spawn events and callback-region queue recovery. The same source runs on pinned Paper 249.
 A Cardboard-only native oracle verifies the actual template cache, stable PDC
 clearing on old-NBT reload, and a nested vanilla placement inside a callback.
 A separate template file (not a registered cached object) is saved, then loaded
 and placed after a complete server-process restart. Final runtime gates pending.
+
+Core head `125146a6` passed all 12 checks, 57 API groups before/after full process
+restart, both persistence groups and two 1,800.5-second workloads, with zero
+connection/protocol/workload errors. Stock heap change after Full GC: -289.9 MB;
+performance: -13.6 MB. That gate did not cover spawn-event cancellation.
+
+The entity-event follow-up routes captured and queued region entities through
+the existing world's spawn-event bridge for normal ServerLevel additions, after
+entity transformers and before insertion. ProjectileLaunchEvent retains its
+existing native hook. Cancellation discards the unspawned entity. WorldGenRegion
+additions keep their native path. Region links are always released; entities
+queued by a failed transformer are abandoned. Earlier native block/entity writes
+are not rolled back.
+
+Final follow-up validation remains pending: 59 Cardboard API groups before/after
+full process restart, two persistence groups, 38 pinned-Paper groups and both
+30-minute production-JAR workloads.

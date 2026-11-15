@@ -96,12 +96,10 @@ public abstract class StructureTemplateMixin implements StructureTemplateBridge 
             target = "Lnet/minecraft/world/level/ServerLevelAccessor;addFreshEntityWithPassengers(Lnet/minecraft/world/entity/Entity;)V"))
     private static void cardboard$transformEntity(ServerLevelAccessor level, Entity entity, Operation<Void> original) {
         var transformer = CardboardStructureContext.current();
-        if (transformer == null || !transformer.canTransformEntities()) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel) && (transformer == null || !transformer.canTransformEntities())) {
             original.call(level, entity);
-        } else {
-            entity.getSelfAndPassengers().forEach(passenger -> {
-                if (transformer.transformEntity(passenger)) level.addFreshEntity(passenger);
-            });
+            return;
         }
+        org.cardboardpowered.impl.world.StructureEntitySpawner.add(level, entity, transformer);
     }
 }

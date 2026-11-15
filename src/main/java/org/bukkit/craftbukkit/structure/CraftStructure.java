@@ -108,10 +108,12 @@ public class CraftStructure implements Structure {
 
         CraftStructureTransformer transformer = new CraftStructureTransformer(handle, ChunkPos.containing(pos), blockTransformers, entityTransformers);
         ((StructurePlaceSettingsBridge) definedstructureinfo).cardboard$setTransformer(transformer);
+        boolean completed = false;
         try {
             this.structure.placeInWorld(handle, pos, pos, definedstructureinfo, randomSource, Block.UPDATE_CLIENTS);
+            completed = true;
         } finally {
-            transformer.discard();
+            transformer.discard(completed);
         }
     }
 
