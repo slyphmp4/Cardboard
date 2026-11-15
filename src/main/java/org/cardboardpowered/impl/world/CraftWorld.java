@@ -2552,7 +2552,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	@Override
 	public <T> void spawnParticle(Particle arg0, List<Player> arg1, Player arg2, double arg3, double arg4, double arg5,
 	                              int arg6, double arg7, double arg8, double arg9, double arg10, T arg11, boolean arg12) {
-		// TODO Auto-generated method stub
+		World.super.spawnParticle(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12);
 	}
 
 	// @Override
@@ -3093,8 +3093,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public void playNote(@NotNull Location loc, @NotNull Instrument instrument, @NotNull Note note) {
-		// TODO Auto-generated method stub
-		
+		World.super.playNote(loc, instrument, note);
 	}
 
 	@Override

@@ -380,7 +380,7 @@ mandatory vanilla fields to remain mandatory and decoded containers to retain
 their dirty observer after binding.
 
 
-## World settings (runtime validation pending)
+## World settings (validated on 871ea255)
 
 Per-world view distance uses the actual ChunkMap tracker, validates [2, 32] and
 updates connected players' chunk-cache radius. Deprecated no-tick methods defer
@@ -397,19 +397,18 @@ Client entity predictions retain native behavior.
 Four shared groups exercise distance/aliases/validation/isolation, void setting
 roundtrips, actual native living damage/thresholds/VOID event cancellation and
 amount edits, and nonliving entity removal. A Cardboard-only oracle reads the
-native chunk tracker. The same shared source passes all 46 pinned-Paper groups.
+native chunk tracker. The original shared source passes all 46 pinned-Paper groups.
 Disposable client probes require the connected owner and a fresh LAN guest to
 receive the world-specific radius in two successive integrated worlds.
 
 Fixture-only `98466466` reproduces exactly five new grouped failures on both
 stock/performance configurations while all previous 64 groups pass; both client
-jobs detect the missing setter. Final
-implementation gates pending: all 12 checks, 69 API groups before/after full
-process restart, three persistence groups, 46 pinned-Paper groups and two
-30-minute production-JAR workloads. No final runtime success is claimed yet.
+jobs detect the missing setter. Initial production validation exposed an
+unimplemented living damage cooldown and missing initial guest radius; the
+follow-up below resolves those separately.
 
 
-## World settings follow-up
+## World settings follow-up (validated on 871ea255)
 
 The native living-entity damage cooldown is `damageCooldownTime`, distinct from
 Entity's invulnerability timer. The Bukkit no-damage tick getter/setter use a
@@ -423,6 +422,38 @@ clients continue to receive updates from the world setter. The two-process LAN
 fixture checks the radius of a fresh guest in both successive worlds; timeout
 diagnostics include actual client radius and world/player initialization.
 
-Validation targets: 70 Cardboard API groups before/after restart, 47 shared Paper
-groups, three persistence groups, both client lifecycles and both 30-minute
-server workloads. Runtime validation of this follow-up is pending.
+Fixture-only `19abb6ce` reproduced the cooldown and edited-void failures on both
+configurations with the previous 68 groups passing; pinned Paper passed all 47
+shared groups. The fresh LAN guest had a loaded world/player but radius 2 rather
+than the world's 4.
+
+Exact head `871ea255` passed all 12 checks: 70 Cardboard API groups before/after
+restart, all 47 shared Paper groups, three persistence groups and both client
+lifecycles, including fresh guest radii in both worlds. Stock completed 1,800.5
+seconds (88,824 STATUS successes, heap change after Full GC -36.0 MB); performance
+completed 1,800.6 seconds (88,235 successes, -158.8 MB). Both reported zero
+connection/protocol/workload errors.
+
+
+## World notes and classic particles (runtime validation pending)
+
+Two inherited CraftWorld overrides silently discarded notes and every classic
+single-speed particle call. They now delegate to the exact pinned World defaults:
+notes use the instrument sound, RECORDS category, volume 3 and Note.getPitch();
+classic particles forward equal per-axis speeds and DEFAULT randomization to
+the existing modern native packet path. Receiver selection, visibility and force
+handling remain in that existing implementation.
+
+Fixture-only `ec2786d6` adds two shared groups covering note input/default
+contracts, particle data validation across classic overloads and unchanged input
+locations. Both Cardboard configurations reproduced exactly the two new failures
+while the previous 70 groups passed; the LAN fixture independently detected the
+missing note sound packet. Pinned Paper 26.3 build 249 passes all 49 shared groups.
+Disposable
+outbound observers on the actual owner's local channel and guest's TCP channel
+check sound volume/pitch/category and particle count/position/force/recipients;
+the LAN runner requires a packet-proof marker in both successive worlds.
+
+Final validation targets: 72 API groups before/after full process restart,
+49 pinned-Paper groups, all three persistence groups, both client lifecycles
+and two 1,800-second production-JAR workloads. Runtime results are pending.
