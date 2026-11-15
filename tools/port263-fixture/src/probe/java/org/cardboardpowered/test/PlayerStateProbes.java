@@ -1,7 +1,6 @@
 package org.cardboardpowered.test;
 
 import java.lang.reflect.Field;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -15,14 +14,14 @@ final class PlayerStateProbes {
             var first = actor(world, "TimeProbeA");
             var second = actor(world, "TimeProbeB");
             long base = world.getFullTime();
-            require(first.api.isPlayerTimeRelative(), "Fresh player time is not relative; " + shape());
+            require(first.api.isPlayerTimeRelative(), "Fresh player time is not relative");
             require(first.api.getPlayerTimeOffset() == 0 && first.api.getPlayerTime() == base, "Fresh personal time differs from the native world clock");
             for (long offset : new long[] {-1234, 13000, Long.MAX_VALUE}) {
                 first.api.setPlayerTime(offset, true);
                 require(first.api.isPlayerTimeRelative() && first.api.getPlayerTimeOffset() == offset
                         && first.api.getPlayerTime() == base + offset, "Relative player time did not preserve its signed offset");
             }
-            for (long fixed : new long[] {13200, -50}) {
+            for (long fixed : new long[] {13200, -50, 48099}) {
                 first.api.setPlayerTime(fixed, false);
                 require(!first.api.isPlayerTimeRelative() && first.api.getPlayerTimeOffset() == fixed
                         && first.api.getPlayerTime() == base - base % 24000 + fixed, "Fixed player time did not use the current day boundary");
@@ -102,22 +101,6 @@ final class PlayerStateProbes {
         Player player = (Player) nativePlayer.getClass().getMethod("getBukkitEntity").invoke(nativePlayer);
         require(!player.isOnline(), "State fixture unexpectedly registered an online player");
         return new Actor(nativePlayer, player);
-    }
-
-    private static String shape() throws Exception {
-        StringBuilder result = new StringBuilder("NATIVE_SHAPE ");
-        for (String name : List.of("net.minecraft.network.protocol.game.ClientboundSetTimePacket",
-                "net.minecraft.world.clock.ClockNetworkState", "net.minecraft.server.players.SleepStatus",
-                "net.minecraft.server.network.ServerCommonPacketListenerImpl")) {
-            try {
-                Class<?> type = Class.forName(name);
-                result.append(name).append(" fields=").append(Arrays.toString(Arrays.stream(type.getDeclaredFields()).map(Field::toGenericString).toArray()));
-                result.append(" methods=").append(Arrays.toString(Arrays.stream(type.getDeclaredMethods())
-                        .filter(method -> name.contains("Clock") || name.contains("SetTime") || method.getName().equals("send") || name.contains("SleepStatus"))
-                        .map(java.lang.reflect.Method::toGenericString).toArray())).append("; ");
-            } catch (ClassNotFoundException missing) { result.append(name).append(" missing; "); }
-        }
-        return result.toString();
     }
 
     private record Actor(Object handle, Player api) { }

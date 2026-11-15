@@ -435,7 +435,7 @@ completed 1,800.6 seconds (88,235 successes, -158.8 MB). Both reported zero
 connection/protocol/workload errors.
 
 
-## World notes and classic particles (runtime validation pending)
+## World notes and classic particles (validated on 47c26c5e)
 
 Two inherited CraftWorld overrides silently discarded notes and every classic
 single-speed particle call. They now delegate to the exact pinned World defaults:
@@ -454,6 +454,49 @@ outbound observers on the actual owner's local channel and guest's TCP channel
 check sound volume/pitch/category and particle count/position/force/recipients;
 the LAN runner requires a packet-proof marker in both successive worlds.
 
-Final validation targets: 72 API groups before/after full process restart,
-49 pinned-Paper groups, all three persistence groups, both client lifecycles
-and two 1,800-second production-JAR workloads. Runtime results are pending.
+Exact head `47c26c5e` passed all 12 checks, 72 API groups before/after full
+process restart, all 49 pinned-Paper groups, all three persistence groups and
+both client lifecycles. The real packet scopes passed in both LAN worlds.
+Stock completed 1,800.5 seconds (88,965 STATUS successes, heap delta after Full
+GC -15.3 MB); performance completed 1,800.4 seconds (89,105 successes, -13.8 MB).
+Both reported zero connection/protocol/workload errors.
+
+
+## Personal player time, weather and sleep (runtime validation pending)
+
+Nine CraftPlayer accessors/mutators now use transient state on the native player.
+Relative time adds a signed offset to the native default clock; fixed time uses
+its current day boundary. A reset restores offset zero and relative ticking.
+The game connection personalizes only the default-clock entry of 26.3 time
+packets, preserving game time, other clocks, partial ticks and the native rate
+(or zero for fixed time). This includes world info, broadcasts and callback sends.
+No-clock dimensions keep the native no-packet setter behavior.
+
+Weather starts with no override. Explicit weather sends the pinned Paper rain
+event and progresses native rain level by 0.01 per player tick. Native world
+rain events/levels cannot replace an override; thunder remains native for
+DOWNFALL and zero for CLEAR. Reset resumes world weather. A scoped bypass lets
+owned packets through and restores its flag on exceptions. Suppressed writes
+with a callback send the current personal rain snapshot so completion is retained.
+
+Sleep-ignore updates the real world's sleep tracker immediately. Native counting
+includes ignored active players but excludes spectators; deep sleep still requires
+at least one real deep sleeper, matching pinned Paper. Settings are not persisted
+or stored in a global player/world map.
+
+Fixture-only `409baf29` reproduced exactly three new failures on both Cardboard
+configurations while all prior 72 groups passed. Official pinned Paper 26.3 build
+249 passed all 52 shared groups. Unregistered native players cover API defaults,
+signed/large relative and fixed offsets, reset/isolation and sleep thresholds.
+The deep-sleep fixture uses an actual bed, restores both block snapshots and
+sets the native sleep timer to a fully sleeping state.
+
+Real owner/guest channels additionally check packet isolation, paused/custom-rate
+clock broadcasts, callback completion, native weather filtering/reset and the
+live world's ignored/spectator counts. Two 65-tick rain phases check gradual
+changes and repeated native clock syncs. Every observer and setting is cleaned
+up; a new proof marker is required in both successive LAN worlds.
+
+Validation targets: all 12 checks, 75 API groups before/after restart, 52 shared
+Paper groups, three persistence groups, both client lifecycles and two full
+1,800-second production-JAR workloads. Runtime validation is pending.

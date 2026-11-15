@@ -112,6 +112,10 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 6;
             } else if (stage == 6 && verification.isDone()) {
                 verification.join();
+                if (!PlayerStateSmoke.finished()) {
+                    verification = CompletableFuture.runAsync(PlayerStateSmoke::poll, client.getSingleplayerServer());
+                    return;
+                }
                 Files.writeString(EXCHANGE.resolve("verified-" + world), "PASS");
                 if (Files.exists(EXCHANGE.resolve("left-" + world))) closeWorld(client);
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
@@ -165,6 +169,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             var owner = Bukkit.getOnlinePlayers().stream().filter(online -> !online.getUniqueId().equals(id)).findFirst().orElseThrow();
             WorldEffectsSmoke.verify((org.bukkit.craftbukkit.entity.CraftPlayer) owner, (org.bukkit.craftbukkit.entity.CraftPlayer) guest);
             WorldSettingsSmoke.finishGuest();
+            PlayerStateSmoke.begin((org.bukkit.craftbukkit.entity.CraftPlayer) owner, (org.bukkit.craftbukkit.entity.CraftPlayer) guest);
             System.out.println("INTEGRATED_LAN_HOST_PASS " + world + " guest=" + id);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException(error);
