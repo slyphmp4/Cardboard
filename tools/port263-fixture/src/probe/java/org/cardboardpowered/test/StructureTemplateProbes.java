@@ -218,6 +218,64 @@ final class StructureTemplateProbes {
         });
     }
 
+    static void verifySpawnEvents(World world, Plugin plugin, BiConsumer<String, WorldRayTraceProbes.Checked> check) {
+        check.accept("template-entity-spawn-events-and-cancellation", () -> {
+            manager();
+            try (var scene = new Scene(world)) {
+                scene.entity();
+                var template = scene.capture(true);
+                try (var events = new SpawnEvents(scene, plugin)) {
+                    template.getEntities();
+                    require(events.calls == 0, "Reading entity snapshots emitted CreatureSpawnEvent");
+                    template.place(scene.target, false, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17));
+                    require(events.calls == 0 && scene.entitiesAtTarget().isEmpty(), "Entity-free placement emitted spawn events");
+                    template.place(scene.target, true, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17));
+                    require(events.calls == 1 && scene.entitiesAtTarget().size() == 1, "Native template addition bypassed or duplicated CreatureSpawnEvent");
+                    require(events.reason == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.DEFAULT, "Template spawn has a different reason than native addition");
+                    scene.entitiesAtTarget().forEach(org.bukkit.entity.Entity::remove);
+                    events.cancel = true;
+                    template.place(scene.target, true, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17));
+                    require(events.calls == 2 && scene.entitiesAtTarget().isEmpty(), "Cancelled template spawn still reached the world");
+                    events.cancel = false;
+                    events.order.clear();
+                    template.place(scene.target, true, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of(), List.of((region, x, y, z, entity, allowed) -> {
+                        events.order.add("transform");
+                        entity.setCustomName("template-transformed-before-spawn");
+                        return true;
+                    }));
+                    require(events.calls == 3 && events.order.equals(List.of("transform", "spawn")) && events.sawTransformedName,
+                            "Spawn event ran before entity transformation or missed transformed data");
+                    scene.entitiesAtTarget().forEach(org.bukkit.entity.Entity::remove);
+                    template.place(scene.target, true, StructureRotation.NONE, Mirror.NONE, 0, 1, new Random(17), List.of(), List.of((region, x, y, z, entity, allowed) -> false));
+                    require(events.calls == 3 && scene.entitiesAtTarget().isEmpty(), "Transformer veto emitted a spawn event or spawned the entity");
+                }
+            }
+        });
+    }
+
+    private static final class SpawnEvents implements org.bukkit.event.Listener, AutoCloseable {
+        private final Scene scene;
+        int calls;
+        boolean cancel, sawTransformedName;
+        final List<String> order = new ArrayList<>();
+        org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason reason;
+        SpawnEvents(Scene scene, Plugin plugin) {
+            this.scene = scene;
+            plugin.getServer().getPluginManager().registerEvents(this, plugin);
+        }
+        @org.bukkit.event.EventHandler
+        public void spawn(org.bukkit.event.entity.CreatureSpawnEvent event) {
+            if (!event.getEntity().getWorld().equals(this.scene.world) || !event.getEntity().getScoreboardTags().contains(ENTITY_TAG)
+                    || event.getLocation().distanceSquared(this.scene.target) > 16) return;
+            calls++;
+            this.reason = event.getSpawnReason();
+            this.order.add("spawn");
+            this.sawTransformedName = "template-transformed-before-spawn".equals(event.getEntity().getCustomName());
+            if (cancel) event.setCancelled(true);
+        }
+        @Override public void close() { org.bukkit.event.HandlerList.unregisterAll(this); }
+    }
+
     /** Independent native cache/save/load oracle; only the Fabric matrix has this helper. */
     static void verifyNative(World world, BiConsumer<String, WorldRayTraceProbes.Checked> check) {
         check.accept("template-native-cache-and-old-nbt-reload", () -> {
