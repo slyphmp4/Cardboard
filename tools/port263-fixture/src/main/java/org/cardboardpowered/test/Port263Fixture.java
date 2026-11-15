@@ -139,6 +139,10 @@ public final class Port263Fixture implements ModInitializer {
         method.invoke(fight, active);
     }
 
+    public static void nativeExplosion(net.minecraft.server.level.ServerLevel level, double x, double y, double z, float power) {
+        level.explode(null, x, y, z, power, false, Level.ExplosionInteraction.BLOCK);
+    }
+
     public static final class FixturePig extends Pig {
         public FixturePig(EntityType<? extends Pig> type, Level level) {
             super(type, level);

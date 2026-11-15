@@ -18,6 +18,10 @@ CASES = {
     'tree-basic-overloads-and-seeded-random', 'tree-consumer-buffered-snapshots-and-edits',
     'tree-predicate-veto-and-filtered-placement', 'tree-legacy-block-change-delegate',
     'tree-modern-types-and-tile-snapshot-data', 'tree-null-callbacks-exceptions-and-blocked-origin',
+    'explosion-block-cancellation-and-overload-results', 'explosion-entity-source-and-mutable-block-list',
+    'explosion-block-interactions-and-source-null-drop-decay', 'explosion-source-first-overloads-and-damage-exclusion',
+    'explosion-yield-and-ignite-cancellation', 'explosion-nested-cancellation-and-location-contract',
+    'explosion-tnt-chain-prime-cancellation',
 }
 
 
