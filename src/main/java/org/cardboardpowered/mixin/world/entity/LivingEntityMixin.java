@@ -88,6 +88,8 @@ public abstract class LivingEntityMixin extends EntityMixin implements LivingEnt
      */
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void cardboard$entityDamageEvent(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        // The void-specific wrapper emits one VOID event and applies its edited amount.
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)) return;
         org.bukkit.entity.Entity damagee = this.getBukkitEntity();
         Entity direct = source.getDirectEntity();
         Entity causing = source.getEntity();

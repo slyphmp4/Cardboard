@@ -191,6 +191,9 @@ public class CraftWorld extends CraftRegionAccessor implements World {
 	private ServerLevel world;
 	private String name;
 	private WorldBorder worldBorder;
+	private boolean voidDamageEnabled = true;
+	private float voidDamageAmount = 4.0f;
+	private double voidDamageMinBuildHeightOffset = -64.0;
 private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.HashMap<>();
 	private final List<BlockPopulator> populators = new ArrayList<BlockPopulator>();
 
@@ -2404,8 +2407,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public int getViewDistance() {
-		// TODO Auto-generated method stub
-		return 8;
+		return ((org.cardboardpowered.mixin.server.level.ChunkMapViewDistanceAccessor) (Object) this.world.getChunkSource().chunkMap).cardboard$getViewDistance();
 	}
 
 	public void setWaterAmbientSpawnLimit(int i) {
@@ -2500,7 +2502,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public int getNoTickViewDistance() {
-		return 0;
+		return World.super.getNoTickViewDistance();
 	}
 
 	@Override
@@ -2535,13 +2537,16 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public void setNoTickViewDistance(int arg0) {
-		// TODO Auto-generated method stub
-
+		World.super.setNoTickViewDistance(arg0);
 	}
 
 	@Override
 	public void setViewDistance(int arg0) {
-		// TODO Auto-generated method stub
+		Preconditions.checkArgument(arg0 >= 2 && arg0 <= 32, "View distance must be in [2, 32]: %s", arg0);
+		((org.cardboardpowered.mixin.server.level.ChunkMapViewDistanceAccessor) (Object) this.world.getChunkSource().chunkMap).cardboard$setViewDistance(arg0);
+		for (ServerPlayer player : this.world.players()) {
+			player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetChunkCacheRadiusPacket(arg0));
+		}
 	}
 
 	@Override
@@ -3372,38 +3377,32 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public boolean isVoidDamageEnabled() {
-		// TODO Auto-generated method stub
-		return false;
+		return this.voidDamageEnabled;
 	}
 
 	@Override
 	public void setVoidDamageEnabled(boolean enabled) {
-		// TODO Auto-generated method stub
-		
+		this.voidDamageEnabled = enabled;
 	}
 
 	@Override
 	public float getVoidDamageAmount() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.voidDamageAmount;
 	}
 
 	@Override
 	public void setVoidDamageAmount(float voidDamageAmount) {
-		// TODO Auto-generated method stub
-		
+		this.voidDamageAmount = voidDamageAmount;
 	}
 
 	@Override
 	public double getVoidDamageMinBuildHeightOffset() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.voidDamageMinBuildHeightOffset;
 	}
 
 	@Override
 	public void setVoidDamageMinBuildHeightOffset(double minBuildHeightOffset) {
-		// TODO Auto-generated method stub
-		
+		this.voidDamageMinBuildHeightOffset = minBuildHeightOffset;
 	}
 
 	@Override

@@ -380,12 +380,30 @@ mandatory vanilla fields to remain mandatory and decoded containers to retain
 their dirty observer after binding.
 
 
-## World settings (fixture-only; implementation pending)
+## World settings (runtime validation pending)
 
-Four shared groups exercise per-world view distance and deprecated no-tick
-aliases, validation/isolation, void settings, real native living-entity damage
-and cancellable VOID events, and nonliving entity removal. A Cardboard-only
-oracle reads the actual native chunk tracker's distance. The shared source
-runs on pinned Paper 249. Disposable client probes additionally require the
-connected owner and a fresh LAN guest to receive the world-specific radius in
-two successive integrated worlds. No successful implementation is claimed yet.
+Per-world view distance uses the actual ChunkMap tracker, validates [2, 32] and
+updates connected players' chunk-cache radius. Deprecated no-tick methods defer
+to World's public aliases. The server default and other worlds are unchanged.
+
+Void settings belong to each CraftWorld (vanilla defaults true / 4 / -64).
+Narrow server-side injections adjust the native below-world check and living
+entity damage amount. The original removal/damage path remains responsible for
+entities. Only the void source uses a dedicated single VOID event wrapper so
+cancellation and damage edits reach native hurtServer; the existing generic
+HEAD event skips that source. Other damage sources keep their existing path.
+Client entity predictions retain native behavior.
+
+Four shared groups exercise distance/aliases/validation/isolation, void setting
+roundtrips, actual native living damage/thresholds/VOID event cancellation and
+amount edits, and nonliving entity removal. A Cardboard-only oracle reads the
+native chunk tracker. The same shared source passes all 46 pinned-Paper groups.
+Disposable client probes require the connected owner and a fresh LAN guest to
+receive the world-specific radius in two successive integrated worlds.
+
+Fixture-only `98466466` reproduces exactly five new grouped failures on both
+stock/performance configurations while all previous 64 groups pass; both client
+jobs detect the missing setter. Final
+implementation gates pending: all 12 checks, 69 API groups before/after full
+process restart, three persistence groups, 46 pinned-Paper groups and two
+30-minute production-JAR workloads. No final runtime success is claimed yet.
