@@ -173,6 +173,7 @@ def prepare(directory, stack):
     password = secrets.token_hex(24)
     write_server_properties(directory, password)
     (directory / 'eula.txt').write_text('eula=true\n')
+    (directory / 'commands.yml').write_text('aliases:\n  port263boot_alias: ["version $1-"]\n')
     hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (directory / 'mods').glob('*.jar')}
     (directory / 'tested-artifacts.json').write_text(json.dumps({'stack': stack, 'sha256': hashes}, indent=2))
     return Rcon(25590, password)
@@ -181,7 +182,7 @@ def prepare(directory, stack):
 def start(directory, phase, java):
     output = (directory / f'console-{phase}.log').open('w', encoding='utf-8')
     process = subprocess.Popen([java, '-Xms512m', '-Xmx2G', '-XX:NativeMemoryTracking=summary',
-                                '--enable-native-access=ALL-UNNAMED', '-Dfile.encoding=UTF-8',
+                                '--enable-native-access=ALL-UNNAMED', '-Dfile.encoding=UTF-8', '-Dcardboard.disposableAliasProbe=true',
                                 '-jar', 'fabric-server-launch.jar', 'nogui'], cwd=directory,
                                stdin=subprocess.PIPE, stdout=output, stderr=subprocess.STDOUT,
                                text=True, encoding='utf-8')

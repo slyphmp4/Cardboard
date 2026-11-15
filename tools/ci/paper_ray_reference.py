@@ -37,6 +37,8 @@ CASES = {
     'world-note-default-contracts', 'world-classic-particle-validation-and-inputs',
     'player-personal-time-default-relative-fixed-reset-and-isolation',
     'player-personal-weather-default-no-override', 'player-sleeping-ignored-flags-and-native-status',
+    'server-command-alias-startup-config', 'server-command-alias-values-defensive-order',
+    'server-command-alias-expansion-and-replacement', 'server-command-alias-failed-reload-contract',
 }
 
 
@@ -54,6 +56,7 @@ def main():
     (directory / 'plugins').mkdir()
     shutil.copy2(ROOT / 'tools/port263-fixture/build/libs/CardboardPaperRayReference.jar', directory / 'plugins')
     (directory / 'eula.txt').write_text('eula=true\n')
+    (directory / 'commands.yml').write_text('aliases:\n  port263boot_alias: ["version $1-"]\n')
     flat = {'biome': 'minecraft:plains', 'layers': [
         {'block': 'minecraft:bedrock', 'height': 1}, {'block': 'minecraft:dirt', 'height': 2},
         {'block': 'minecraft:grass_block', 'height': 1}]}
