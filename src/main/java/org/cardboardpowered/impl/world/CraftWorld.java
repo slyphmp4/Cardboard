@@ -306,9 +306,25 @@ private final Map<ChunkPos, Set<Plugin>> pluginChunkTickets = new java.util.Hash
 
 	@Override
 	public boolean createExplosion(double x, double y, double z, float power, boolean setFire, boolean breakBlocks, Entity source) {
-		// Explosion explosion =
-		world.explode(source == null ? null : ((CraftEntity) source).getHandle(), x, y, z, power, setFire, breakBlocks ? net.minecraft.world.level.Level.ExplosionInteraction.MOB : net.minecraft.world.level.Level.ExplosionInteraction.NONE);
-		return true; // TODO return wasCanceled
+		return this.createExplosion(x, y, z, power, setFire, breakBlocks, source, true);
+	}
+
+	private boolean createExplosion(double x, double y, double z, float power, boolean setFire, boolean breakBlocks,
+			Entity source, boolean excludeSource) {
+		net.minecraft.world.level.Level.ExplosionInteraction interaction;
+		if (!breakBlocks) {
+			interaction = net.minecraft.world.level.Level.ExplosionInteraction.NONE;
+		} else if (source == null) {
+			interaction = net.minecraft.world.level.Level.ExplosionInteraction.BLOCK;
+		} else if (source instanceof org.bukkit.entity.TNTPrimed || source instanceof org.bukkit.entity.minecart.ExplosiveMinecart) {
+			interaction = net.minecraft.world.level.Level.ExplosionInteraction.TNT;
+		} else {
+			interaction = net.minecraft.world.level.Level.ExplosionInteraction.MOB;
+		}
+		try (var request = CardboardExplosionContext.open(this.world, excludeSource, breakBlocks && source == null)) {
+			this.world.explode(source == null ? null : ((CraftEntity) source).getHandle(), x, y, z, power, setFire, interaction);
+			return !request.wasCancelled();
+		}
 	}
 
 	@Override
@@ -2423,8 +2439,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 
 	@Override
 	public boolean createExplosion(Entity arg0, Location arg1, float arg2, boolean arg3, boolean arg4) {
-		// TODO Auto-generated method stub
-		return false;
+		return this.createExplosion(arg0, arg1, arg2, arg3, arg4, true);
 	}
 
 	@Override
@@ -3393,16 +3408,7 @@ return (T) ((EntityBridge) entity).getBukkitEntity();
 	@Override
 	public boolean createExplosion(@Nullable Entity source, @NotNull Location loc, float power, boolean setFire,
 			boolean breakBlocks, boolean excludeSourceFromDamage) {
-		// TODO Auto-generated method stub
-        this.world.explode(
-        		(net.minecraft.world.entity.Entity)(source != null ? ((CraftEntity)source).getHandle() : null),
-        		(double)loc.getX(), (double)loc.getY(), (double)loc.getZ(),
-        		(float)power, (boolean)setFire, 
-        		(net.minecraft.world.level.Level.ExplosionInteraction)(breakBlocks ? net.minecraft.world.level.Level.ExplosionInteraction.MOB : net.minecraft.world.level.Level.ExplosionInteraction.NONE))
-        		
-        		;
-        return true;
-
+		return this.createExplosion(loc.getX(), loc.getY(), loc.getZ(), power, setFire, breakBlocks, source, excludeSourceFromDamage);
 	}
 
 	@Override

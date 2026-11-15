@@ -248,4 +248,31 @@ Six shared public scenarios cover seeded generation, consumer edits, predicate
 veto/selection, delegates, modern tree types/tile data, null callbacks, first
 callback exceptions and an obstructed trunk origin. The checksum-pinned Paper
 control runs the same source. Tests use guarded air above a disposable flat world,
-then clear their blocks. Runtime results for this batch are pending.
+then clear their blocks. On `85a8472e`, all 12 checks passed, including 36 API
+groups before/after process restart, persistence and both 30-minute workloads.
+
+## Explosion follow-up
+
+Coordinate and source-first World overloads now share the native explosion path
+and report its actual cancellation result. Source-null API blasts use ordinary
+destruction without drop decay, TNT sources retain TNT rules and other sources
+retain mob rules. The source-damage flag changes the native entity query without
+removing source attribution. A scoped context associates each API call with its
+own native explosion and is removed in a finally path, including nested calls.
+
+Native block/entity explosion events expose the mutable affected-block list and
+yield. Yield changes feed the existing vanilla block-loot path. Ignition and TNT
+chain priming have separate cancellable events; cancelled priming keeps the TNT
+block and suppresses its primed entity. Cancelled block explosions suppress the
+native client explosion packet. Native entity damage occurs before the block
+event, and fire retains its separate ignite event, matching pinned Paper's order.
+
+Seven shared public scenarios cover overload results, source attribution, edited
+block lists, mob/TNT rules, source-null drop behavior, source-damage inclusion,
+zero yield, ignition, TNT chain cancellation and nested invocation state. One
+additional Cardboard case calls Minecraft's native explosion entrypoint directly.
+The control runs the same seven public groups on official Paper 26.3 build 249.
+All scenes guard a high air volume in a disposable world and clean their blocks,
+entities and listeners. Runtime validation of this explosion batch is pending;
+these scenarios do not establish full player-driven combat or arbitrary modpack
+compatibility.
