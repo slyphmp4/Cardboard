@@ -407,3 +407,22 @@ jobs detect the missing setter. Final
 implementation gates pending: all 12 checks, 69 API groups before/after full
 process restart, three persistence groups, 46 pinned-Paper groups and two
 30-minute production-JAR workloads. No final runtime success is claimed yet.
+
+
+## World settings follow-up
+
+The native living-entity damage cooldown is `damageCooldownTime`, distinct from
+Entity's invulnerability timer. The Bukkit no-damage tick getter/setter use a
+narrow native bridge to that field. A separate shared native-field oracle checks
+both directions; the real void-damage scenario also verifies reset cooldowns and
+one edited/cancelled VOID event.
+
+PlayerList.sendLevelInfo sends the destination world's chunk-cache radius on
+login, respawn and dimension transfer, matching the pinned Paper path. Existing
+clients continue to receive updates from the world setter. The two-process LAN
+fixture checks the radius of a fresh guest in both successive worlds; timeout
+diagnostics include actual client radius and world/player initialization.
+
+Validation targets: 70 Cardboard API groups before/after restart, 47 shared Paper
+groups, three persistence groups, both client lifecycles and both 30-minute
+server workloads. Runtime validation of this follow-up is pending.

@@ -328,7 +328,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public int getNoDamageTicks() {
-        return entity.getInvulnerableTime();
+        return ((org.cardboardpowered.bridge.world.entity.LivingEntityBridge) this.getHandle()).cardboard$getDamageCooldownTime();
     }
 
     @Override
@@ -503,7 +503,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 
     @Override
     public void setNoDamageTicks(int arg0) {
-        // TODO Auto-generated method stub
+        ((org.cardboardpowered.bridge.world.entity.LivingEntityBridge) this.getHandle()).cardboard$setDamageCooldownTime(arg0);
     }
 
     @Override

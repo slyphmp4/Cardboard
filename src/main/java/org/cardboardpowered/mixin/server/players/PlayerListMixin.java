@@ -110,6 +110,14 @@ public abstract class PlayerListMixin implements PlayerListBridge {
 
     @Unique private CraftPlayer plr;
 
+    /** Login, respawn and dimension transfers must use the destination world's radius. */
+    @Inject(method = "sendLevelInfo", at = @At("TAIL"))
+    private void cardboard$syncWorldViewDistance(ServerPlayer player, ServerLevel level, CallbackInfo ci) {
+        int distance = ((LevelBridge) level).cardboard$getWorld().getViewDistance();
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetChunkCacheRadiusPacket(distance));
+    }
+
+
     @Inject(
             method = "placeNewPlayer",
             at = @At("HEAD"),

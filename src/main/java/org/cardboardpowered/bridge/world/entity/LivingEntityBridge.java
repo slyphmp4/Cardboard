@@ -8,6 +8,10 @@ import org.jspecify.annotations.Nullable;
 
 public interface LivingEntityBridge {
 
+    int cardboard$getDamageCooldownTime();
+
+    void cardboard$setDamageCooldownTime(int ticks);
+
     int getExpReward();
 
     void pushEffectCause(EntityPotionEffectEvent.Cause cause);

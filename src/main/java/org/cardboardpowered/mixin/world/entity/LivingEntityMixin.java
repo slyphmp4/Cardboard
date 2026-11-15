@@ -45,6 +45,14 @@ import net.minecraft.world.level.gamerules.GameRules;
 @SuppressWarnings({"deprecation", "removal"})
 public abstract class LivingEntityMixin extends EntityMixin implements LivingEntityBridge {
 
+    @Override
+    @org.spongepowered.asm.mixin.gen.Accessor("damageCooldownTime")
+    public abstract int cardboard$getDamageCooldownTime();
+
+    @Override
+    @org.spongepowered.asm.mixin.gen.Accessor("damageCooldownTime")
+    public abstract void cardboard$setDamageCooldownTime(int ticks);
+
     private transient EntityPotionEffectEvent.Cause bukkitCause;
     private boolean cardboard$bukkitPickUpLoot = true;
 
