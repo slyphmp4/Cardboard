@@ -220,8 +220,9 @@ final class BrigadierClientSmoke {
                     12345L, net.minecraft.network.chat.LastSeenMessages.EMPTY);
             var nativeMessage = new net.minecraft.network.chat.PlayerChatMessage(base.link(), new net.minecraft.network.chat.MessageSignature(this.signature.clone()),
                     body, net.minecraft.network.chat.Component.literal("decorated fixture"), net.minecraft.network.chat.FilterMask.PASS_THROUGH);
-            var source = this.server.getPlayerList().getPlayer(this.owner).createCommandSourceStack().withSigningContext(
-                    new net.minecraft.commands.CommandSigningContext.SignedArguments(Map.of("value", nativeMessage)));
+            var originalSource = this.server.getPlayerList().getPlayer(this.owner).createCommandSourceStack();
+            var source = originalSource.withSigningContext(
+                    new net.minecraft.commands.CommandSigningContext.SignedArguments(Map.of("value", nativeMessage)), originalSource.getChatMessageChainer());
             var dispatcher = new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
             var result = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<net.kyori.adventure.chat.SignedMessage>>();
             dispatcher.register(io.papermc.paper.command.brigadier.Commands.literal("signedfixture")
