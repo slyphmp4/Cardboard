@@ -57,17 +57,31 @@ final class PlayerStateProbes {
                 require(!(Boolean) update.invoke(status, players) && (Boolean) enough.invoke(status, 100)
                         && !(Boolean) deep.invoke(status, 100, players), "All-ignored players skipped the real deep-sleeper requirement");
                 first.api.setSleepingIgnored(false);
-                Class<?> pos = Class.forName("net.minecraft.core.BlockPos");
-                Object bed = pos.getConstructor(int.class, int.class, int.class).newInstance(0, world.getMaxHeight() - 4, 0);
-                first.handle.getClass().getMethod("startSleeping", pos).invoke(first.handle, bed);
-                Field timer = Class.forName("net.minecraft.world.entity.player.Player").getDeclaredField("sleepCounter");
-                timer.setAccessible(true);
-                timer.setInt(first.handle, 100);
-                update.invoke(status, players);
-                require((Boolean) deep.invoke(status, 100, players), "A real deep sleeper plus an ignored player did not meet the threshold");
-                second.api.setSleepingIgnored(false);
-                require((Boolean) update.invoke(status, players) && !(Boolean) enough.invoke(status, 100)
-                        && !(Boolean) deep.invoke(status, 100, players), "Clearing ignore did not restore native sleep accounting");
+                var head = world.getSpawnLocation().add(0, 6, 0).getBlock();
+                var foot = head.getRelative(org.bukkit.block.BlockFace.WEST);
+                var savedHead = head.getState();
+                var savedFoot = foot.getState();
+                try {
+                    foot.setBlockData(org.bukkit.Bukkit.createBlockData("minecraft:red_bed[facing=east,part=foot]"), false);
+                    head.setBlockData(org.bukkit.Bukkit.createBlockData("minecraft:red_bed[facing=east,part=head]"), false);
+                    Class<?> pos = Class.forName("net.minecraft.core.BlockPos");
+                    Object bed = pos.getConstructor(int.class, int.class, int.class).newInstance(head.getX(), head.getY(), head.getZ());
+                    first.handle.getClass().getMethod("startSleeping", pos).invoke(first.handle, bed);
+                    Field timer = Class.forName("net.minecraft.world.entity.player.Player").getDeclaredField("sleepCounter");
+                    timer.setAccessible(true);
+                    timer.setInt(first.handle, 200);
+                    require((Boolean) first.handle.getClass().getMethod("isSleeping").invoke(first.handle), "Native fixture did not enter bed sleep");
+                    require((Boolean) first.handle.getClass().getMethod("isSleepingLongEnough").invoke(first.handle),
+                            "Native fixture is not deep sleeping with timer=" + timer.getInt(first.handle));
+                    update.invoke(status, players);
+                    require((Boolean) deep.invoke(status, 100, players), "A real deep sleeper plus an ignored player did not meet the threshold");
+                    second.api.setSleepingIgnored(false);
+                    require((Boolean) update.invoke(status, players) && !(Boolean) enough.invoke(status, 100)
+                            && !(Boolean) deep.invoke(status, 100, players), "Clearing ignore did not restore native sleep accounting");
+                } finally {
+                    savedFoot.update(true, false);
+                    savedHead.update(true, false);
+                }
             } finally {
                 first.api.setSleepingIgnored(false);
                 second.api.setSleepingIgnored(false);
