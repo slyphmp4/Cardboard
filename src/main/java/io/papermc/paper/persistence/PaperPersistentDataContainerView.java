@@ -113,7 +113,7 @@ public abstract class PaperPersistentDataContainerView implements PersistentData
         final CompoundTag tag = this.toTagCompound();
         for (final String key : tag.keySet()) {
             if (replace || !target.getRaw().containsKey(key)) {
-                target.getRaw().put(key, tag.get(key).copy());
+                target.put(key, tag.get(key).copy());
             }
         }
     }

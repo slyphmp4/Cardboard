@@ -298,7 +298,7 @@ checks, 48 API groups before/after a full process restart, persistence and both
 1,800.6-second workloads, with zero connection/protocol/workload errors.
 
 
-## Structure templates (runtime validation pending)
+## Structure templates (validated on 070a0c4a)
 
 The cached StructureManager uses Minecraft's actual template repository, resource
 loader/data fixer and validated world-template paths. Registration and snapshots
@@ -339,6 +339,37 @@ additions keep their native path. Region links are always released; entities
 queued by a failed transformer are abandoned. Earlier native block/entity writes
 are not rolled back.
 
-Final follow-up validation remains pending: 59 Cardboard API groups before/after
-full process restart, two persistence groups, 38 pinned-Paper groups and both
-30-minute production-JAR workloads.
+Exact follow-up head `070a0c4a` passed all 12 checks, 59 API groups before/after
+full process restart, both persistence groups and the 38-group Paper control.
+Stock: 1,800.4 seconds, heap change after Full GC -14.4 MB. Performance:
+1,800.5 seconds, heap change -177.7 MB. Both reported zero connection/protocol/
+workload errors.
+
+
+## Raid persistent data (runtime validation pending)
+
+Each native raid owns one stable observed PDC, shared by every Bukkit wrapper.
+The getter binds that state to the actual Raids SavedData owner using a weak
+reference. An optional BukkitValues field wraps the original native MapCodec;
+vanilla fields and constructors remain intact. Old and empty data remain valid,
+and malformed optional PDC is ignored like Paper. Decoding fills the observed
+container instead of replacing it.
+
+Changes through set/remove/put/putAll/clear/bytes and mutable copyTo notify the
+target owner. Readonly item-view copies use the target setter as well; direct raw
+map writes would bypass this notification. Other PDC constructors retain a no-op
+observer. No World PDC or unrelated metadata implementation is added.
+
+Four shared groups exercise real native fixture raids and the native NBT codec
+with NbtOps (preserving numeric tag types), including nested values, arrays,
+bytes, old/malformed saves and mutable/readonly copies. A Cardboard-only oracle
+clears SavedData's dirty flag and checks each held-container write in the SAME
+server task, independent of incidental raid ticks.
+
+Restart persistence first saves an owned inactive raid at an unloaded far-away
+position, then changes ONLY its held PDC and checks immediate dirtiness. A full
+server-process restart must load its string/long-array values and stable
+container. The fixture does not load terrain and removes its owned raids.
+
+Final gates pending: 64 API groups before/after full restart, three persistence
+groups, 42 pinned-Paper groups and both 30-minute production-JAR workloads.
