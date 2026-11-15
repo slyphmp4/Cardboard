@@ -38,6 +38,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private Object previousRegistry;
     private int previousMaterialCount = -1;
     private long closeDeadline;
+    private boolean worldSettingsClientDone;
     private MinecraftServer restartServer;
     private CompletableFuture<Void> restartRequest;
     private long restartDeadline;
@@ -96,7 +97,11 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 2;
             } else if (stage == 2 && verification.isDone()) {
                 verification.join();
-                if (!WorldSettingsSmoke.finishClient(client) || !ServerAliasClientSmoke.finish(client)) return;
+                if (!worldSettingsClientDone) {
+                    if (!WorldSettingsSmoke.finishClient(client)) return;
+                    worldSettingsClientDone = true;
+                }
+                if (!ServerAliasClientSmoke.finish(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -206,6 +211,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
 
     private void createWorld(Minecraft client) {
         world++;
+        worldSettingsClientDone = false;
         stage = 1;
         String name = "cardboard-smoke-" + world;
         System.out.println("INTEGRATED_SMOKE_CREATE " + name);
@@ -285,3 +291,4 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
         if (!condition) throw new AssertionError(message);
     }
 }
+

@@ -517,6 +517,18 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
     }
 
     private boolean hasStopped = false;
+    @Unique private org.cardboardpowered.impl.util.ServerRestart cardboard$restartController;
+
+    @Override
+    public void cardboard$setRestartController(org.cardboardpowered.impl.util.ServerRestart controller) {
+        this.cardboard$restartController = controller;
+    }
+
+    @Inject(at = @At("RETURN"), method = "stopServer")
+    private void cardboard$afterStop(CallbackInfo ci) {
+        if (this.cardboard$restartController != null) this.cardboard$restartController.afterStop();
+    }
+
     private final Object stopLock = new Object();
     public final boolean hasStopped() {
         synchronized (stopLock) {
@@ -780,3 +792,4 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
         cir.setReturnValue(level != null ? level : this.overworld());
     }
 }
+

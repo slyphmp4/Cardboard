@@ -17,6 +17,7 @@ public final class RestartCommand extends Command {
         return true;
     }
     public static void restart() { if (Bukkit.getServer() != null) Bukkit.getServer().restart(); }
+    /** Arms the current server's stop-completion hook; integrated worlds never launch scripts. */
     public static boolean addShutdownHook(String script) {
         return Bukkit.getServer() instanceof CraftServer server && server.cardboard$armRestartScript(script);
     }

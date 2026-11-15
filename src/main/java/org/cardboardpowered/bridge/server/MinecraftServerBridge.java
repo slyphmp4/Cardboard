@@ -37,6 +37,8 @@ import net.minecraft.world.level.storage.WorldData;
 
 public interface MinecraftServerBridge {
 
+    void cardboard$setRestartController(org.cardboardpowered.impl.util.ServerRestart controller);
+
     void removeLevel(ServerLevel level);
 
     void addLevel(ServerLevel level);

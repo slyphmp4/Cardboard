@@ -524,7 +524,7 @@ Server.restart(), Server.Spigot.restart() and the permission-gated restart comma
 share one controller per server. Requests are deduplicated; async callers marshal
 kicks and native halt to the server thread. The normal server lifecycle disables
 plugins, saves worlds and closes listeners. A validated dedicated startup script
-is armed once as a JVM shutdown hook; Unix file paths and arguments use an argv
+is launched once when native stopServer returns; Unix file paths and arguments use an argv
 vector rather than shell evaluation. A missing script still stops normally so an
 external supervisor can own relaunch. No forced System.exit is introduced.
 

@@ -346,6 +346,7 @@ public class CraftServer extends CardboardAbstractServer implements Server {
         server = nms;
         console = nms;
         this.restartController = new org.cardboardpowered.impl.util.ServerRestart(nms);
+        ((MinecraftServerBridge) nms).cardboard$setRestartController(this.restartController);
         CardboardTranslations.register();
         commandMap = new CommandMapImpl(this);
 

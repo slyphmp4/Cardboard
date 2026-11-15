@@ -40,7 +40,7 @@ try:
             raise AssertionError(f'Missing host marker: {marker}')
     if host.count('SERVER_ALIAS_CLIENT_PASS') != 2 or host.count('INTEGRATED_RESTART_PASS ') != 2:
         raise AssertionError('Alias/restart client scopes did not pass in both worlds')
-    if (ROOT / 'run-integrated-smoke/integrated-script-ran').exists():
+    if (root / 'run-integrated-smoke/integrated-script-ran').exists():
         raise AssertionError('Integrated restart armed an external launcher')
     if host.count('PLAYER_STATE_PACKETS_PASS ') != 2:
         raise AssertionError('Personal player state was not verified in both LAN worlds')
@@ -68,3 +68,4 @@ finally:
                     print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)
+
