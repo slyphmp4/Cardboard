@@ -128,11 +128,19 @@ final class ExplosionProbes {
             try (var scene = new Scene(world); var hooks = new Hooks(scene, plugin)) {
                 hooks.block = event -> event.setYield(0);
                 hooks.ignite = event -> event.setCancelled(true);
+                // Keep support below every candidate and give blast rays an air
+                // origin: a solid wooden origin can leave only one fire roll.
+                for (int dx = -Scene.RADIUS; dx <= Scene.RADIUS; dx++)
+                    for (int dz = -Scene.RADIUS; dz <= Scene.RADIUS; dz++)
+                        world.getBlockAt(scene.x + dx, scene.y - 1, scene.z + dz).setType(Material.BEDROCK, false);
                 for (int attempt = 0; attempt < 8 && hooks.igniteCalls == 0; attempt++) {
                     scene.patch(Material.OAK_PLANKS, 3);
-                    require(world.createExplosion(scene.location, 2f, true, true), "Accepted fire blast returned false");
+                    scene.location.getBlock().setType(Material.AIR, false);
+                    require(world.createExplosion(scene.location, 3f, true, true), "Accepted fire blast returned false");
                 }
-                require(hooks.blockCalls > 0 && hooks.igniteCalls > 0, "Fire blast did not exercise ignition callbacks");
+                require(hooks.blockCalls > 0 && hooks.igniteCalls > 0,
+                        "Fire blast did not exercise ignition callbacks: blockEvents=" + hooks.blockCalls
+                        + ", igniteEvents=" + hooks.igniteCalls + ", fireBlocks=" + scene.count(Material.FIRE));
                 require(scene.count(Material.FIRE) == 0 && scene.count(Material.SOUL_FIRE) == 0, "Cancelled ignition left fire");
                 require(hooks.itemCalls == 0 && scene.items().isEmpty(), "Zero yield produced item drops");
             }
