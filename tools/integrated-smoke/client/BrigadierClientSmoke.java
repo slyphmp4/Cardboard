@@ -78,12 +78,6 @@ final class BrigadierClientSmoke {
                 Map<String, String> expected = Map.of("uuid", state.owner.toString(), "converted", "uuid:" + state.owner,
                         "selector", state.owner.toString(), "world", state.worldKey, "component", "ok", "message", "ok", "reply", "ok", "context", "ok");
                 for (var entry : expected.entrySet()) if (!(round + ":" + entry.getValue()).equals(replies.get(entry.getKey()))) return false;
-                if (!state.nativeSigned.isDone()) return false;
-                var signed = state.nativeSigned.join();
-                require(signed.timestamp().equals(java.time.Instant.parse("2026-01-02T03:04:05Z")) && signed.salt() == 12345L
-                        && signed.identity().uuid().equals(state.owner) && signed.message().equals("native signed fixture"), "Native signed-message identity/body metadata changed");
-                require(signed.signature() != null && java.util.Arrays.equals(signed.signature().bytes(), state.signature)
-                        && net.kyori.adventure.text.Component.text("decorated fixture").equals(signed.unsignedContent()), "Native signature or decorated content was lost");
                 if (!state.suggestions.isDone()) return false;
                 var suggestions = state.suggestions.join();
                 require(suggestions.getList().stream().anyMatch(value -> value.getText().equals(state.owner.toString())), "Server-backed UUID suggestions were lost");
@@ -91,6 +85,16 @@ final class BrigadierClientSmoke {
                     String marker = "p263-" + kind + "-" + round;
                     if (state.messages.stream().noneMatch(value -> value.contains(marker))) return false;
                 }
+                if (!state.nativeSigned.isDone() || !state.nativeOracle.isDone()) return false;
+                var signed = state.nativeSigned.join();
+                var oracle = state.nativeOracle.join();
+                require(signed.timestamp().equals(java.time.Instant.parse("2026-01-02T03:04:05Z")) && signed.salt() == 12345L
+                        && signed.identity().uuid().equals(state.owner) && signed.message().equals("native signed fixture"), "Native signed-message identity/body metadata changed");
+                require(signed.signature() != null && oracle.signature() != null
+                        && java.util.Arrays.equals(signed.signature().bytes(), state.signature)
+                        && java.util.Arrays.equals(signed.signature().bytes(), oracle.signature().bytes()), "Native signature bytes were lost");
+                var decoration = oracle.unsignedContent() == null ? null : io.papermc.paper.adventure.PaperAdventure.asAdventure(oracle.unsignedContent());
+                require(java.util.Objects.equals(decoration, signed.unsignedContent()), "Adventure decoration differs from vanilla resolution: actual=" + signed.unsignedContent() + ", native=" + decoration);
                 if (round == 1) {
                     state.pending = CompletableFuture.supplyAsync(() -> state.server.reloadResources(state.server.getPackRepository().getSelectedIds()), state.server)
                             .thenCompose(future -> future).thenRunAsync(() -> state.prepareRound(2), state.server);
@@ -185,6 +189,7 @@ final class BrigadierClientSmoke {
         CompletableFuture<?> pending;
         CompletableFuture<Suggestions> suggestions;
         CompletableFuture<net.kyori.adventure.chat.SignedMessage> nativeSigned;
+        CompletableFuture<net.minecraft.network.chat.PlayerChatMessage> nativeOracle;
         final byte[] signature = new byte[256];
         CommandNode<?> firstClientNode;
         int phase, initialGeneration, factories;
@@ -223,6 +228,14 @@ final class BrigadierClientSmoke {
             var originalSource = this.server.getPlayerList().getPlayer(this.owner).createCommandSourceStack();
             var source = originalSource.withSigningContext(
                     new net.minecraft.commands.CommandSigningContext.SignedArguments(Map.of("value", nativeMessage)), originalSource.getChatMessageChainer());
+            // Compare the result after vanilla decoration/filtering, not the pre-resolution input.
+            this.nativeOracle = new CompletableFuture<>();
+            var vanillaDispatcher = new com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack>();
+            vanillaDispatcher.register(net.minecraft.commands.Commands.literal("nativefixture")
+                    .then(net.minecraft.commands.Commands.argument("value", net.minecraft.commands.arguments.MessageArgument.message()).executes(context -> {
+                        net.minecraft.commands.arguments.MessageArgument.resolveChatMessage(context, "value", this.nativeOracle::complete);
+                        return 1;
+                    })));
             var dispatcher = new com.mojang.brigadier.CommandDispatcher<io.papermc.paper.command.brigadier.CommandSourceStack>();
             var result = new java.util.concurrent.atomic.AtomicReference<CompletableFuture<net.kyori.adventure.chat.SignedMessage>>();
             dispatcher.register(io.papermc.paper.command.brigadier.Commands.literal("signedfixture")
@@ -231,6 +244,7 @@ final class BrigadierClientSmoke {
                         return 1;
                     })));
             try {
+                require(vanillaDispatcher.execute("nativefixture native signed fixture", source) == 1, "Native signed-message control did not execute");
                 require(dispatcher.execute("signedfixture native signed fixture", (io.papermc.paper.command.brigadier.CommandSourceStack) (Object) source) == 1,
                         "Synthetic native signing context did not execute");
             } catch (CommandSyntaxException failure) { throw new IllegalStateException(failure); }
