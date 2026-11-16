@@ -43,6 +43,9 @@ CASES = {
     'brigadier-position-rotation-and-source-resolution', 'brigadier-entity-player-and-profile-resolvers',
     'brigadier-block-item-components-and-predicates', 'brigadier-registry-world-and-component-conversions',
     'brigadier-custom-conversion-and-message-resolution', 'brigadier-command-source-context-and-identity',
+    'dialog-inline-types-inputs-and-actions', 'dialog-builder-validation-and-defensive-lists',
+    'click-callback-service-uses-expiry-and-reentrancy', 'dialog-callback-response-and-invalid-payload',
+    'click-and-dialog-callback-native-tick-queue',
 }
 
 

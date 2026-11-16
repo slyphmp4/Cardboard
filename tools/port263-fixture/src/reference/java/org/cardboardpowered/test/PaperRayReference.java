@@ -43,7 +43,9 @@ public final class PaperRayReference extends JavaPlugin {
                     PlayerStateProbes.verify(world, check);
                     ServerAliasProbes.verify(check);
                     BrigadierArgumentProbes.verify(world, check);
-                    BrigadierArgumentProbes.verifyMessages(world, this, check, () -> finish(world, x, z, results));
+                    DialogCallbackProbes.verify(check);
+                    BrigadierArgumentProbes.verifyMessages(world, this, check,
+                            () -> DialogCallbackProbes.verifyTick(this, check, () -> finish(world, x, z, results)));
                 } catch (Exception failure) {
                     world.removePluginChunkTicket(x, z, this);
                     Bukkit.shutdown();
