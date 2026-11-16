@@ -1,9 +1,13 @@
 package org.cardboardpowered.mixin.server.network;
 
+import io.papermc.paper.adventure.PaperAdventure;
 import io.papermc.paper.adventure.providers.ClickCallbackProviderImpl;
+import io.papermc.paper.event.player.CardboardPlayerCustomClickEvent;
 import net.minecraft.network.protocol.common.ServerboundCustomClickActionPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,6 +29,10 @@ public abstract class ServerCommonPacketListenerImplMixin_ClickCallbacks {
         }
 
         Player audience = (Player) ((ServerPlayerBridge) game.player).getBukkitEntity();
+        // Report all custom actions, including unknown keys and absent payloads, to Paper plugins.
+        Bukkit.getPluginManager().callEvent(new CardboardPlayerCustomClickEvent(
+                PaperAdventure.asAdventure(packet.id()), ((CraftPlayer) audience).getConnection(),
+                packet.payload().orElse(null)));
         ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.tryRunCallback(audience, packet.id(), packet.payload());
         ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.tryRunCallback(audience, packet.id(), packet.payload());
     }
