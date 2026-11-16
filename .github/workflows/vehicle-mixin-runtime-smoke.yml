@@ -12,11 +12,6 @@ on:
   push:
     branches:
       - ver/26.3
-    paths:
-      - .github/workflows/vehicle-mixin-runtime-smoke.yml
-      - src/main/java/org/cardboardpowered/mixin/world/entity/EntityMixin_VehicleEvents.java
-      - src/main/resources/bukkitfabric.mixins.json
-      - src/test/java/org/cardboardpowered/event/EventCancellationParityTest.java
   workflow_dispatch:
 
 permissions:
