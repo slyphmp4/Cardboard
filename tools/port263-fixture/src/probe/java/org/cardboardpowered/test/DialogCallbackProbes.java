@@ -70,6 +70,12 @@ public final class DialogCallbackProbes {
             var payload = (ClickEvent.Payload.Custom) event.payload();
             Object manager = manager("ADVENTURE_CLICK_MANAGER");
             pump(manager);
+            run(manager, payload.key(), null);
+            run(manager, Key.key("test:wrong"), payload.nbt());
+            for (String invalid : List.of("{}", "{id:'bad'}", "{id:[I;1,2,3]}", "{id:[I;1,2,3,4,5]}", "[]")) {
+                run(manager, payload.key(), BinaryTagHolder.binaryTagHolder(invalid));
+            }
+            require(count.get() == 0, "Malformed Adventure callback token was consumed");
             run(manager, payload.key(), payload.nbt()); run(manager, payload.key(), payload.nbt()); run(manager, payload.key(), payload.nbt());
             require(count.get() == 2, "Use count/replay contract: " + count);
             var expired = ClickEvent.callback(audience -> count.incrementAndGet(), options(1, Duration.ZERO));
@@ -98,8 +104,9 @@ public final class DialogCallbackProbes {
             Object manager = manager("DIALOG_CLICK_MANAGER"); pump(manager);
             run(manager, Key.key("test:wrong"), action.additions());
             run(manager, action.id(), null);
-            run(manager, action.id(), BinaryTagHolder.binaryTagHolder("{}"));
-            run(manager, action.id(), BinaryTagHolder.binaryTagHolder("{id:'bad'}"));
+            for (String invalid : List.of("{}", "{id:'bad'}", "{id:[I;1,2,3]}", "{id:[I;1,2,3,4,5]}", "[]")) {
+                run(manager, action.id(), BinaryTagHolder.binaryTagHolder(invalid));
+            }
             require(count.get() == 0, "Invalid payload consumed callback");
             String payload = action.additions().string();
             var response = BinaryTagHolder.binaryTagHolder(payload.substring(0, payload.length() - 1) + ",text:'Привет 世界',flag:1b,value:3.5f}");

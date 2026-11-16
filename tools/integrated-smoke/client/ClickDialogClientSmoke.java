@@ -67,12 +67,14 @@ final class ClickDialogClientSmoke {
             network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.empty()));
             network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.of(decode("'scalar payload'"))));
             network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.of(decode("[1,2,3]"))));
+            network.send(new ServerboundCustomClickActionPacket(state.chatKey, Optional.of(decode("{id:'bad'}"))));
+            network.send(new ServerboundCustomClickActionPacket(state.dialogKey, Optional.of(decode("{id:'bad'}"))));
             state.sent = true;
             state.sentAt = System.nanoTime();
             return false;
         }
         if (state.eventError.get() != null) throw new AssertionError("PlayerCustomClickEvent payload invalid", state.eventError.get());
-        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1 || state.eventCalls.get() != 8) {
+        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1 || state.eventCalls.get() != 10) {
             require(System.nanoTime() - state.sentAt < 10_000_000_000L,
                     "Client packets did not execute click/dialog callbacks/events correctly: chat="
                             + state.chatCalls + " dialog=" + state.dialogCalls + " events=" + state.eventCalls);
@@ -80,7 +82,7 @@ final class ClickDialogClientSmoke {
         }
         // Give replays a few more server ticks to arrive before declaring success.
         if (++state.verifiedTicks < 4) return false;
-        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1 && state.eventCalls.get() == 8,
+        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1 && state.eventCalls.get() == 10,
                 "Callback was replayed or custom-click events were lost");
         client.getSingleplayerServer().execute(() -> org.bukkit.event.HandlerList.unregisterAll(state));
         active = null;
@@ -123,9 +125,10 @@ final class ClickDialogClientSmoke {
                 require(event.getCommonConnection() instanceof io.papermc.paper.connection.PlayerGameConnection connection
                         && connection.getPlayer().getUniqueId().equals(owner), "Custom-click event lost actor connection");
                 int index = eventCalls.get();
-                if (index < 5) {
+                if (index < 5 || index >= 8) {
                     require(event.getTag() != null && event.getDialogResponseView() != null,
                             "Custom-click event lost compound payload");
+                    if (index >= 8) require("bad".equals(event.getDialogResponseView().getText("id")), "Malformed id changed in event");
                 } else {
                     require(event.getDialogResponseView() == null, "Non-compound payload became a dialog response");
                     if (index == 5) require(event.getTag() == null, "Absent payload became an NBT tag");

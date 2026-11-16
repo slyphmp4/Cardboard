@@ -287,10 +287,12 @@ def main():
             verify_console_log(directory / f'console-{phase}.log', args.stack)
             if phase == 'initial':
                 probe(directory, rcon, 'run')
+                verify_console_log(directory / f'console-{phase}.log', args.stack)
                 rcon.command('minecraft:reload')
                 wait_until(lambda: 'PORT263_AUDIT running=false' in rcon.command('port263audit status'),
                            60, 'Plugin command disappeared after native reload')
                 matrix(directory, rcon)
+                verify_console_log(directory / f'console-{phase}.log', args.stack)
                 acceptance(directory, rcon, process, args.duration)
                 probe(directory, rcon, 'persist')
             else:

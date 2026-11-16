@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +42,13 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
         return ClickEvent.custom(ADVENTURE_CLICK_CALLBACK_KEY, PaperAdventure.asBinaryTagHolder(tag));
     }
 
+    private static Optional<UUID> readCallbackId(final CompoundTag tag) {
+        final Tag value = tag.get(ID_KEY);
+        // Client payloads are untrusted. CompoundTag.read reports decoding problems
+        // as server errors; an invalid callback token should simply be ignored.
+        return value == null ? Optional.empty() : UUIDUtil.CODEC.parse(NbtOps.INSTANCE, value).result();
+    }
+
     public static final class AdventureClick extends CallbackManager<ClickCallback<Audience>, UUID> {
 
         private AdventureClick() {
@@ -54,7 +62,7 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
         @Override
         void doRunCallback(final @NotNull Audience audience, final Key key, final Tag tag) {
             tag.asCompound().ifPresent(t -> {
-                final Optional<UUID> id = t.read(ID_KEY, UUIDUtil.CODEC);
+                final Optional<UUID> id = readCallbackId(t);
                 if (id.isEmpty()) {
                     return;
                 }
@@ -74,7 +82,7 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
         @Override
         void doRunCallback(final @NotNull Audience audience, final Key key, final Tag tag) {
             tag.asCompound().ifPresent(t -> {
-                final Optional<UUID> id = t.read(ID_KEY, UUIDUtil.CODEC);
+                final Optional<UUID> id = readCallbackId(t);
                 if (id.isEmpty()) {
                     return;
                 }

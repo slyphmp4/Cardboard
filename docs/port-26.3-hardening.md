@@ -608,6 +608,12 @@ only compounds expose `DialogResponseView`. Event payloads use the generic NBT
 codec so scalar/list tags are retained. The game connection resolves its actual
 native player without depending on an injected `getPlayer` overload.
 
+Malformed callback UUID fields are decoded through the native UUID codec's
+non-logging result path. Missing, wrongly typed and incorrectly sized identifiers
+are ignored for both callback managers without consuming a use or emitting a server
+ERROR. The strict production console gate also runs directly after API probes and
+compatibility checks, before starting the 30-minute workload.
+
 Inline dialog conversion reads the active server's registries on every request.
 It no longer holds the first integrated world's registry access in a static
 context, including across resource reloads. Native server stop releases both
