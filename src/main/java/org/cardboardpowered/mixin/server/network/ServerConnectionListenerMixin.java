@@ -2,6 +2,7 @@ package org.cardboardpowered.mixin.server.network;
 
 import java.net.InetAddress;
 import java.util.List;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerConnectionListener;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,6 +18,17 @@ import io.netty.channel.ChannelFuture;
 
 @Mixin(ServerConnectionListener.class)
 public class ServerConnectionListenerMixin implements ServerConnectionListenerBridge {
+
+    @Shadow @Final private MinecraftServer server;
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void cardboard$configurationCallbacks(CallbackInfo ci) {
+        // Network ticks also run while the first integrated owner is configuring,
+        // before world ticks and Bukkit's main scheduler have started.
+        int tick = this.server.getTickCount();
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(tick);
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue(tick);
+    }
 
     @Shadow
     @Final

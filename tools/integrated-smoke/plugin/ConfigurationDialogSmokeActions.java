@@ -141,7 +141,8 @@ public final class ConfigurationDialogSmokeActions implements Listener {
                 require(Boolean.TRUE.equals(response.getBoolean("flag")), "Configuration UI bool response");
                 require(Float.valueOf(3.5f).equals(response.getFloat("value")), "Configuration UI float response");
                 state.values.put(reconfigure ? "reentryCalls" : "initialCalls", "1");
-                Bukkit.getScheduler().runTaskLater(this.plugin, () -> state.connection.getAudience().showDialog(state.dialog), 2);
+                // Initial owner configuration precedes the world's scheduler heartbeat.
+                state.connection.getAudience().showDialog(state.dialog);
             } catch (Throwable failure) { state.fail(failure); state.answer.countDown(); }
         }, ClickCallback.Options.builder().uses(1).lifetime(Duration.ofMinutes(2)).build());
         state.action = action.id();

@@ -502,10 +502,6 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
 
     @Inject(at = @At("HEAD"), method = "tickChildren")
     public void doBukkitRunnables(BooleanSupplier b, CallbackInfo ci) {
-        // Activate newly registered Adventure and dialog callbacks on the server thread.
-        // The managers also evict expired entries on their regular 100-tick cadence.
-        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(tickCount);
-        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue(tickCount);
         ((CraftScheduler)CraftServer.INSTANCE.getScheduler()).mainThreadHeartbeat(tickCount);
 
         ((io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler)
