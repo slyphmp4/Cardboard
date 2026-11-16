@@ -17,7 +17,7 @@ public final class CardboardPlayerCustomClickEvent extends PlayerCustomClickEven
 
     public CardboardPlayerCustomClickEvent(Key identifier, PlayerCommonConnection connection, @Nullable Tag payload) {
         super(identifier, connection);
-        this.tag = payload == null ? null : PaperAdventure.asBinaryTagHolder(payload);
+        this.tag = payload == null ? null : BinaryTagHolder.encode(payload, PaperAdventure.NBT_CODEC);
         this.response = payload instanceof CompoundTag compound
                 ? PaperDialogResponseView.createUnvalidatedResponse(compound)
                 : null;
