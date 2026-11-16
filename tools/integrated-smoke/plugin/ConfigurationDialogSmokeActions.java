@@ -109,14 +109,15 @@ public final class ConfigurationDialogSmokeActions implements Listener {
             checkConnection(state);
             state.values.put("reconfigure", Integer.toString(++state.reconfigurations));
             require(state.reconfigurations == 1, "Duplicate reconfiguration acknowledgement");
-            // Prove that the connection stays outside the world until explicitly released.
-            Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+            // The integrated game can pause when its owner leaves play. Hold the
+            // connection using an async timer, independent of that world's clock.
+            Bukkit.getAsyncScheduler().runDelayed(this.plugin, task -> {
                 try {
                     checkConnection(state);
                     state.values.put("held", "1");
                     show(state, true);
                 } catch (Throwable failure) { state.fail(failure); }
-            }, 4);
+            }, 200, TimeUnit.MILLISECONDS);
         } catch (Throwable failure) { if (state != null) state.fail(failure); else throw new AssertionError(failure); }
     }
 
