@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
@@ -17,6 +18,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import io.papermc.paper.event.player.PlayerCustomClickEvent;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 
 /** Exercise actual client -> server custom-click packets, not only callback-manager methods. */
 final class ClickDialogClientSmoke {
@@ -40,6 +44,9 @@ final class ClickDialogClientSmoke {
         }, options);
         state.dialogKey = PaperAdventure.asVanilla(dialog.id());
         state.dialogPayload = decode(dialog.additions().string());
+        var plugin = Bukkit.getPluginManager().getPlugin("IntegratedSmoke");
+        require(plugin != null, "Missing plugin for native click event verification");
+        Bukkit.getPluginManager().registerEvents(state, plugin);
         player.sendMessage(Component.text("Cardboard click callback smoke").clickEvent(click));
         active = state;
     }
@@ -61,15 +68,17 @@ final class ClickDialogClientSmoke {
             state.sentAt = System.nanoTime();
             return false;
         }
-        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1) {
+        if (state.eventError.get() != null) throw new AssertionError("PlayerCustomClickEvent payload invalid", state.eventError.get());
+        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1 || state.eventCalls.get() != 5) {
             require(System.nanoTime() - state.sentAt < 10_000_000_000L,
-                    "Client packets did not execute click/dialog callbacks exactly once: chat="
-                            + state.chatCalls + " dialog=" + state.dialogCalls);
+                    "Client packets did not execute click/dialog callbacks/events correctly: chat="
+                            + state.chatCalls + " dialog=" + state.dialogCalls + " events=" + state.eventCalls);
             return false;
         }
         // Give replays a few more server ticks to arrive before declaring success.
         if (++state.verifiedTicks < 4) return false;
-        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1, "Callback was replayed");
+        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1 && state.eventCalls.get() == 5,
+                "Callback was replayed or custom-click events were lost");
         active = null;
         System.out.println("CLICK_DIALOG_CLIENT_PACKETS_PASS owner=" + state.owner);
         return true;
@@ -84,11 +93,13 @@ final class ClickDialogClientSmoke {
         if (!good) throw new AssertionError(message);
     }
 
-    private static final class State {
+    private static final class State implements Listener {
         final UUID owner;
         final int createdTick;
         final AtomicInteger chatCalls = new AtomicInteger();
         final AtomicInteger dialogCalls = new AtomicInteger();
+        final AtomicInteger eventCalls = new AtomicInteger();
+        final AtomicReference<Throwable> eventError = new AtomicReference<>();
         Identifier chatKey, dialogKey;
         Tag chatPayload, dialogPayload;
         boolean sent;
@@ -96,6 +107,22 @@ final class ClickDialogClientSmoke {
         int verifiedTicks;
 
         State(UUID owner, int createdTick) { this.owner = owner; this.createdTick = createdTick; }
+
+        @EventHandler
+        public void onNativeClick(PlayerCustomClickEvent event) {
+            try {
+                var id = event.getIdentifier().asString();
+                if (!(id.equals("cardboard:unknown_callback")
+                        || id.equals(PaperAdventure.asAdventure(chatKey).asString())
+                        || id.equals(PaperAdventure.asAdventure(dialogKey).asString()))) return;
+                require(event.getCommonConnection() != null, "Custom-click event lost connection");
+                require(event.getTag() != null && event.getDialogResponseView() != null,
+                        "Custom-click event lost compound payload");
+                eventCalls.incrementAndGet();
+            } catch (Throwable failure) {
+                eventError.compareAndSet(null, failure);
+            }
+        }
 
         void onChat(Audience audience) { verifyAudience(audience); chatCalls.incrementAndGet(); }
         void onDialog(Audience audience) { verifyAudience(audience); dialogCalls.incrementAndGet(); }
