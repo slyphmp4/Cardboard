@@ -4,9 +4,11 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import io.papermc.paper.connection.PaperConfigurationTask;
 import io.papermc.paper.connection.PaperPlayerConfigurationConnection;
+import io.papermc.paper.connection.PaperReconfigurationTask;
 import io.papermc.paper.event.connection.configuration.PlayerConnectionInitialConfigureEvent;
 import io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent;
 import java.util.Queue;
+import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.minecraft.network.Connection;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.protocol.PacketUtils;
@@ -19,6 +21,7 @@ import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.minecraft.server.network.config.ServerResourcePackConfigurationTask;
 import org.bukkit.Bukkit;
+import org.cardboardpowered.bridge.network.ConnectionBridge;
 import org.cardboardpowered.bridge.server.network.ServerConfigurationPacketListenerImplBridge;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,6 +42,7 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
     @Shadow protected abstract void finishCurrentTask(ConfigurationTask.Type type);
     @Unique private PaperPlayerConfigurationConnection cardboard$apiConnection;
     @Unique private PaperConfigurationTask cardboard$configurationTask;
+    @Unique private PaperReconfigurationTask cardboard$reconfigurationTask;
     @Unique private boolean cardboard$reconfiguration;
     @Unique private boolean cardboard$returnRequested;
     @Unique private boolean cardboard$initialEventFired;
@@ -68,7 +72,9 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
         // Fabric also calls startConfiguration again when its early tasks finish.
         if (!this.cardboard$initialEventFired) {
             this.cardboard$initialEventFired = true;
-            Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
+            if (!ServerConfigurationNetworking.isReconfiguring((ServerConfigurationPacketListenerImpl) (Object) this)) {
+                Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
+            }
         }
         original.call();
     }
@@ -76,6 +82,13 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
     @Inject(method = "startConfiguration", at = @At(value = "INVOKE", target =
             "Lnet/minecraft/server/network/ServerConfigurationPacketListenerImpl;returnToWorld()V"))
     private void cardboard$asyncConfigure(CallbackInfo ci) {
+        if (ServerConfigurationNetworking.isReconfiguring((ServerConfigurationPacketListenerImpl) (Object) this)) {
+            if (((ConnectionBridge) this.connection).cardboard$hasPaperReconfiguration()) {
+                this.cardboard$reconfigurationTask = new PaperReconfigurationTask(this);
+                this.configurationTasks.add(this.cardboard$reconfigurationTask);
+            }
+            return;
+        }
         this.cardboard$configurationTask = new PaperConfigurationTask(this.server, this.cardboard$configurationConnection());
         this.configurationTasks.add(this.cardboard$configurationTask);
     }
@@ -93,10 +106,11 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
             this.server.execute(this::cardboard$completeReconfiguration);
             return;
         }
-        if (!this.cardboard$reconfiguration || this.cardboard$returnRequested || this.currentTask != null
+        if (!this.cardboard$reconfiguration || this.cardboard$returnRequested || this.cardboard$reconfigurationTask == null
+                || this.currentTask != this.cardboard$reconfigurationTask
                 || !this.connection.isConnected() || this.connection.getPacketListener() != (Object) this) return;
         this.cardboard$returnRequested = true;
-        this.returnToWorld();
+        this.cardboard$reconfigurationTask.release();
     }
 
     @Inject(method = "handleResourcePackResponse", at = @At("HEAD"), cancellable = true)
@@ -117,6 +131,7 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
 
     @Inject(method = "onDisconnect", at = @At("HEAD"))
     private void cardboard$cancelConfiguration(DisconnectionDetails details, CallbackInfo ci) {
+        ((ConnectionBridge) this.connection).cardboard$setPaperReconfiguration(false);
         if (this.cardboard$configurationTask != null) this.cardboard$configurationTask.cancel();
         if (this.cardboard$apiConnection != null) this.cardboard$apiConnection.close();
     }

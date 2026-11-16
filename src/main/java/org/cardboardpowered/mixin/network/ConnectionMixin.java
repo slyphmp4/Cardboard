@@ -23,6 +23,7 @@ public class ConnectionMixin implements ConnectionBridge {
     public UUID spoofedUUID;
     public Property[] spoofedProfile;
     private String cardboard$clientBrand;
+    private boolean cardboard$paperReconfiguration;
     public boolean preparing = true;
 
     @Redirect(
@@ -82,5 +83,8 @@ public class ConnectionMixin implements ConnectionBridge {
     public void cardboard$setClientBrand(String brand) {
         this.cardboard$clientBrand = brand;
     }
+
+    @Override public boolean cardboard$hasPaperReconfiguration() { return this.cardboard$paperReconfiguration; }
+    @Override public void cardboard$setPaperReconfiguration(boolean requested) { this.cardboard$paperReconfiguration = requested; }
 
 }

@@ -28,9 +28,12 @@ public class PaperPlayerGameConnection extends PaperCommonConnection<ServerGameP
             return;
         }
         if (this.reconfigurationRequested || !this.handle.connection.isConnected()
-                || this.handle.connection.getPacketListener() != this.handle) return;
+                || this.handle.connection.getPacketListener() != this.handle
+                || ((org.cardboardpowered.bridge.server.network.ServerGamePacketListenerImplBridge) this.handle).cardboard$isWaitingForConfiguration()) return;
         this.reconfigurationRequested = true;
-        this.handle.switchToConfig();
+        ((org.cardboardpowered.bridge.network.ConnectionBridge) this.handle.connection).cardboard$setPaperReconfiguration(true);
+        // Run Fabric's full registry/mod configuration pipeline before Paper holds the connection.
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.reconfigure(this.handle);
     }
 
     public Player getPlayer() {

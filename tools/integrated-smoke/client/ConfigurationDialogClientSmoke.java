@@ -59,9 +59,27 @@ final class ConfigurationDialogClientSmoke {
         require("1".equals(values.get("cookie")) && "1".equals(values.get("initialAdventure"))
                 && "1".equals(values.get("reentryAdventure")), "Configuration cookie/Adventure callbacks: " + values);
         if (++state.settle < 8) return false;
+        if (state.fabricRequest == null) {
+            state.fabricPlayer = client.player;
+            state.fabricJoins = ConfigurationFabricSmoke.joinCount(state.server, state.actor);
+            state.fabricRequest = CompletableFuture.runAsync(() -> {
+                var player = state.server.getPlayerList().getPlayer(state.actor);
+                require(player != null, "Missing player for Fabric reconfiguration");
+                var paper = Bukkit.getPlayer(state.actor).getConnection();
+                net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.reconfigure(player);
+                // A concurrent Paper request must not replace Fabric's automatic flow.
+                paper.reenterConfiguration();
+            }, state.server);
+            return false;
+        }
+        if (!state.fabricRequest.isDone()) return false;
+        state.fabricRequest.join();
+        if (ConfigurationFabricSmoke.joinCount(state.server, state.actor) != state.fabricJoins + 1
+                || client.player == null || client.level == null || client.player == state.fabricPlayer) return false;
+        if (++state.fabricSettle < 8) return false;
         active = null;
         System.out.println("CONFIGURATION_DIALOG_CLIENT_PASS actor=" + state.actor
-                + " initial=1 async=1 reconfigure=1 ui=6 dialogCallbacks=2 adventureCallbacks=2 cookie=roundtrip replay=ignored savedState=restored");
+                + " initial=1 async=1 reconfigure=1 fabricReconfigure=1 ui=6 dialogCallbacks=2 adventureCallbacks=2 cookie=roundtrip replay=ignored savedState=restored");
         return true;
     }
 
@@ -71,6 +89,9 @@ final class ConfigurationDialogClientSmoke {
         final Plugin plugin;
         final long deadline = System.nanoTime() + 60_000_000_000L;
         CompletableFuture<Void> request;
+        CompletableFuture<Void> fabricRequest;
+        Object fabricPlayer;
+        int fabricJoins, fabricSettle;
         int settle;
         State(MinecraftServer server, UUID actor) {
             this.server = server; this.actor = actor;

@@ -85,11 +85,18 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                 (ServerGamePacketListenerImpl) (Object) this, this.server.packetProcessor());
     }
 
-    @Inject(method = "handleConfigurationAcknowledged", at = @At("TAIL"))
-    private void cardboard$reconfigureEvent(net.minecraft.network.protocol.game.ServerboundConfigurationAcknowledgedPacket packet, CallbackInfo ci) {
-        if (this.connection.getPacketListener() instanceof net.minecraft.server.network.ServerConfigurationPacketListenerImpl config) {
-            ((org.cardboardpowered.bridge.server.network.ServerConfigurationPacketListenerImplBridge) config).cardboard$beginReconfiguration();
-        }
+    @Shadow private boolean waitingForSwitchToConfig;
+
+    @Override public boolean cardboard$isWaitingForConfiguration() { return this.waitingForSwitchToConfig; }
+
+    @Inject(method = "switchToConfig", at = @At("HEAD"), cancellable = true)
+    private void cardboard$ignoreDuplicateConfiguration(CallbackInfo ci) {
+        if (this.waitingForSwitchToConfig) ci.cancel();
+    }
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void cardboard$clearConfigurationOrigin(CallbackInfo ci) {
+        ((org.cardboardpowered.bridge.network.ConnectionBridge) this.connection).cardboard$setPaperReconfiguration(false);
     }
 
     public ServerGamePacketListenerImplMixin(MinecraftServer server, Connection connection, CommonListenerCookie clientData) {
