@@ -86,7 +86,6 @@ public final class ConfigurationDialogSmokeActions implements Listener {
             require(state.calls == 1 && state.events == 2 && state.adventureCalls == 1, "Initial callbacks invalid: " + state.values);
             state.values.put("configured", "1");
         } catch (InterruptedException cancelled) {
-            Thread.currentThread().interrupt();
             state.values.put("cancelled", "1");
             String exchange = System.getProperty("cardboard.smoke.exchange");
             if (exchange != null) {
@@ -95,6 +94,7 @@ public final class ConfigurationDialogSmokeActions implements Listener {
                 } catch (java.io.IOException failure) { state.fail(failure); }
             }
             System.out.println("CONFIGURATION_CANCELLED_PASS " + state.id);
+            Thread.currentThread().interrupt();
         } catch (Throwable failure) { if (state != null) state.fail(failure); else throw new AssertionError(failure); }
     }
 

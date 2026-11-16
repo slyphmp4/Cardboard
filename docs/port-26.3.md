@@ -16,10 +16,22 @@ successful CI artifact byte for byte. Experimental tags are published as GitHub
 prereleases with a basename-only `SHA256SUMS.txt` and versioned release notes.
 See [26.3.0-alpha.1](releases/26.3.0-alpha.1.md) for the release scope.
 
-Game dialogs and callbacks are covered by real owner-client submissions across
-reloads and two successive worlds. Configuration-phase dialogs/reconfiguration
-remain a separate existing API gap. The bounded gates do not establish full
-Paper API parity or replace extended testing of the intended server pack.
+The published alpha.1 covers game dialogs and callbacks through real
+owner-client submissions across reloads and two successive worlds. Later source
+changes in [PR #59](https://github.com/slyphmp4/Cardboard/pull/59) implement
+configuration audiences, initial/async/reconfigure events, native dialog and
+Adventure callbacks, and the explicit return to the world. Alpha.1 does not
+contain these later changes.
+
+The client gates now require forms submitted before world entry, typed Unicode
+responses, cookie round-trips, exhausted callback replay, held reconfiguration,
+saved inventory/XP/position/PDC, cancellation on TCP disconnect and restored
+LuckPerms-Fabric permissions after return. Both owner-world shutdowns check that
+configuration tasks release their server references. These changes remain under
+native-client validation until PR #59 passes its full CI suite.
+
+The bounded gates do not establish full Paper API parity or replace extended
+testing of the intended server pack.
 
 ## Baseline and target
 

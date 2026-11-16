@@ -54,8 +54,15 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
 
     @Override public ClientInformation cardboard$clientInformation() { return this.clientInformation; }
 
-    @Inject(method = "startConfiguration", at = @At("HEAD"))
+    @Inject(method = "startConfiguration", at = @At("HEAD"), cancellable = true)
     private void cardboard$initialConfigure(CallbackInfo ci) {
+        // Fabric may defer this call until channel registration, on a Netty thread.
+        // Serialize task creation and the initial event with the native server tick.
+        if (!this.server.isSameThread()) {
+            this.server.execute(((ServerConfigurationPacketListenerImpl) (Object) this)::startConfiguration);
+            ci.cancel();
+            return;
+        }
         Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
     }
 
