@@ -78,6 +78,7 @@
     "server.network.LegacyQueryHandlerMixin",
     "server.network.ServerConfigurationPacketListenerImplMixin",
     "server.network.ServerCommonPacketListenerImplMixin_Brand",
+    "server.network.ServerCommonPacketListenerImplMixin_ClickCallbacks",
     "server.network.ServerCommonPlayerStateMixin",
     "server.network.ServerConnectionListenerMixin",
     "server.network.ServerGamePacketListenerImplMixin",
