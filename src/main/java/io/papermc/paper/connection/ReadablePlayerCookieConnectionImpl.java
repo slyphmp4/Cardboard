@@ -50,6 +50,11 @@ public abstract class ReadablePlayerCookieConnectionImpl implements ReadablePlay
         return !this.requestedCookies.isEmpty();
     }
 
+    protected void cancelCookieRequests() {
+        this.requestedCookies.values().forEach(request -> request.future().cancel(false));
+        this.requestedCookies.clear();
+    }
+
     public record CookieFuture(Identifier key, CompletableFuture<byte[]> future) {
     }
 

@@ -188,6 +188,7 @@ jobs:
           test "$(grep -c 'BRIGADIER_CLIENT_PASS ' integrated-client-smoke.log)" -eq 2
           test "$(grep -c 'CLICK_DIALOG_CLIENT_PACKETS_PASS ' integrated-client-smoke.log)" -eq 2
           test "$(grep -c 'DIALOG_CLIENT_UI_PASS ' integrated-client-smoke.log)" -eq 2
+          test "$(grep -c 'CONFIGURATION_DIALOG_CLIENT_PASS ' integrated-client-smoke.log)" -eq 2
           test "$(grep -c 'DIALOG_STOP_CLEANUP_PASS' integrated-client-smoke.log)" -eq 2
           test "$(grep -c 'INTEGRATED_RESTART_PASS ' integrated-client-smoke.log)" -eq 2
           test ! -e run-integrated-smoke/integrated-script-ran

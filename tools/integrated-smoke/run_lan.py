@@ -40,7 +40,7 @@ try:
             raise AssertionError(f'Missing host marker: {marker}')
     if host.count('BRIGADIER_CLIENT_PASS ') != 2:
         raise AssertionError('Native Brigadier arguments did not pass in both LAN worlds')
-    for marker in ['CLICK_DIALOG_CLIENT_PACKETS_PASS ', 'DIALOG_CLIENT_UI_PASS ', 'DIALOG_STOP_CLEANUP_PASS']:
+    for marker in ['CLICK_DIALOG_CLIENT_PACKETS_PASS ', 'DIALOG_CLIENT_UI_PASS ', 'DIALOG_STOP_CLEANUP_PASS', 'CONFIGURATION_DIALOG_CLIENT_PASS ']:
         if host.count(marker) != 2:
             raise AssertionError(f'Dialog/callback scope did not pass in both LAN worlds: {marker}')
     if host.count('SERVER_ALIAS_CLIENT_PASS') != 2 or host.count('INTEGRATED_RESTART_PASS ') != 2:
@@ -53,9 +53,13 @@ try:
         raise AssertionError('Both LAN worlds must verify world note and particle packets')
     if 'INTEGRATED_LAN_GUEST_PASS' not in guest:
         raise AssertionError('Missing guest PASS marker')
+    if 'CONFIGURATION_GUEST_ABORT_PASS ' not in guest or 'CONFIGURATION_CANCELLED_PASS ' not in host:
+        raise AssertionError('Disconnecting during a blocking configuration did not cancel its worker')
     dedicated = logs[2].read_text(errors='replace')
     if 'LUCKPERMS_FABRIC_PASS SmokeGuest' not in dedicated or 'DEDICATED_LUCKPERMS_PASS' not in dedicated:
         raise AssertionError('Missing dedicated LuckPerms PASS markers')
+    if 'CONFIGURATION_DEDICATED_PASS ' not in dedicated:
+        raise AssertionError('Configuration did not return a real TCP player with LuckPerms permissions')
     if not (exchange / 'guest.success').is_file() or not (exchange / 'dedicated.success').is_file() or not (root / 'run-integrated-smoke/integrated-smoke.success').is_file():
         raise AssertionError('Missing client success files')
     print('INTEGRATED_LAN_LUCKPERMS_PASS: both clients and dedicated server exited normally', flush=True)
@@ -69,7 +73,7 @@ finally:
     for log in logs:
         if log.exists():
             for line in log.read_text(errors='replace').splitlines():
-                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_', 'SERVER_ALIAS_', 'DIALOG_', 'CLICK_DIALOG_']):
+                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_', 'SERVER_ALIAS_', 'DIALOG_', 'CLICK_DIALOG_', 'CONFIGURATION_']):
                     print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)

@@ -17,6 +17,7 @@ final class IntegratedLanGuest implements ClientModInitializer {
     private int world = 1;
     private int stage;
     private long phaseDeadline;
+    private boolean abortedConfiguration;
 
     @Override
     public void onInitializeClient() {
@@ -26,6 +27,15 @@ final class IntegratedLanGuest implements ClientModInitializer {
 
     private void tick(Minecraft client) {
         try {
+            if (world == 1 && stage == 1 && !abortedConfiguration && client.gui.screen() != null
+                    && client.gui.screen().getTitle().getString().equals("p263-config")) {
+                abortedConfiguration = true;
+                client.disconnect(new TitleScreen(), false);
+                phaseDeadline = System.nanoTime() + 15_000_000_000L;
+                stage = 7;
+                return;
+            }
+            ConfigurationDialogClientSmoke.tick(client);
             require(System.nanoTime() < deadline, "Guest timeout at world " + world + " stage " + stage);
             if (stage == 1 || stage == 2) {
                 require(System.nanoTime() < phaseDeadline, "Guest connection phase timed out at world " + world + " stage " + stage
@@ -33,6 +43,15 @@ final class IntegratedLanGuest implements ClientModInitializer {
                         + ", radius=" + WorldSettingsSmoke.clientRadius(client) + ", expected=" + WorldSettingsSmoke.RADIUS);
             }
             String ready = world == 3 ? "dedicated-ready" : "ready-" + world;
+            if (stage == 7) {
+                require(System.nanoTime() < phaseDeadline, "Disconnected configuration handler did not stop");
+                var id = net.minecraft.core.UUIDUtil.createOfflinePlayerUUID("SmokeGuest");
+                if (Files.exists(exchange.resolve("configuration-aborted-" + id))) {
+                    stage = 0;
+                    System.out.println("CONFIGURATION_GUEST_ABORT_PASS " + id);
+                }
+                return;
+            }
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null
                     && Files.exists(exchange.resolve(ready))) {
                 String address = "127.0.0.1:" + Files.readString(exchange.resolve(ready)).trim();

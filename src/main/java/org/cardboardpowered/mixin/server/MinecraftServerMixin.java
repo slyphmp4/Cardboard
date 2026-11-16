@@ -548,6 +548,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
             hasStopped = true;
         }
 
+        io.papermc.paper.connection.PaperConfigurationTask.cancelAll((MinecraftServer) (Object) this);
+
         if (null != CraftServer.INSTANCE)
             CraftServer.INSTANCE.getPluginManager().disablePlugins();
     }

@@ -80,6 +80,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
 
     private void tick(Minecraft client) {
         try {
+            ConfigurationDialogClientSmoke.tick(client);
             if (System.nanoTime() > deadline) throw new AssertionError("Client smoke timed out at stage " + stage);
             if (stage == 0 && client.isGameLoadFinished() && client.gui.overlay() == null) {
                 createWorld(client);
@@ -106,6 +107,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 if (!BrigadierClientSmoke.finish(client)) return;
                 if (!ClickDialogClientSmoke.finish(client)) return;
                 if (!DialogClientSmoke.finish(client)) return;
+                if (!ConfigurationDialogClientSmoke.finish(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -145,6 +147,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
                 if (!dialogCleanupChecked) {
                     DialogClientSmoke.assertCleaned();
+                    ConfigurationDialogClientSmoke.assertCleaned();
                     dialogCleanupChecked = true;
                 }
                 var remaining = Thread.getAllStackTraces().keySet().stream()
@@ -153,7 +156,8 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                                 || name.startsWith("Paper Scheduler Thread")
                                 || name.startsWith("Craft Async Scheduler Management Thread")
                                 || name.startsWith("Folia Async Scheduler Thread")
-                                || name.equals("Spigot Watchdog Thread"))
+                                || name.equals("Spigot Watchdog Thread")
+                                || name.startsWith("Cardboard Configuration "))
                         .toList();
                 if (!remaining.isEmpty()) {
                     require(System.nanoTime() < closeDeadline, "World threads survived close: " + remaining);
@@ -219,6 +223,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     }
 
     private void createWorld(Minecraft client) {
+        ConfigurationDialogClientSmoke.prepareWorld();
         world++;
         worldSettingsClientDone = false;
         dialogCleanupChecked = false;
@@ -281,6 +286,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             BrigadierClientSmoke.begin(server, owner);
             ClickDialogClientSmoke.begin(server, owner);
             DialogClientSmoke.begin(server, owner);
+            ConfigurationDialogClientSmoke.begin(server, owner);
             System.out.println("INTEGRATED_SMOKE_WORLD_PASS " + world + " owner=" + owner);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);

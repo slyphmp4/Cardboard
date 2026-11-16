@@ -84,7 +84,11 @@ final class DialogClientSmoke {
 
     /** Edit and submit the real native screen; no synthetic dialog response here. */
     static boolean clickVisible(Minecraft client) {
-        if (client.gui.screen() == null || !client.gui.screen().getTitle().getString().equals(TITLE) || client.gui.screen() == submittedScreen) return false;
+        return clickVisible(client, TITLE);
+    }
+
+    static boolean clickVisible(Minecraft client, String title) {
+        if (client.gui.screen() == null || !client.gui.screen().getTitle().getString().equals(title) || client.gui.screen() == submittedScreen) return false;
         if (observedScreen != client.gui.screen()) { observedScreen = client.gui.screen(); observedFrames = 0; }
         // Let the actual dialog screen render before editing and submitting its widgets.
         if (++observedFrames < 3) return false;

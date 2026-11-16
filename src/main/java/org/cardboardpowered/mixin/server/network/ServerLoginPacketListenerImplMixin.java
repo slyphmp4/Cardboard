@@ -421,6 +421,12 @@ public abstract class ServerLoginPacketListenerImplMixin implements ServerLoginP
     @Shadow
     private boolean transferred;
 
+    @Inject(method = "handleLoginAcknowledgement", at = @At("HEAD"))
+    private void cardboard$configurationThread(ServerboundLoginAcknowledgedPacket packet, CallbackInfo ci) {
+        net.minecraft.network.protocol.PacketUtils.ensureRunningOnSameThread(packet,
+                (ServerLoginPacketListenerImpl) (Object) this, this.server.packetProcessor());
+    }
+
     /*
 	@Inject(method = "onEnterConfiguration",
 			locals = LocalCapture.CAPTURE_FAILEXCEPTION,
