@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 public final class DedicatedLuckPermsSmoke implements ModInitializer {
     @Override
     public void onInitialize() {
+        ConfigurationFabricSmoke.install();
         if (!Boolean.getBoolean("cardboard.smoke.dedicated")) return;
         Path exchange = Path.of(System.getProperty("cardboard.smoke.exchange"));
         AtomicBoolean verified = new AtomicBoolean();

@@ -12,8 +12,13 @@ import org.bukkit.plugin.Plugin;
 final class ConfigurationDialogClientSmoke {
     private static State active;
     private static int submissions;
+    private static long initialDeadline;
+    private static boolean initialJoined;
 
-    static void prepareWorld() { active = null; submissions = 0; }
+    static void prepareWorld() {
+        active = null; submissions = 0; initialJoined = false;
+        initialDeadline = System.nanoTime() + 90_000_000_000L;
+    }
     static void assertCleaned() {
         try {
             var field = io.papermc.paper.connection.PaperConfigurationTask.class.getDeclaredField("ACTIVE");
@@ -23,10 +28,15 @@ final class ConfigurationDialogClientSmoke {
         System.out.println("CONFIGURATION_STOP_CLEANUP_PASS");
     }
     static void tick(Minecraft client) {
+        if (!initialJoined && initialDeadline != 0 && client.getSingleplayerServer() != null) {
+            require(System.nanoTime() < initialDeadline, "Initial configuration stalled before world entry; submissions="
+                    + submissions + ", screen=" + (client.gui.screen() == null ? "none" : client.gui.screen().getTitle().getString()));
+        }
         if (DialogClientSmoke.clickVisible(client, "p263-config")) submissions++;
     }
     static void begin(MinecraftServer server, UUID actor) {
         require(submissions == 3, "Initial configuration did not use the native form three times: " + submissions);
+        initialJoined = true;
         active = new State(server, actor);
     }
     static boolean finish(Minecraft client) {

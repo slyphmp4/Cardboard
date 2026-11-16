@@ -27,7 +27,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Keep native registry negotiation and world loading; insert Paper's configuration events. */
-@Mixin(ServerConfigurationPacketListenerImpl.class)
+@Mixin(value = ServerConfigurationPacketListenerImpl.class, priority = 1200)
 public abstract class ServerConfigurationPacketListenerImplMixin extends ServerCommonPacketListenerImpl
         implements ServerConfigurationPacketListenerImplBridge {
     @Shadow private ClientInformation clientInformation;
@@ -39,6 +39,7 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
     @Unique private PaperConfigurationTask cardboard$configurationTask;
     @Unique private boolean cardboard$reconfiguration;
     @Unique private boolean cardboard$returnRequested;
+    @Unique private boolean cardboard$initialEventFired;
 
     protected ServerConfigurationPacketListenerImplMixin(MinecraftServer server, Connection connection, CommonListenerCookie cookie) {
         super(server, connection, cookie);
@@ -63,7 +64,11 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
             ci.cancel();
             return;
         }
-        Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
+        // Fabric also calls startConfiguration again when its early tasks finish.
+        if (!this.cardboard$initialEventFired) {
+            this.cardboard$initialEventFired = true;
+            Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
+        }
     }
 
     @Inject(method = "startConfiguration", at = @At(value = "INVOKE", target =
