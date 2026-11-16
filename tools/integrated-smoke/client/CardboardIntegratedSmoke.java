@@ -39,6 +39,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private int previousMaterialCount = -1;
     private long closeDeadline;
     private boolean worldSettingsClientDone;
+    private boolean dialogCleanupChecked;
     private MinecraftServer restartServer;
     private CompletableFuture<Void> restartRequest;
     private long restartDeadline;
@@ -104,6 +105,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 if (!ServerAliasClientSmoke.finish(client)) return;
                 if (!BrigadierClientSmoke.finish(client)) return;
                 if (!ClickDialogClientSmoke.finish(client)) return;
+                if (!DialogClientSmoke.finish(client)) return;
                 if (clientProbeFailure != null) throw new AssertionError("Client entity probes failed", clientProbeFailure);
                 if (LAN) {
                     var server = client.getSingleplayerServer();
@@ -141,6 +143,10 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
                 stage = 3;
                 System.out.println("INTEGRATED_RESTART_PASS " + world);
             } else if (stage == 3 && client.getSingleplayerServer() == null && client.level == null) {
+                if (!dialogCleanupChecked) {
+                    DialogClientSmoke.assertCleaned();
+                    dialogCleanupChecked = true;
+                }
                 var remaining = Thread.getAllStackTraces().keySet().stream()
                         .filter(Thread::isAlive).map(Thread::getName)
                         .filter(name -> name.equals("Cardboard metrics")
@@ -177,6 +183,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
         restartRequest = CompletableFuture.runAsync(() -> {
             String previous = org.spigotmc.SpigotConfig.restartScript;
             try {
+                DialogClientSmoke.prepareStop();
                 Path script = Path.of("integrated-restart-fixture.sh").toAbsolutePath();
                 Files.writeString(script, "#!/bin/sh\nprintf bad > integrated-script-ran\n");
                 org.spigotmc.SpigotConfig.restartScript = script.toString();
@@ -214,6 +221,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
     private void createWorld(Minecraft client) {
         world++;
         worldSettingsClientDone = false;
+        dialogCleanupChecked = false;
         stage = 1;
         String name = "cardboard-smoke-" + world;
         System.out.println("INTEGRATED_SMOKE_CREATE " + name);
@@ -272,6 +280,7 @@ public final class CardboardIntegratedSmoke implements ClientModInitializer {
             ServerAliasClientSmoke.begin(server);
             BrigadierClientSmoke.begin(server, owner);
             ClickDialogClientSmoke.begin(server, owner);
+            DialogClientSmoke.begin(server, owner);
             System.out.println("INTEGRATED_SMOKE_WORLD_PASS " + world + " owner=" + owner);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);

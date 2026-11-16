@@ -23,6 +23,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     private final ConcurrentMap<String, Integer> entityEventCounts = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> entityEventReasons = new ConcurrentHashMap<>();
     private final BrigadierSmokeCommands brigadier = new BrigadierSmokeCommands();
+    private final DialogSmokeActions dialogs = new DialogSmokeActions();
     private volatile boolean bukkitAsyncRan;
     private volatile boolean foliaAsyncRan;
 
@@ -30,6 +31,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
         this.brigadier.install(this);
+        this.dialogs.install(this);
         getServer().getScheduler().runTaskAsynchronously(this, () -> bukkitAsyncRan = true);
         getServer().getAsyncScheduler().runNow(this, task -> foliaAsyncRan = true);
         // Start the timer executor too; it must be released when the world closes.
@@ -39,6 +41,11 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     public int beginBrigadier(UUID owner, int round) { return this.brigadier.begin(owner, round); }
     public java.util.Map<String, String> readBrigadier() { return this.brigadier.snapshot(); }
     public void endBrigadier() { this.brigadier.end(); }
+
+    public java.util.Map<String, String> beginDialogs(UUID actor) { return this.dialogs.begin(actor); }
+    public java.util.Map<String, String> readDialogs() { return this.dialogs.snapshot(); }
+    public void closeDialogs() { this.dialogs.close(); }
+    public void leaveDialogCallbacks() { this.dialogs.leaveCallbacks(); }
 
     @EventHandler
     public void preLogin(AsyncPlayerPreLoginEvent event) {

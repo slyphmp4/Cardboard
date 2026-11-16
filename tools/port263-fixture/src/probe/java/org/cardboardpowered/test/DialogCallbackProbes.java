@@ -46,6 +46,11 @@ public final class DialogCallbackProbes {
                 require(ClickEvent.showDialog(dialog).action() == ClickEvent.Action.SHOW_DIALOG, "Show dialog metadata lost");
             }
             require(base.inputs().size() == 3 && !base.pause(), "Base values lost");
+            var registered = io.papermc.paper.registry.RegistryAccess.registryAccess().getRegistry(RegistryKey.DIALOG).iterator();
+            require(registered.hasNext(), "Native dialog registry is empty");
+            var key = io.papermc.paper.registry.TypedKey.create(RegistryKey.DIALOG, registered.next().key());
+            var copied = Dialog.create(factory -> factory.copyFrom(key).base(base).type(DialogType.notice(button)));
+            require(ClickEvent.showDialog(copied).action() == ClickEvent.Action.SHOW_DIALOG, "Registered dialog copy failed");
         });
         check.accept("dialog-builder-validation-and-defensive-lists", () -> {
             var bodies = new java.util.ArrayList<DialogBody>();

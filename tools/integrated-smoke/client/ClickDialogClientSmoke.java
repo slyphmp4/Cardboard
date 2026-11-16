@@ -64,12 +64,15 @@ final class ClickDialogClientSmoke {
             network.send(new ServerboundCustomClickActionPacket(state.chatKey, Optional.of(state.chatPayload)));
             network.send(new ServerboundCustomClickActionPacket(state.dialogKey, Optional.of(state.dialogPayload)));
             network.send(new ServerboundCustomClickActionPacket(state.dialogKey, Optional.of(state.dialogPayload)));
+            network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.empty()));
+            network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.of(decode("'scalar payload'"))));
+            network.send(new ServerboundCustomClickActionPacket(Identifier.parse("cardboard:unknown_callback"), Optional.of(decode("[1,2,3]"))));
             state.sent = true;
             state.sentAt = System.nanoTime();
             return false;
         }
         if (state.eventError.get() != null) throw new AssertionError("PlayerCustomClickEvent payload invalid", state.eventError.get());
-        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1 || state.eventCalls.get() != 5) {
+        if (state.chatCalls.get() != 1 || state.dialogCalls.get() != 1 || state.eventCalls.get() != 8) {
             require(System.nanoTime() - state.sentAt < 10_000_000_000L,
                     "Client packets did not execute click/dialog callbacks/events correctly: chat="
                             + state.chatCalls + " dialog=" + state.dialogCalls + " events=" + state.eventCalls);
@@ -77,8 +80,9 @@ final class ClickDialogClientSmoke {
         }
         // Give replays a few more server ticks to arrive before declaring success.
         if (++state.verifiedTicks < 4) return false;
-        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1 && state.eventCalls.get() == 5,
+        require(state.chatCalls.get() == 1 && state.dialogCalls.get() == 1 && state.eventCalls.get() == 8,
                 "Callback was replayed or custom-click events were lost");
+        client.getSingleplayerServer().execute(() -> org.bukkit.event.HandlerList.unregisterAll(state));
         active = null;
         System.out.println("CLICK_DIALOG_CLIENT_PACKETS_PASS owner=" + state.owner);
         return true;
@@ -115,18 +119,37 @@ final class ClickDialogClientSmoke {
                 if (!(id.equals("cardboard:unknown_callback")
                         || id.equals(PaperAdventure.asAdventure(chatKey).asString())
                         || id.equals(PaperAdventure.asAdventure(dialogKey).asString()))) return;
-                require(event.getCommonConnection() != null, "Custom-click event lost connection");
-                require(event.getTag() != null && event.getDialogResponseView() != null,
-                        "Custom-click event lost compound payload");
+                require(Bukkit.isPrimaryThread(), "Custom-click event ran on the network thread");
+                require(event.getCommonConnection() instanceof io.papermc.paper.connection.PlayerGameConnection connection
+                        && connection.getPlayer().getUniqueId().equals(owner), "Custom-click event lost actor connection");
+                int index = eventCalls.get();
+                if (index < 5) {
+                    require(event.getTag() != null && event.getDialogResponseView() != null,
+                            "Custom-click event lost compound payload");
+                } else {
+                    require(event.getDialogResponseView() == null, "Non-compound payload became a dialog response");
+                    if (index == 5) require(event.getTag() == null, "Absent payload became an NBT tag");
+                    else require(event.getTag() != null && decode(event.getTag().string()).equals(
+                            decode(index == 6 ? "'scalar payload'" : "[1,2,3]")), "Non-compound payload changed");
+                }
                 eventCalls.incrementAndGet();
             } catch (Throwable failure) {
                 eventError.compareAndSet(null, failure);
             }
         }
 
-        void onChat(Audience audience) { verifyAudience(audience); chatCalls.incrementAndGet(); }
-        void onDialog(Audience audience) { verifyAudience(audience); dialogCalls.incrementAndGet(); }
+        void onChat(Audience audience) {
+            verifyAudience(audience);
+            require(eventCalls.get() == 2, "Chat callback ran before its custom-click event");
+            chatCalls.incrementAndGet();
+        }
+        void onDialog(Audience audience) {
+            verifyAudience(audience);
+            require(eventCalls.get() == 4, "Dialog callback ran before its custom-click event");
+            dialogCalls.incrementAndGet();
+        }
         void verifyAudience(Audience audience) {
+            require(Bukkit.isPrimaryThread(), "Callback ran on the network thread");
             require(audience instanceof Player player && player.getUniqueId().equals(owner),
                     "Wrong click-callback audience: " + audience);
         }

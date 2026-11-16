@@ -40,6 +40,9 @@ try:
             raise AssertionError(f'Missing host marker: {marker}')
     if host.count('BRIGADIER_CLIENT_PASS ') != 2:
         raise AssertionError('Native Brigadier arguments did not pass in both LAN worlds')
+    for marker in ['CLICK_DIALOG_CLIENT_PACKETS_PASS ', 'DIALOG_CLIENT_UI_PASS ', 'DIALOG_STOP_CLEANUP_PASS']:
+        if host.count(marker) != 2:
+            raise AssertionError(f'Dialog/callback scope did not pass in both LAN worlds: {marker}')
     if host.count('SERVER_ALIAS_CLIENT_PASS') != 2 or host.count('INTEGRATED_RESTART_PASS ') != 2:
         raise AssertionError('Alias/restart client scopes did not pass in both worlds')
     if (root / 'run-integrated-smoke/integrated-script-ran').exists():
@@ -66,7 +69,7 @@ finally:
     for log in logs:
         if log.exists():
             for line in log.read_text(errors='replace').splitlines():
-                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_', 'SERVER_ALIAS_']):
+                if any(marker in line for marker in ['INTEGRATED_', 'DEDICATED_', 'LUCKPERMS_FABRIC_', 'WORLD_EFFECT_', 'PLAYER_STATE_', 'SERVER_ALIAS_', 'DIALOG_', 'CLICK_DIALOG_']):
                     print(line, flush=True)
             print(f'--- {log.name} (last 100 lines) ---', flush=True)
             print('\n'.join(log.read_text(errors='replace').splitlines()[-100:]), flush=True)
