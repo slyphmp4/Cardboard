@@ -28,7 +28,7 @@ jobs:
     name: Build and publish release
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[release:')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
@@ -129,27 +129,59 @@ jobs:
           retention-days: 7
 
       - name: Require successful CI for this commit
+        id: ci
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 80); do
+          for attempt in $(seq 1 300); do
             runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" --jq '[.workflow_runs[] | select(.event == "push" and .name != "Cardboard Release")]')"
             if jq -e 'any(.[]; .status == "completed" and .conclusion != "success" and .conclusion != "skipped")' <<< "$runs" >/dev/null; then
               echo "::error::A CI workflow failed for release commit $GITHUB_SHA"
               jq -r '.[] | "\(.name): \(.status) / \(.conclusion) \(.html_url)"' <<< "$runs"
               exit 1
             fi
-            if jq -e 'any(.[]; .path == ".github/workflows/ci.yml" and .conclusion == "success") and all(.[]; .status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))' <<< "$runs" >/dev/null; then
+            if jq -e 'any(.[]; .path == ".github/workflows/ci.yml" and .conclusion == "success") and any(.[]; .path == ".github/workflows/vehicle-mixin-runtime-smoke.yml" and .conclusion == "success") and all(.[]; .status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))' <<< "$runs" >/dev/null; then
+              ci_run="$(jq -r '[.[] | select(.path == ".github/workflows/ci.yml" and .conclusion == "success")] | max_by(.id) | .id' <<< "$runs")"
+              echo "run_id=$ci_run" >> "$GITHUB_OUTPUT"
               echo "All CI workflows passed for release commit $GITHUB_SHA"
               exit 0
             fi
-            echo "Waiting for CI on release commit $GITHUB_SHA (attempt $attempt/80)"
+            echo "Waiting for CI on release commit $GITHUB_SHA (attempt $attempt/300)"
             sleep 15
           done
           echo "::error::Timed out waiting for successful release CI"
           exit 1
+
+      - name: Match release JAR to the successful CI artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          expected_jar="build/libs/Cardboard-${TAG#v}.jar"
+          test -f "$expected_jar"
+          artifact="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/artifacts?per_page=100" --jq "[.artifacts[] | select(.expired == false and (.name | startswith(\"cardboard-$GITHUB_SHA-attempt-\")))] | sort_by(.created_at) | last | .name // empty")"
+          if [[ -z "$artifact" ]]; then
+            echo "::error::Successful CI has no matching Cardboard artifact for $GITHUB_SHA"
+            exit 1
+          fi
+          gh run download "$CI_RUN_ID" --name "$artifact" --dir build/release-ci
+          mapfile -d '' ci_jars < <(find build/release-ci -type f -name "${expected_jar##*/}" -print0)
+          if (( ${#ci_jars[@]} != 1 )); then
+            echo "::error::Expected exactly one canonical CI JAR"
+            exit 1
+          fi
+          if ! cmp --silent "$expected_jar" "${ci_jars[0]}"; then
+            echo "::error::Release JAR differs from the artifact built by successful CI"
+            sha256sum "$expected_jar" "${ci_jars[0]}"
+            exit 1
+          fi
+          echo "Release JAR matches successful CI byte for byte"
+          sha256sum "$expected_jar"
 
       - name: Publish GitHub release
         shell: bash
@@ -176,16 +208,21 @@ jobs:
           fi
 
           assets=("$expected_jar")
-          sha256sum "${assets[@]}" > build/libs/SHA256SUMS.txt
+          (cd build/libs && sha256sum "${expected_jar##*/}") > build/libs/SHA256SUMS.txt
 
           release_options=()
           if [[ "$TAG" == *-* ]]; then
             release_options+=(--prerelease)
+          fi
+          notes_file="docs/releases/${TAG#v}.md"
+          if [[ -f "$notes_file" ]]; then
+            release_options+=(--notes-file "$notes_file")
+          else
+            release_options+=(--generate-notes)
           fi
           gh release create "$TAG" \
             "${release_options[@]}" \
             "${assets[@]}" \
             build/libs/SHA256SUMS.txt \
             --target "$GITHUB_SHA" \
-            --title "$TITLE" \
-            --generate-notes
+            --title "$TITLE"

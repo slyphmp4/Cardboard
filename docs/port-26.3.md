@@ -2,6 +2,25 @@
 
 Status: experimental `26.3.0-alpha.1`; not a stable release.
 
+## Alpha release validation
+
+Runtime candidate `7dca756abd62b7008ea773533ce229a93ce25d65` passed all
+13 exact-head checks: 93 API groups before/after full process restart on both
+production configurations, three saved-data groups, 69 shared groups on pinned
+Paper, both 1,800-second workloads, two integrated worlds, LAN/LuckPerms,
+dedicated restart cases, plugin suites, builds and reproducibility.
+
+The release workflow repeats CI on the merged `ver/26.3` commit and publishes
+only after its push workflows pass. Its canonical JAR must match that commit's
+successful CI artifact byte for byte. Experimental tags are published as GitHub
+prereleases with a basename-only `SHA256SUMS.txt` and versioned release notes.
+See [26.3.0-alpha.1](releases/26.3.0-alpha.1.md) for the release scope.
+
+Game dialogs and callbacks are covered by real owner-client submissions across
+reloads and two successive worlds. Configuration-phase dialogs/reconfiguration
+remain a separate existing API gap. The bounded gates do not establish full
+Paper API parity or replace extended testing of the intended server pack.
+
 ## Baseline and target
 
 The branch was fast-forwarded from 26.2.24 to the exact 26.2.27 source,
@@ -99,9 +118,8 @@ cause, not a proven diagnosis: the old job did not upload its `hs_err` file.
 Require a new successful LAN run; do not turn that native failure into a pass
 by ignoring the exit code or dropping an assertion.
 
-Fabric's official metadata still lists Loader 0.20.1 and API 0.166.2+26.3 as
-the current versions for this target. Loom is updated within 1.17, and Gradle
-within 9.8. Follow-up validation must use these updated pins.
+This port pins Loader 0.20.1 and API 0.166.2+26.3. Loom is updated within 1.17,
+and Gradle within 9.8. Follow-up validation uses these exact pins.
 
 On `e991a2e0`, both LAN worlds passed and the old native abort did not recur,
 but the dedicated server rejected the guest through its whitelist. The native
@@ -130,8 +148,9 @@ Bukkit with native state, and restore the original settings.
 4. Run the bounded workload gates, extended soak procedure and inherited TODO
    API audit before claiming broad Paper parity or recommending production deployment.
 
-Go for port development and review. No-go for a stable release until these
-checks provide actual 26.3 evidence. No release is published by this change.
+The experimental alpha is published only after its exact-commit release gates
+pass. Stable status additionally requires the extended soak and intended server
+pack coverage described above.
 
 ## Primary references
 
