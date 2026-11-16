@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -30,6 +31,9 @@ final class IntegratedLanGuest implements ClientModInitializer {
             if (world == 1 && stage == 1 && !abortedConfiguration && client.gui.screen() != null
                     && client.gui.screen().getTitle().getString().equals("p263-config")) {
                 abortedConfiguration = true;
+                // Minecraft's play-only disconnect helper has no game listener yet.
+                // Close the real configuration transport before clearing its screen.
+                ClientConfigurationNetworking.getSender().disconnect(net.minecraft.network.chat.Component.literal("Configuration abort probe"));
                 client.disconnect(new TitleScreen(), false);
                 phaseDeadline = System.nanoTime() + 15_000_000_000L;
                 stage = 7;
