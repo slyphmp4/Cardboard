@@ -26,6 +26,8 @@ public interface ServerGamePacketListenerImplBridge {
 
     boolean isDisconnected();
 
+    boolean cardboard$isWaitingForConfiguration();
+
 	Connection cb_get_connection();
 
 	void cardboard$internalTeleport(Location dest);

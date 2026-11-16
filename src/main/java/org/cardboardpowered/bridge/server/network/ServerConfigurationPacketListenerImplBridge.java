@@ -1,7 +1,11 @@
 package org.cardboardpowered.bridge.server.network;
 
-import net.minecraft.server.level.ServerPlayer;
+import io.papermc.paper.connection.PaperPlayerConfigurationConnection;
+import net.minecraft.server.level.ClientInformation;
 
 public interface ServerConfigurationPacketListenerImplBridge {
-	void cardboard_setPlayer(ServerPlayer entity);
+    PaperPlayerConfigurationConnection cardboard$configurationConnection();
+    ClientInformation cardboard$clientInformation();
+    void cardboard$beginReconfiguration();
+    void cardboard$completeReconfiguration();
 }

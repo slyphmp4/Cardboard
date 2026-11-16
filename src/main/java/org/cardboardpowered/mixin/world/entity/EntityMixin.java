@@ -36,6 +36,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Bukkit;
@@ -394,6 +395,20 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
     }
     */
 	
+    @Inject(method = "saveWithoutId", at = @At("TAIL"))
+    private void cardboard$savePersistentData(ValueOutput output, CallbackInfo ci) {
+        // Unused Bukkit wrappers must not be allocated for every saved native entity.
+        if (this.bukkitEntity != null) this.bukkitEntity.storeBukkitValues(output);
+    }
+
+    @Inject(method = "load", at = @At("TAIL"))
+    private void cardboard$loadPersistentData(ValueInput input, CallbackInfo ci) {
+        Entity self = (Entity) (Object) this;
+        if (!self.level().isClientSide() && CraftServer.INSTANCE != null && input.child("BukkitValues").isPresent()) {
+            this.getBukkitEntity().readBukkitValues(input);
+        }
+    }
+
 	/**
 	 * Save Bukkit WorldUUID
 	 * 

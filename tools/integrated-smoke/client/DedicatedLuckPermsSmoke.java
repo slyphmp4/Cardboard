@@ -13,9 +13,11 @@ import org.bukkit.Bukkit;
 public final class DedicatedLuckPermsSmoke implements ModInitializer {
     @Override
     public void onInitialize() {
+        ConfigurationFabricSmoke.install();
         if (!Boolean.getBoolean("cardboard.smoke.dedicated")) return;
         Path exchange = Path.of(System.getProperty("cardboard.smoke.exchange"));
         AtomicBoolean verified = new AtomicBoolean();
+        AtomicBoolean reconfiguring = new AtomicBoolean();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {
                 if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("luckperms")) {
@@ -34,10 +36,22 @@ public final class DedicatedLuckPermsSmoke implements ModInitializer {
                 if (!verified.get() && Files.exists(exchange.resolve("dedicated-joined"))) {
                     UUID id = net.minecraft.core.UUIDUtil.createOfflinePlayerUUID("SmokeGuest");
                     var player = Bukkit.getPlayer(id);
+                    if (player == null && reconfiguring.get()) return;
                     if (player == null || player.isOp()) throw new AssertionError("Expected a real non-op guest");
                     var plugin = Bukkit.getPluginManager().getPlugin("IntegratedSmoke");
-                    plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
+                    if (!reconfiguring.get()) {
+                        plugin.getClass().getMethod("verifyLogin", UUID.class).invoke(plugin, id);
+                        LuckPermsSmoke.verify(player);
+                        plugin.getClass().getMethod("beginConfigurationReentry", UUID.class).invoke(plugin, id);
+                        reconfiguring.set(true);
+                        return;
+                    }
+                    @SuppressWarnings("unchecked") var state = (java.util.Map<String, String>) plugin.getClass()
+                            .getMethod("readConfiguration", UUID.class).invoke(plugin, id);
+                    if (state.containsKey("failure")) throw new AssertionError(state);
+                    if (!"1".equals(state.get("returned"))) return;
                     LuckPermsSmoke.verify(player);
+                    System.out.println("CONFIGURATION_DEDICATED_PASS realTCP=1 permissions=restored");
                     Files.writeString(exchange.resolve("dedicated-verified"), "PASS");
                     verified.set(true);
                 }

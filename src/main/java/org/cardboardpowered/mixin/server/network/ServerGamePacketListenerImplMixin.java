@@ -79,6 +79,26 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 @Mixin(value = ServerGamePacketListenerImpl.class, priority = 800)
 public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPacketListenerImpl implements ServerGamePacketListenerImplBridge {
 
+    @Inject(method = "handleConfigurationAcknowledged", at = @At("HEAD"))
+    private void cardboard$configurationAckThread(net.minecraft.network.protocol.game.ServerboundConfigurationAcknowledgedPacket packet, CallbackInfo ci) {
+        net.minecraft.network.protocol.PacketUtils.ensureRunningOnSameThread(packet,
+                (ServerGamePacketListenerImpl) (Object) this, this.server.packetProcessor());
+    }
+
+    @Shadow private boolean waitingForSwitchToConfig;
+
+    @Override public boolean cardboard$isWaitingForConfiguration() { return this.waitingForSwitchToConfig; }
+
+    @Inject(method = "switchToConfig", at = @At("HEAD"), cancellable = true)
+    private void cardboard$ignoreDuplicateConfiguration(CallbackInfo ci) {
+        if (this.waitingForSwitchToConfig) ci.cancel();
+    }
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void cardboard$clearConfigurationOrigin(CallbackInfo ci) {
+        ((org.cardboardpowered.bridge.network.ConnectionBridge) this.connection).cardboard$setPaperReconfiguration(false);
+    }
+
     public ServerGamePacketListenerImplMixin(MinecraftServer server, Connection connection, CommonListenerCookie clientData) {
         super(server, connection, clientData);
         throw new AssertionError("nuh uh");

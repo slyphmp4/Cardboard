@@ -21,4 +21,8 @@ public interface ConnectionBridge {
 
     void cardboard$setClientBrand(String brand);
 
+    boolean cardboard$hasPaperReconfiguration();
+
+    void cardboard$setPaperReconfiguration(boolean requested);
+
 }

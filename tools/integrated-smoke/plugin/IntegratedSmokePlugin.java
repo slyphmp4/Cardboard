@@ -24,6 +24,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     private final ConcurrentMap<String, String> entityEventReasons = new ConcurrentHashMap<>();
     private final BrigadierSmokeCommands brigadier = new BrigadierSmokeCommands();
     private final DialogSmokeActions dialogs = new DialogSmokeActions();
+    private final ConfigurationDialogSmokeActions configurations = new ConfigurationDialogSmokeActions();
     private volatile boolean bukkitAsyncRan;
     private volatile boolean foliaAsyncRan;
 
@@ -32,6 +33,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
         getServer().getPluginManager().registerEvents(this, this);
         this.brigadier.install(this);
         this.dialogs.install(this);
+        this.configurations.install(this);
         getServer().getScheduler().runTaskAsynchronously(this, () -> bukkitAsyncRan = true);
         getServer().getAsyncScheduler().runNow(this, task -> foliaAsyncRan = true);
         // Start the timer executor too; it must be released when the world closes.
@@ -46,6 +48,8 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     public java.util.Map<String, String> readDialogs() { return this.dialogs.snapshot(); }
     public void closeDialogs() { this.dialogs.close(); }
     public void leaveDialogCallbacks() { this.dialogs.leaveCallbacks(); }
+    public void beginConfigurationReentry(UUID actor) { this.configurations.beginReconfiguration(actor); }
+    public java.util.Map<String, String> readConfiguration(UUID actor) { return this.configurations.snapshot(actor); }
 
     @EventHandler
     public void preLogin(AsyncPlayerPreLoginEvent event) {
@@ -55,7 +59,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     @EventHandler
     public void login(PlayerLoginEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        if (preLogins.getOrDefault(id, 0) != 1) {
+        if (preLogins.getOrDefault(id, 0) != this.configurations.expectedLoginAttempts(id)) {
             throw new AssertionError("Pre-login was missing, duplicated, or had a different UUID");
         }
         logins.merge(id, 1, Integer::sum);
@@ -66,7 +70,7 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
 
     public void verifyLogin(UUID owner) {
         if (!bukkitAsyncRan || !foliaAsyncRan) throw new AssertionError("Async schedulers did not execute their tasks");
-        if (preLogins.getOrDefault(owner, 0) != 1 || logins.getOrDefault(owner, 0) != 1) {
+        if (preLogins.getOrDefault(owner, 0) != this.configurations.expectedLoginAttempts(owner) || logins.getOrDefault(owner, 0) != 1) {
             throw new AssertionError("Expected exactly one pre-login and login for " + owner + ": " + preLogins + " / " + logins);
         }
     }

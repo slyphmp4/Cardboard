@@ -1,6 +1,5 @@
 package io.papermc.paper.connection;
 
-// import io.papermc.paper.connection.HorriblePlayerLoginEventHack;
 import java.util.Set;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -9,6 +8,7 @@ import org.bukkit.plugin.Plugin;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
 
 public class PaperPlayerGameConnection extends PaperCommonConnection<ServerGamePacketListenerImpl> implements PlayerGameConnection {
+    private boolean reconfigurationRequested;
 
     public PaperPlayerGameConnection(ServerGamePacketListenerImpl serverConfigurationPacketListenerImpl) {
         super(serverConfigurationPacketListenerImpl);
@@ -21,18 +21,20 @@ public class PaperPlayerGameConnection extends PaperCommonConnection<ServerGameP
     
     @Override
     public void reenterConfiguration() {
-    	System.out.println("WARNING: Attempted to use PlayerGameConnection#reenterConfiguration()");
-    }
-
-    /*
-    public void reenterConfiguration() {
-        if (((ServerPlayNetworkHandler)this.handle).connection.savedPlayerForLoginEventLegacy != null) {
-            HorriblePlayerLoginEventHack.warnReenterConfiguration();
+        if (!this.handle.connection.isConnected() || this.handle.connection.getPacketListener() != this.handle) return;
+        var server = this.handle.player.level().getServer();
+        if (!server.isSameThread()) {
+            server.execute(this::reenterConfiguration);
             return;
         }
-        ((ServerPlayNetworkHandler)this.handle).reconfigure();
+        if (this.reconfigurationRequested || !this.handle.connection.isConnected()
+                || this.handle.connection.getPacketListener() != this.handle
+                || ((org.cardboardpowered.bridge.server.network.ServerGamePacketListenerImplBridge) this.handle).cardboard$isWaitingForConfiguration()) return;
+        this.reconfigurationRequested = true;
+        ((org.cardboardpowered.bridge.network.ConnectionBridge) this.handle.connection).cardboard$setPaperReconfiguration(true);
+        // Run Fabric's full registry/mod configuration pipeline before Paper holds the connection.
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.reconfigure(this.handle);
     }
-    */
 
     public Player getPlayer() {
         return (Player) ((ServerPlayerBridge) this.handle.player).getBukkitEntity();
