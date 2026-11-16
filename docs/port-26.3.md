@@ -1,37 +1,48 @@
 # Minecraft 26.3 port
 
-Status: experimental `26.3.0-alpha.1`; not a stable release.
+Status: `26.3.0` for Minecraft 26.3. Verification scope and limits are below.
 
-## Alpha release validation
+## Configuration completion and release verification
+
+[PR #59](https://github.com/slyphmp4/Cardboard/pull/59), head
+`0b683e3557a5ec6ceca5d8e4007443a2be4eebca`, passed all 13 checks in
+[Cardboard CI](https://github.com/slyphmp4/Cardboard/actions/runs/43875999885)
+and the [native bootstrap gate](https://github.com/slyphmp4/Cardboard/actions/runs/43875999886).
+The merged commit `a9ad9c13e4ae4f29d82a8ca98890b29025970e22` also passed
+its [push CI](https://github.com/slyphmp4/Cardboard/actions/runs/43882396643)
+and [bootstrap](https://github.com/slyphmp4/Cardboard/actions/runs/43882396754).
+This includes both complete 1,800-second production workloads and saved-world
+restarts, all API/plugin suites, builds and reproducibility.
+
+Both native owner worlds submit real initial and reconfiguration dialogs,
+exercise typed Unicode/bool/float responses, cookie round-trips and exhausted
+callback replay, and return with inventory, XP, position and PDC preserved.
+Each world also completes an independent Fabric-requested reconfiguration
+without duplicate Paper events. Both shutdowns release configuration tasks.
+Separate processes verify an actual TCP configuration disconnect, handler
+cancellation and reconnect, two LAN worlds, and restored LuckPerms-Fabric
+permissions after reconfiguration on its dedicated server.
+
+The release workflow repeats the complete CI suite on the exact merged release
+commit. Publication requires all push workflows to pass and the canonical JAR
+to match that commit's successful CI artifact byte for byte. See the
+[26.3.0 release notes](releases/26.3.0.md) for installation and coverage limits.
+
+The normal release channel records acceptance of these bounded gates. It does
+not establish full Paper API parity, a six-hour soak or compatibility with an
+arbitrary server pack; those remain separate validation scopes.
+
+## Earlier alpha validation
 
 Runtime candidate `7dca756abd62b7008ea773533ce229a93ce25d65` passed all
-13 exact-head checks: 93 API groups before/after full process restart on both
-production configurations, three saved-data groups, 69 shared groups on pinned
-Paper, both 1,800-second workloads, two integrated worlds, LAN/LuckPerms,
+13 checks for the earlier alpha: 93 API groups before/after full process restart
+on both production configurations, three saved-data groups, 69 shared groups on
+pinned Paper, both 1,800-second workloads, two integrated worlds, LAN/LuckPerms,
 dedicated restart cases, plugin suites, builds and reproducibility.
 
-The release workflow repeats CI on the merged `ver/26.3` commit and publishes
-only after its push workflows pass. Its canonical JAR must match that commit's
-successful CI artifact byte for byte. Experimental tags are published as GitHub
-prereleases with a basename-only `SHA256SUMS.txt` and versioned release notes.
-See [26.3.0-alpha.1](releases/26.3.0-alpha.1.md) for the release scope.
-
-The published alpha.1 covers game dialogs and callbacks through real
-owner-client submissions across reloads and two successive worlds. Later source
-changes in [PR #59](https://github.com/slyphmp4/Cardboard/pull/59) implement
-configuration audiences, initial/async/reconfigure events, native dialog and
-Adventure callbacks, and the explicit return to the world. Alpha.1 does not
-contain these later changes.
-
-The client gates now require forms submitted before world entry, typed Unicode
-responses, cookie round-trips, exhausted callback replay, held reconfiguration,
-saved inventory/XP/position/PDC, cancellation on TCP disconnect and restored
-LuckPerms-Fabric permissions after return. Both owner-world shutdowns check that
-configuration tasks release their server references. These changes remain under
-native-client validation until PR #59 passes its full CI suite.
-
-The bounded gates do not establish full Paper API parity or replace extended
-testing of the intended server pack.
+The published [26.3.0-alpha.1](releases/26.3.0-alpha.1.md) covers game dialogs
+and callbacks. Its artifact, tag and versioned notes retain their original
+contents; configuration-stage dialogs and reconfiguration first ship in 26.3.0.
 
 ## Baseline and target
 
@@ -145,7 +156,7 @@ using the separate enforcement flag. They now use the native
 dedicated fixture independently toggle whitelist state and enforcement, compare
 Bukkit with native state, and restore the original settings.
 
-## Gates before a stable release
+## Release gates and extended validation
 
 1. Require the complete CI suite on the exact proposed commit: root and helper
    builds, reproducible JARs, dedicated-server probes, common plugins, integrated
@@ -157,12 +168,13 @@ Bukkit with native state, and restore the original settings.
    26.3 entity/block/item/component fixture, including saved-world restart. See
    [the hardening procedure](port-26.3-hardening.md). Fourmisain/DirTNT's original
    issue-30 workflow remains scoped to 26.2 and supplies no 26.3 result for that mod.
-4. Run the bounded workload gates, extended soak procedure and inherited TODO
-   API audit before claiming broad Paper parity or recommending production deployment.
+4. Run the extended soak procedure and inherited TODO API audit before making
+   claims beyond the bounded scenarios above. Validate the intended server pack
+   separately before migrating an existing deployment.
 
-The experimental alpha is published only after its exact-commit release gates
-pass. Stable status additionally requires the extended soak and intended server
-pack coverage described above.
+The release is published only after its exact-commit gates pass. Extended soak
+and intended server-pack coverage are not implied by publication; the release
+notes state these limits explicitly.
 
 ## Primary references
 
