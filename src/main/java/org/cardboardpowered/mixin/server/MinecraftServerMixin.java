@@ -530,6 +530,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
 
     @Inject(at = @At("RETURN"), method = "stopServer")
     private void cardboard$afterStop(CallbackInfo ci) {
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.clearForServerStop();
         if (this.cardboard$restartController != null) this.cardboard$restartController.afterStop();
     }
 

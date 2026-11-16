@@ -134,8 +134,8 @@ Fixture-only commit `d9bf0342` reproduced two failures on both stock and
 performance matrices: Location biome reads and stored biome mutation. All other
 17 groups passed on that unchanged production baseline (CI run `43627571714`).
 
-Next batches remain separate: tree generation; explosions; POI/legacy biome searches and structure templates; raid PDC; world
-settings/effects; player time/sleep behavior; server restart/command aliases.
+The later sections track the separate tree, explosion, search/template, raid PDC,
+world/player state, server restart/alias, Brigadier and dialog batches.
 
 ## Ray tracing and line of sight
 
@@ -190,11 +190,10 @@ Exact-head runtime and saved-world/workload results belong in the PR record.
 
 Cardboard contains inherited API stubs independent of this version migration.
 The source audit found 939 TODO/unsupported markers; that count is **not** a count
-of confirmed defects. Examples requiring separate implementation/verification
-include raid persistent data and the full native
-Brigadier argument provider. Existing dialog/click callback
-implementations also need end-to-end client verification; the presence of a
-builder/provider alone does not establish working callbacks.
+of confirmed defects. The raid, native Brigadier and game dialog/callback gaps
+identified by that audit are tracked in the later implementation and validation
+sections. The presence of a builder/provider alone does not establish working
+callbacks; their native client and shutdown gates are mandatory.
 
 ## World search and dragon follow-up
 
@@ -596,4 +595,40 @@ registration and packet-observer cleanup. Real disposable clients have offline
 profiles: their unsigned fallback is tested over the connection. A separate
 synthetic native signing context checks metadata/signature binding through the
 vanilla resolver; it does not establish authenticated-client cryptographic proof.
-Runtime validation for this stage is in progress; see PR #58 for exact-head results.
+Exact-head validation results for this stage are recorded in PR #58.
+
+## Game dialogs and click callbacks
+
+Adventure's callback provider is registered through its service file. Both callback
+queues are activated on the native server tick and retain their use/expiry behavior.
+The common game listener preserves vanilla handling and thread transfer, emits
+`PlayerCustomClickEvent` for every custom action, then consumes matching callbacks.
+Unknown identifiers and absent/non-compound payloads still produce events;
+only compounds expose `DialogResponseView`. Event payloads use the generic NBT
+codec so scalar/list tags are retained. The game connection resolves its actual
+native player without depending on an injected `getPlayer` overload.
+
+Inline dialog conversion reads the active server's registries on every request.
+It no longer holds the first integrated world's registry access in a static
+context, including across resource reloads. Native server stop releases both
+active callback maps and pending registration queues before a dedicated restart
+launcher runs or an integrated world is replaced.
+
+Five shared groups add dialog types/inputs/actions, validation/defensive lists,
+registered-template copying, callback uses/expiry/reentrancy, typed/invalid responses
+and native tick activation. They run unchanged on checksum-pinned official Paper
+26.3 build 249. The target is 93 Cardboard groups before/after process restart and
+69 Paper groups, plus the existing persistence, compatibility and workload gates.
+
+The real owner's client renders and submits the native form six times per world,
+split before/after a native resource reload. Its independently loaded Bukkit plugin
+checks edited Unicode text, boolean/number values, the actor, primary thread,
+event-before-callback ordering, two-use limits and replay rejection. A received
+chat component supplies another single-use callback action. Separate actual
+client packets cover compound, scalar, list and absent payloads. Both successive
+worlds must also prove that active/queued closures were populated before stop and
+are empty afterward. UI and cleanup markers are mandatory CI gates. The LAN
+fixture repeats the owner's scope and retains its separate guest/LuckPerms checks.
+
+This stage covers game connections; configuration-stage dialogs and reentry remain
+a separate existing API gap. Exact-head results belong in PR #58.

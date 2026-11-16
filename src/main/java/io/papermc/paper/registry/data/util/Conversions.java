@@ -20,7 +20,8 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import org.bukkit.Keyed;
-import org.bukkit.craftbukkit.CraftRegistry;
+import org.bukkit.craftbukkit.CraftServer;
+import org.cardboardpowered.registry.BuilderRegistryInfoLookup;
 import io.papermc.paper.adventure.WrapperAwareSerializer;
 import org.cardboardpowered.bridge.resources.RegistryInfoLookupBridge;
 import org.cardboardpowered.bridge.core.RegistryLookupBridge;
@@ -29,14 +30,13 @@ import org.jspecify.annotations.Nullable;
 
 public class Conversions {
 
-    private static @Nullable Conversions globalInstance;
     public static Conversions global() {
-        if (globalInstance == null) {
-            final RegistryAccess globalAccess = CraftRegistry.getMinecraftRegistry();
-            Preconditions.checkState(globalAccess != null, "Global registry access is not available");
-            globalInstance = new Conversions(new RegistryOps.HolderLookupAdapter(globalAccess));
-        }
-        return globalInstance;
+        final var server = CraftServer.server;
+        Preconditions.checkState(server != null, "Global registry access is not available");
+        // An integrated world and a native data reload both replace server registries.
+        // Do not retain the first world's access through a static conversion context.
+        final RegistryAccess access = server.registryAccess();
+        return new Conversions(new BuilderRegistryInfoLookup(new RegistryOps.HolderLookupAdapter(access), access));
     }
 
     private final RegistryOps.RegistryInfoLookup lookup;

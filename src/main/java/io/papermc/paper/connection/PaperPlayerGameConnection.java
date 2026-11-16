@@ -35,7 +35,7 @@ public class PaperPlayerGameConnection extends PaperCommonConnection<ServerGameP
     */
 
     public Player getPlayer() {
-        return (Player) ((ServerPlayerBridge) ((ServerGamePacketListenerImpl)this.handle).getPlayer() ).getBukkitEntity();
+        return (Player) ((ServerPlayerBridge) this.handle.player).getBukkitEntity();
     }
 
     public void sendPluginMessage(Plugin source, String channel, byte[] message) {

@@ -40,6 +40,9 @@ public final class DialogSmokeActions implements Listener {
         this.values.clear(); this.events = 0; this.calls = 0; this.chatCalls = 0;
         this.player = Bukkit.getPlayer(id);
         require(this.player != null, "Missing target player");
+        // These must be activated by real ticks while the form is being exercised.
+        // prepareStop adds another pair which must still be queued at shutdown.
+        leaveCallbacks();
         var options = ClickCallback.Options.builder().uses(2).lifetime(Duration.ofMinutes(2)).build();
         var action = DialogAction.customClick((response, audience) -> {
             try {

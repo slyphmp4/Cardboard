@@ -28,6 +28,12 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
     public static final AdventureClick ADVENTURE_CLICK_MANAGER = new AdventureClick();
     public static final DialogClickManager DIALOG_CLICK_MANAGER = new DialogClickManager();
 
+    /** Release plugin closures, including registrations that have not reached a tick. */
+    public static void clearForServerStop() {
+        ADVENTURE_CLICK_MANAGER.clear();
+        DIALOG_CLICK_MANAGER.clear();
+    }
+
     @Override
     public @NotNull ClickEvent create(final @NotNull ClickCallback<Audience> callback, final ClickCallback.@NotNull Options options) {
         final CompoundTag tag = new CompoundTag();
@@ -94,9 +100,14 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
             this.locationPredicate = Predicates.alwaysTrue();
         }
 
-        public I addCallback(final I id, final @NotNull C callback, final ClickCallback.@NotNull Options options) {
+        public synchronized I addCallback(final I id, final @NotNull C callback, final ClickCallback.@NotNull Options options) {
             this.queue.add(new StoredCallback<>(callback, options, id));
             return id;
+        }
+
+        final synchronized void clear() {
+            this.queue.clear();
+            this.callbacks.clear();
         }
 
         public void handleQueue(final int currentTick) {

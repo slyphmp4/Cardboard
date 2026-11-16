@@ -15,6 +15,27 @@ A Paper fixture registers an enchantment compose handler during bootstrap. Its c
 
 The fixture provider and Bukkit plugin are separate source sets. They are not packaged in the production Cardboard JAR. Every possible item interaction remains outside this smoke's scope.
 
+The owner's dialog scope opens a native form, waits for it to render, edits its
+text field to `Привет 世界` and activates the real submit button. The Bukkit
+plugin checks text/boolean/number response values, the initiating game connection,
+primary-thread dispatch and custom-click event ordering before callback consumption.
+Three submissions exercise a two-use callback; a fourth packet replays the exhausted
+identifier. A chat action decoded from the client's received component is sent twice
+and must execute once. The complete scope repeats after native resource reload in
+each of the two worlds, and an independent native holder oracle checks current
+conversion registries. This produces two `DIALOG_CLIENT_UI_PASS` markers.
+
+Separate client packets cover unknown keys and absent, compound, scalar and list
+payloads. Only compound payloads may expose a dialog response view. The packet
+scope requires one event per packet, correct actor/thread and event-before-callback
+ordering, then unregisters its listener. Before shutdown, both callback managers
+must contain live closures and queued registrations; all four collections must be
+empty after native stop, producing two `DIALOG_STOP_CLEANUP_PASS` markers. CI and
+the LAN runner require these markers as well as the existing packet/success gates.
+The dialog UI scope runs on the owner; the second process retains the existing LAN
+and dedicated LuckPerms checks. Configuration-stage dialog/reconfiguration APIs
+are outside this game-connection scope.
+
 The 26.3 server probes check native player-drop cancellation/restoration and successful spawning, sign cancellation, plugin edits, editor ownership and waxing. Unchanged filtered sign lines must survive both a native update and a Bukkit snapshot edit; the snapshot check also covers colour/glow and source isolation. This exercises the transformed `SignText.Mutable` constructor rather than an untransformed unit-test copy.
 
 Each LAN JVM uses its own LWJGL native-library extraction directory. CI also uploads `hs_err_pid*.log` files if a JVM aborts, so native startup failures remain diagnosable. Nonzero exits and missing success markers still fail the smoke.

@@ -76,25 +76,25 @@ final class DialogClientSmoke {
             }
             return false;
         }
-        if (client.screen != null && client.screen.getTitle().getString().equals(TITLE)) return false;
+        if (client.gui.screen() != null && client.gui.screen().getTitle().getString().equals(TITLE)) return false;
         active = null; submittedScreen = null; observedScreen = null;
         System.out.println("DIALOG_CLIENT_UI_PASS actor=" + state.actor + " rounds=2 submissions=6 callbacks=4 chat=2 replay=ignored registry=fresh");
         return true;
     }
 
-    /** Used by the remote LAN process too; it has no access to a Bukkit singleton. */
+    /** Edit and submit the real native screen; no synthetic dialog response here. */
     static boolean clickVisible(Minecraft client) {
-        if (client.screen == null || !client.screen.getTitle().getString().equals(TITLE) || client.screen == submittedScreen) return false;
-        if (observedScreen != client.screen) { observedScreen = client.screen; observedFrames = 0; }
+        if (client.gui.screen() == null || !client.gui.screen().getTitle().getString().equals(TITLE) || client.gui.screen() == submittedScreen) return false;
+        if (observedScreen != client.gui.screen()) { observedScreen = client.gui.screen(); observedFrames = 0; }
         // Let the actual dialog screen render before editing and submitting its widgets.
         if (++observedFrames < 3) return false;
         var children = new ArrayList<Object>();
-        collect(client.screen, children);
+        collect(client.gui.screen(), children);
         int edits = 0;
         for (Object child : children) if (child instanceof EditBox box) { box.setValue("Привет 世界"); edits++; }
         require(edits == 1, "Expected one native text input, got " + edits + " in " + children.stream().map(o -> o.getClass().getName()).toList());
         for (Object child : children) if (child instanceof AbstractButton button && button.getMessage().getString().equals("p263-submit")) {
-            submittedScreen = client.screen;
+            submittedScreen = client.gui.screen();
             press(button);
             return true;
         }
@@ -126,7 +126,7 @@ final class DialogClientSmoke {
 
     private static boolean clickDecodedChat(Minecraft client, String label) {
         try {
-            Object chat = client.gui.getChat();
+            Object chat = client.gui.hud.getChat();
             for (Field field : chat.getClass().getDeclaredFields()) {
                 if (!List.class.isAssignableFrom(field.getType())) continue;
                 field.setAccessible(true);
