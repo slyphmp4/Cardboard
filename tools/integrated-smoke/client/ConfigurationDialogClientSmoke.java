@@ -28,7 +28,7 @@ final class ConfigurationDialogClientSmoke {
         System.out.println("CONFIGURATION_STOP_CLEANUP_PASS");
     }
     static void tick(Minecraft client) {
-        if (!initialJoined && initialDeadline != 0 && client.getSingleplayerServer() != null) {
+        if (!initialJoined && initialDeadline != 0) {
             require(System.nanoTime() < initialDeadline, "Initial configuration stalled before world entry; submissions="
                     + submissions + ", screen=" + (client.gui.screen() == null ? "none" : client.gui.screen().getTitle().getString()));
         }

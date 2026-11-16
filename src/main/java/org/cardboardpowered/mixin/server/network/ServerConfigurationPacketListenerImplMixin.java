@@ -1,5 +1,7 @@
 package org.cardboardpowered.mixin.server.network;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import io.papermc.paper.connection.PaperConfigurationTask;
 import io.papermc.paper.connection.PaperPlayerConfigurationConnection;
 import io.papermc.paper.event.connection.configuration.PlayerConnectionInitialConfigureEvent;
@@ -27,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Keep native registry negotiation and world loading; insert Paper's configuration events. */
-@Mixin(value = ServerConfigurationPacketListenerImpl.class, priority = 1200)
+@Mixin(ServerConfigurationPacketListenerImpl.class)
 public abstract class ServerConfigurationPacketListenerImplMixin extends ServerCommonPacketListenerImpl
         implements ServerConfigurationPacketListenerImplBridge {
     @Shadow private ClientInformation clientInformation;
@@ -55,13 +57,12 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
 
     @Override public ClientInformation cardboard$clientInformation() { return this.clientInformation; }
 
-    @Inject(method = "startConfiguration", at = @At("HEAD"), cancellable = true)
-    private void cardboard$initialConfigure(CallbackInfo ci) {
+    @WrapMethod(method = "startConfiguration")
+    private void cardboard$initialConfigure(Operation<Void> original) {
         // Fabric may defer this call until channel registration, on a Netty thread.
         // Serialize task creation and the initial event with the native server tick.
         if (!this.server.isSameThread()) {
             this.server.execute(((ServerConfigurationPacketListenerImpl) (Object) this)::startConfiguration);
-            ci.cancel();
             return;
         }
         // Fabric also calls startConfiguration again when its early tasks finish.
@@ -69,6 +70,7 @@ public abstract class ServerConfigurationPacketListenerImplMixin extends ServerC
             this.cardboard$initialEventFired = true;
             Bukkit.getPluginManager().callEvent(new PlayerConnectionInitialConfigureEvent(this.cardboard$configurationConnection()));
         }
+        original.call();
     }
 
     @Inject(method = "startConfiguration", at = @At(value = "INVOKE", target =

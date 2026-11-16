@@ -70,6 +70,8 @@ final class IntegratedLanGuest implements ClientModInitializer {
                 phaseDeadline = System.nanoTime() + 90_000_000_000L;
                 stage = 2;
             } else if (stage == 2 && Files.exists(exchange.resolve(world == 3 ? "dedicated-verified" : "verified-" + world))) {
+                if (client.player == null || client.level == null) return;
+                if (world == 3) System.out.println("CONFIGURATION_GUEST_RETURN_PASS realTCP=1");
                 client.disconnect(new TitleScreen(), false);
                 Files.writeString(exchange.resolve(world == 3 ? "dedicated-left" : "left-" + world), "PASS");
                 System.out.println("INTEGRATED_LAN_GUEST_WORLD_PASS " + world);
