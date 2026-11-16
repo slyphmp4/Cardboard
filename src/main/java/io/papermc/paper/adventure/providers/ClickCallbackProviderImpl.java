@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
@@ -28,11 +29,24 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
     public static final AdventureClick ADVENTURE_CLICK_MANAGER = new AdventureClick();
     public static final DialogClickManager DIALOG_CLICK_MANAGER = new DialogClickManager();
 
+    /** Release plugin closures, including registrations that have not reached a tick. */
+    public static void clearForServerStop() {
+        ADVENTURE_CLICK_MANAGER.clear();
+        DIALOG_CLICK_MANAGER.clear();
+    }
+
     @Override
     public @NotNull ClickEvent create(final @NotNull ClickCallback<Audience> callback, final ClickCallback.@NotNull Options options) {
         final CompoundTag tag = new CompoundTag();
         tag.store(ID_KEY, UUIDUtil.CODEC, ADVENTURE_CLICK_MANAGER.addCallback(callback, options));
         return ClickEvent.custom(ADVENTURE_CLICK_CALLBACK_KEY, PaperAdventure.asBinaryTagHolder(tag));
+    }
+
+    private static Optional<UUID> readCallbackId(final CompoundTag tag) {
+        final Tag value = tag.get(ID_KEY);
+        // Client payloads are untrusted. CompoundTag.read reports decoding problems
+        // as server errors; an invalid callback token should simply be ignored.
+        return value == null ? Optional.empty() : UUIDUtil.CODEC.parse(NbtOps.INSTANCE, value).result();
     }
 
     public static final class AdventureClick extends CallbackManager<ClickCallback<Audience>, UUID> {
@@ -48,7 +62,7 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
         @Override
         void doRunCallback(final @NotNull Audience audience, final Key key, final Tag tag) {
             tag.asCompound().ifPresent(t -> {
-                final Optional<UUID> id = t.read(ID_KEY, UUIDUtil.CODEC);
+                final Optional<UUID> id = readCallbackId(t);
                 if (id.isEmpty()) {
                     return;
                 }
@@ -68,7 +82,7 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
         @Override
         void doRunCallback(final @NotNull Audience audience, final Key key, final Tag tag) {
             tag.asCompound().ifPresent(t -> {
-                final Optional<UUID> id = t.read(ID_KEY, UUIDUtil.CODEC);
+                final Optional<UUID> id = readCallbackId(t);
                 if (id.isEmpty()) {
                     return;
                 }
@@ -94,9 +108,14 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
             this.locationPredicate = Predicates.alwaysTrue();
         }
 
-        public I addCallback(final I id, final @NotNull C callback, final ClickCallback.@NotNull Options options) {
+        public synchronized I addCallback(final I id, final @NotNull C callback, final ClickCallback.@NotNull Options options) {
             this.queue.add(new StoredCallback<>(callback, options, id));
             return id;
+        }
+
+        final synchronized void clear() {
+            this.queue.clear();
+            this.callbacks.clear();
         }
 
         public void handleQueue(final int currentTick) {

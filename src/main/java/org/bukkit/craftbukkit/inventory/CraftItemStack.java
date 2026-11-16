@@ -187,6 +187,22 @@ public final class CraftItemStack extends ItemStack {
 
     public net.minecraft.world.item.ItemStack handle;
 
+    @Override
+    public byte[] serializeAsBytes() {
+        Preconditions.checkArgument(!this.isEmpty(), "Empty item cannot be serialized");
+        CompoundTag compound = (CompoundTag) net.minecraft.world.item.ItemStack.CODEC.encodeStart(
+                CraftRegistry.getMinecraftRegistry().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE),
+                this.handle).getOrThrow();
+        compound.putInt("DataVersion", net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version());
+        try {
+            var output = new java.io.ByteArrayOutputStream();
+            net.minecraft.nbt.NbtIo.writeCompressed(compound, output);
+            return output.toByteArray();
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException("Could not serialize item", failure);
+        }
+    }
+
     /**
      * Mirror
      */

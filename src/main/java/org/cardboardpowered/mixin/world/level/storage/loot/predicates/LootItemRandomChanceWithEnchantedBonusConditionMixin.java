@@ -18,7 +18,7 @@ public class LootItemRandomChanceWithEnchantedBonusConditionMixin {
     @Inject(at = @At("RETURN"), method = "test(Lnet/minecraft/world/level/storage/loot/LootContext;)Z", cancellable = true)
     public void cardboard_test(LootContext loottableinfo, CallbackInfoReturnable<Boolean> ci) {
         if (loottableinfo.hasParameter(LootContextParamsBridge.LOOTING_MOD)) {
-            int i = loottableinfo.getOptionalParameter(LootContextParamsBridge.LOOTING_MOD);
+            int i = loottableinfo.getOptional(LootContextParamsBridge.LOOTING_MOD);
             
             LootItemRandomChanceWithEnchantedBonusCondition thiz = (LootItemRandomChanceWithEnchantedBonusCondition) (Object) this;
             

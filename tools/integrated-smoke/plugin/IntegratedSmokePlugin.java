@@ -9,6 +9,8 @@ import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,17 +22,30 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
     private final ConcurrentMap<UUID, UUID> targetReplacements = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Integer> entityEventCounts = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> entityEventReasons = new ConcurrentHashMap<>();
+    private final BrigadierSmokeCommands brigadier = new BrigadierSmokeCommands();
+    private final DialogSmokeActions dialogs = new DialogSmokeActions();
     private volatile boolean bukkitAsyncRan;
     private volatile boolean foliaAsyncRan;
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
+        this.brigadier.install(this);
+        this.dialogs.install(this);
         getServer().getScheduler().runTaskAsynchronously(this, () -> bukkitAsyncRan = true);
         getServer().getAsyncScheduler().runNow(this, task -> foliaAsyncRan = true);
         // Start the timer executor too; it must be released when the world closes.
         getServer().getAsyncScheduler().runDelayed(this, task -> {}, 1, java.util.concurrent.TimeUnit.HOURS);
     }
+
+    public int beginBrigadier(UUID owner, int round) { return this.brigadier.begin(owner, round); }
+    public java.util.Map<String, String> readBrigadier() { return this.brigadier.snapshot(); }
+    public void endBrigadier() { this.brigadier.end(); }
+
+    public java.util.Map<String, String> beginDialogs(UUID actor) { return this.dialogs.begin(actor); }
+    public java.util.Map<String, String> readDialogs() { return this.dialogs.snapshot(); }
+    public void closeDialogs() { this.dialogs.close(); }
+    public void leaveDialogCallbacks() { this.dialogs.leaveCallbacks(); }
 
     @EventHandler
     public void preLogin(AsyncPlayerPreLoginEvent event) {
@@ -69,6 +84,27 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
 
     public String probeReason(UUID entity, String kind) {
         return entityEventReasons.get(entity + ":" + kind);
+    }
+
+    @EventHandler
+    public void drop(PlayerDropItemEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":drop", 1, Integer::sum);
+        entityEventReasons.put(id + ":drop", event.getItemDrop().getUniqueId().toString());
+        if (behavior.equals("DROP_CANCEL")) event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void sign(SignChangeEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        String behavior = entityProbes.get(id);
+        if (behavior == null) return;
+        entityEventCounts.merge(id + ":sign", 1, Integer::sum);
+        entityEventReasons.put(id + ":sign", event.getSide().name());
+        if (behavior.equals("SIGN_CANCEL")) event.setCancelled(true);
+        if (behavior.equals("SIGN_MODIFY")) event.setLine(0, "plugin edit");
     }
 
     @EventHandler
@@ -111,3 +147,4 @@ public final class IntegratedSmokePlugin extends JavaPlugin implements Listener 
         }
     }
 }
+

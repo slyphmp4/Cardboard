@@ -1,0 +1,31 @@
+{
+  "minecraft": "26.3",
+  "loader": "0.20.1",
+  "installer": "1.1.2",
+  "performance": [
+    {
+      "name": "Lithium",
+      "version": "mc26.3-0.26.3-fabric",
+      "metadata": "https://api.modrinth.com/v2/version/fWv5bnZk",
+      "url": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/fWv5bnZk/lithium-fabric-0.26.3%2Bmc26.3.jar",
+      "file": "lithium-fabric-0.26.3+mc26.3.jar",
+      "sha512": "2ca92fb530135d2baddf0ba4cc4f93976234876a38c4aa02b487b2552400f005afcfbeebf5373fb4396fe2020537a42d7597b8da5a52b904355ef51d5fef07ad"
+    },
+    {
+      "name": "FerriteCore",
+      "version": "9.0.0-fabric",
+      "metadata": "https://api.modrinth.com/v2/version/d5ddUdiB",
+      "url": "https://cdn.modrinth.com/data/uXXizFIs/versions/d5ddUdiB/ferritecore-9.0.0-fabric.jar",
+      "file": "ferritecore-9.0.0-fabric.jar",
+      "sha512": "d81fa97e11784c19d42f89c2f433831d007603dd7193cee45fa177e4a6a9c52b384b198586e04a0f7f63cd996fed713322578bde9a8db57e1188854ae5cbe584"
+    },
+    {
+      "name": "C2ME (alpha)",
+      "version": "0.4.2-alpha.0.119+26.3",
+      "metadata": "https://api.modrinth.com/v2/version/W9HllAiU",
+      "url": "https://cdn.modrinth.com/data/VSNURh3q/versions/W9HllAiU/c2me-fabric-mc26.3-0.4.2-alpha.0.119.jar",
+      "file": "c2me-fabric-mc26.3-0.4.2-alpha.0.119.jar",
+      "sha512": "ba50c585ac92588bbe40ed77d2bdac3c22bc2a543165feebe19684730479da52fa8e5bffaebe8801b90d8f7616fd57703b2f2b447807a65061919fb86f887821"
+    }
+  ]
+}

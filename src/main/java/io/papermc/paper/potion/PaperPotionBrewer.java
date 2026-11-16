@@ -7,7 +7,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.potion.PotionBrewer;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionType;
-import org.cardboardpowered.bridge.world.item.alchemy.PotionBrewingBridge;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
 
@@ -41,17 +40,17 @@ public class PaperPotionBrewer implements PotionBrewer {
     }
 
     @Override
-    public void addPotionMix(final PotionMix potionMix) {
-        ((PotionBrewingBridge) (Object) this.minecraftServer.potionBrewing()).cardboard$addPotionMix(potionMix);
-    }
-
-    @Override
-    public void removePotionMix(final NamespacedKey key) {
-        ((PotionBrewingBridge) (Object) this.minecraftServer.potionBrewing()).cardboard$removePotionMix(key);
-    }
-
-    @Override
     public void resetPotionMixes() {
-        ((PotionBrewingBridge) (Object) this.minecraftServer.potionBrewing()).cardboard$clearPotionMixes();
+        org.spigotmc.AsyncCatcher.catchOp("Resetting potion mixes");
+        var manager = this.minecraftServer.getRecipeManager();
+        var brewing = manager.recipes.byType(net.minecraft.world.item.crafting.RecipeType.BREWING);
+        brewing.forEach(recipe -> manager.recipes.byKey.remove(recipe.id()));
+        brewing.clear();
+        this.minecraftServer.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.RECIPE)
+                .listElements()
+                .filter(recipe -> recipe.value().getType() == net.minecraft.world.item.crafting.RecipeType.BREWING)
+                .forEach(recipe -> ((org.cardboardpowered.bridge.world.item.crafting.RecipeMapBridge) manager.recipes)
+                        .cardboard$addRecipe(new net.minecraft.world.item.crafting.RecipeHolder<>(recipe.key(), recipe.value())));
+        ((org.cardboardpowered.bridge.world.item.crafting.RecipeManagerBridge) manager).cardboard$finalizeRecipeLoading();
     }
 }

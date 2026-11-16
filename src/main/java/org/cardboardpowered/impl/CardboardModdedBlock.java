@@ -5,8 +5,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 
 public class CardboardModdedBlock implements CardboardModdedMaterial {
 
-    private Block block;
-    private String id;
+    private final Block block;
+    private final String id;
 
     public CardboardModdedBlock(String id) {
         this.id = id;
@@ -15,6 +15,7 @@ public class CardboardModdedBlock implements CardboardModdedMaterial {
 
     public CardboardModdedBlock(Block block) {
         this.block = block;
+        this.id = BuiltInRegistries.BLOCK.getKey(block).toString();
     }
 
     @Override

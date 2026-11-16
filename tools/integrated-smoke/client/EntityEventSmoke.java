@@ -74,12 +74,12 @@ final class EntityEventSmoke {
         });
         check(failures, "client current target revalidation", () -> {
             subject.setTarget(first);
-            first.setInvulnerable(true);
+            first.setPermanentlyInvulnerable(true);
             try {
                 subject.setTarget(first);
                 require(subject.getTargetUnchecked() == null, "Client retained an invulnerable current target");
             } finally {
-                first.setInvulnerable(false);
+                first.setPermanentlyInvulnerable(false);
             }
         });
         check(failures, "client eventful mount and dismount", () -> {
@@ -117,6 +117,93 @@ final class EntityEventSmoke {
         Probe probe = new Probe(plugin);
         List<Throwable> failures = new ArrayList<>();
         try {
+            check(failures, "native player drop cancellation and spawning", () -> {
+                var previous = owner.getMainHandItem().copy();
+                try {
+                    owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.ItemStack.EMPTY);
+                    probe.arm(owner, "DROP_CANCEL", null);
+                    int before = probe.count(owner, "drop");
+                    var dropped = owner.drop(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND, 3),
+                            true, net.minecraft.util.Prediction.SERVER_ONLY);
+                    require(dropped == null, "Cancelled drop returned an item entity");
+                    require(owner.getMainHandItem().is(net.minecraft.world.item.Items.DIAMOND)
+                            && owner.getMainHandItem().getCount() == 3, "Cancelled drop did not restore the full stack");
+                    require(probe.count(owner, "drop") == before + 1, "Drop event was missing or duplicated");
+                    require(level.getEntity(UUID.fromString(probe.reason(owner, "drop"))) == null,
+                            "Cancelled item was already spawned");
+                    owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.ItemStack.EMPTY);
+                    probe.arm(owner, "OBSERVE", null);
+                    dropped = owner.drop(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD, 2),
+                            true, net.minecraft.util.Prediction.SERVER_ONLY);
+                    require(dropped != null, "Allowed drop was rejected");
+                    try {
+                        require(level.getEntity(dropped.getUUID()) == dropped, "Allowed item was not spawned");
+                        require(probe.count(owner, "drop") == before + 2, "Allowed drop event was missing or duplicated");
+                    } finally {
+                        dropped.discard();
+                    }
+                } finally {
+                    owner.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, previous);
+                    probe.arm(owner, "OBSERVE", null);
+                }
+            });
+            check(failures, "native sign cancellation, edits and ownership", () -> {
+                var pos = owner.blockPosition().offset(0, 1, 2);
+                var previous = level.getBlockState(pos);
+                var below = level.getBlockState(pos.below());
+                try {
+                    level.setBlock(pos.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
+                    level.setBlock(pos, net.minecraft.world.level.block.Blocks.OAK_SIGN.defaultBlockState(), 3);
+                    var sign = (net.minecraft.world.level.block.entity.SignBlockEntity) level.getBlockEntity(pos);
+                    require(sign != null, "Probe sign was not created");
+                    var slot = net.minecraft.world.level.block.entity.SignTextSlot.BACK;
+                    var lines = List.of(net.minecraft.server.network.FilteredText.passThrough("input"),
+                            net.minecraft.server.network.FilteredText.fullyFiltered("secret"), net.minecraft.server.network.FilteredText.EMPTY,
+                            net.minecraft.server.network.FilteredText.EMPTY);
+                    var original = sign.getText(slot);
+                    probe.arm(owner, "SIGN_CANCEL", null);
+                    sign.setAllowedPlayerEditor(owner.getUUID());
+                    int before = probe.count(owner, "sign");
+                    sign.updateSignText(owner, slot, lines);
+                    require(sign.getText(slot).equals(original), "Cancelled sign text was applied");
+                    require(probe.count(owner, "sign") == before + 1, "Sign event was missing or duplicated");
+                    require("BACK".equals(probe.reason(owner, "sign")), "Sign event used the wrong side");
+                    probe.arm(owner, "SIGN_MODIFY", null);
+                    sign.setAllowedPlayerEditor(owner.getUUID());
+                    sign.updateSignText(owner, slot, lines);
+                    require(sign.getText(slot).getMessages(false).getFirst().getString().equals("plugin edit"),
+                            "Plugin sign edit was ignored");
+                    require(sign.getText(slot).getMessages(false).get(1).getString().equals("secret")
+                            && sign.getText(slot).getMessages(true).get(1).getString().isEmpty(),
+                            "Unchanged sign line lost its filtered variant");
+                    var snapshot = new org.bukkit.craftbukkit.block.sign.CraftSignSide(sign.getText(slot));
+                    snapshot.line(0, net.kyori.adventure.text.Component.text("snapshot edit"));
+                    snapshot.setColor(org.bukkit.DyeColor.PURPLE);
+                    snapshot.setGlowingText(true);
+                    var snapshotText = snapshot.applyLegacyStringToSignSide();
+                    require(snapshotText.getMessages(false).get(1).getString().equals("secret")
+                            && snapshotText.getMessages(true).get(1).getString().isEmpty(),
+                            "Bukkit sign snapshot lost an unchanged filtered line");
+                    require(snapshotText.getMessages(false).getFirst().getString().equals("snapshot edit")
+                            && snapshotText.getMessages(true).getFirst().getString().equals("snapshot edit"),
+                            "Bukkit sign snapshot did not update both variants of the edited line");
+                    require(snapshotText.getColor() == net.minecraft.world.item.DyeColor.PURPLE
+                            && snapshotText.hasGlowingText(), "Bukkit sign snapshot lost colour or glow");
+                    require(sign.getText(slot).getMessages(false).getFirst().getString().equals("plugin edit"),
+                            "Editing a Bukkit sign snapshot mutated the original text");
+                    before = probe.count(owner, "sign");
+                    sign.setAllowedPlayerEditor(UUID.randomUUID());
+                    sign.updateSignText(owner, slot, lines);
+                    sign.setAllowedPlayerEditor(owner.getUUID());
+                    sign.setWaxed(true);
+                    sign.updateSignText(owner, slot, lines);
+                    require(probe.count(owner, "sign") == before, "Unauthorized sign update emitted a Bukkit event");
+                } finally {
+                    level.setBlock(pos, previous, 3);
+                    level.setBlock(pos.below(), below, 3);
+                    probe.arm(owner, "OBSERVE", null);
+                }
+            });
             check(failures, "server healing amount", () -> {
                 subject.setHealth(4.0F);
                 probe.arm(subject, "HEAL_MODIFY", null);
@@ -191,13 +278,13 @@ final class EntityEventSmoke {
             check(failures, "server current target revalidation", () -> {
                 ((MobBridge) subject).cardboard$setTargetWithReason(first, TargetReason.CLOSEST_ENTITY);
                 int before = probe.count(subject, "target");
-                first.setInvulnerable(true);
+                first.setPermanentlyInvulnerable(true);
                 try {
                     subject.setTarget(first);
                     require(subject.getTargetUnchecked() == null, "Server retained an invulnerable current target");
                     require(probe.count(subject, "target") == before, "Revalidation duplicated a Bukkit target event");
                 } finally {
-                    first.setInvulnerable(false);
+                    first.setPermanentlyInvulnerable(false);
                 }
             });
             check(failures, "server vehicle events remain active", () -> {

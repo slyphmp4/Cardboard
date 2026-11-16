@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v26.2.1
+        description: Release tag, for example v26.3.0-alpha.1
         required: true
         type: string
       title:
@@ -13,7 +13,7 @@ on:
         type: string
   push:
     branches:
-      - ver/26.2
+      - ver/26.3
 
 permissions:
   contents: write
@@ -128,17 +128,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Remove superseded release
-        if: steps.release.outputs.tag == 'v26.2.17'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if gh release view v26.2.16 >/dev/null 2>&1; then
-            gh release delete v26.2.16 --cleanup-tag --yes
-          fi
-
       - name: Require successful CI for this commit
         shell: bash
         env:
@@ -189,7 +178,12 @@ jobs:
           assets=("$expected_jar")
           sha256sum "${assets[@]}" > build/libs/SHA256SUMS.txt
 
+          release_options=()
+          if [[ "$TAG" == *-* ]]; then
+            release_options+=(--prerelease)
+          fi
           gh release create "$TAG" \
+            "${release_options[@]}" \
             "${assets[@]}" \
             build/libs/SHA256SUMS.txt \
             --target "$GITHUB_SHA" \

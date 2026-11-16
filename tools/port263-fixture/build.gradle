@@ -1,0 +1,64 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
+}
+
+version = '1.0.0'
+group = 'org.cardboardpowered.test'
+base { archivesName = 'cardboard-port263-fixture' }
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+sourceSets {
+    probePlugin {
+        java.srcDirs = ['src/probe/java']
+        resources.srcDirs = ['src/probe/resources']
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+    referencePlugin {
+        java.srcDirs = ['src/reference/java']
+        resources.srcDirs = ['src/reference/resources']
+        compileClasspath += sourceSets.probePlugin.output + sourceSets.probePlugin.compileClasspath
+    }
+}
+dependencies {
+    minecraft 'com.mojang:minecraft:26.3'
+    implementation 'net.fabricmc:fabric-loader:0.20.1'
+    implementation 'net.fabricmc.fabric-api:fabric-api:0.166.2+26.3'
+    probePluginCompileOnly 'io.papermc.paper:paper-api:26.3.build.249-stable'
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.register('probePluginJar', Jar) {
+    archiveFileName = 'CardboardPort263Audit.jar'
+    from sourceSets.probePlugin.output
+}
+tasks.register('paperRayReferenceJar', Jar) {
+    dependsOn 'referencePluginClasses', 'probePluginClasses'
+    archiveFileName = 'CardboardPaperRayReference.jar'
+    from sourceSets.referencePlugin.output
+    from(sourceSets.probePlugin.output) {
+        include 'org/cardboardpowered/test/WorldRayTraceProbes*.class'
+        include 'org/cardboardpowered/test/ItemDropProbes*.class'
+        include 'org/cardboardpowered/test/TreeProbes*.class'
+        include 'org/cardboardpowered/test/ExplosionProbes*.class'
+        include 'org/cardboardpowered/test/WorldSearchProbes*.class'
+        include 'org/cardboardpowered/test/StructureTemplateProbes*.class'
+        include 'org/cardboardpowered/test/RaidPdcProbes*.class'
+        include 'org/cardboardpowered/test/WorldSettingsProbes*.class'
+        include 'org/cardboardpowered/test/WorldEffectsProbes*.class'
+        include 'org/cardboardpowered/test/PlayerStateProbes*.class'
+        include 'org/cardboardpowered/test/ServerAliasProbes*.class'
+        include 'org/cardboardpowered/test/BrigadierArgumentProbes*.class'
+        include 'org/cardboardpowered/test/DialogCallbackProbes*.class'
+    }
+}
+tasks.named('build') { dependsOn 'probePluginJar' }
+

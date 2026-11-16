@@ -67,6 +67,21 @@ public class BukkitMaterialMixin implements BukkitMaterialBridge {
 		this.moddedData = data;
 	}
 
+    @Inject(at = @At("HEAD"), method = "getKey", cancellable = true)
+    private void cardboard$modKey(CallbackInfoReturnable<org.bukkit.NamespacedKey> cir) {
+        if (isModded()) cir.setReturnValue(org.bukkit.NamespacedKey.fromString(moddedData.getId()));
+    }
+
+    @Inject(at = @At("HEAD"), method = "asItemType", cancellable = true)
+    private void cardboard$modItemType(CallbackInfoReturnable<ItemType> cir) {
+        if (isModded()) cir.setReturnValue(org.bukkit.Registry.ITEM.get(org.bukkit.NamespacedKey.fromString(moddedData.getId())));
+    }
+
+    @Inject(at = @At("HEAD"), method = "asBlockType", cancellable = true)
+    private void cardboard$modBlockType(CallbackInfoReturnable<org.bukkit.block.BlockType> cir) {
+        if (isModded()) cir.setReturnValue(org.bukkit.Registry.BLOCK.get(org.bukkit.NamespacedKey.fromString(moddedData.getId())));
+    }
+
 	/*private Material(final int id, org.cardboardpowered.impl.CardboardModdedMaterial data) {
 		this(id, 64);
 		setModdedData(data);

@@ -210,7 +210,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
         }
         // Paper end
         this.entity.setDeltaMovement(CraftVector.toVec3(velocity));
-        this.entity.hurtMarked = true;
+        this.entity.syncVelocity = true;
     }
 
     /**
@@ -970,7 +970,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 
     @Override
     public void setInvulnerable(boolean flag) {
-        this.getHandle().setInvulnerable(flag);
+        this.getHandle().setPermanentlyInvulnerable(flag);
     }
 
     @Override
@@ -1468,4 +1468,69 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
         return ((EntityBridge) this.entity).cardboard$getRemoveEventCause();
     }
 
+
+    private final java.util.Map<net.kyori.adventure.key.Key, java.util.function.Predicate<org.bukkit.entity.Entity>> additionalAlliedRules = new java.util.HashMap<>();
+
+    public boolean considersEntityAsAlly0(org.bukkit.entity.Entity other) {
+        return this.additionalAlliedRules.values().stream().anyMatch(rule -> rule.test(other));
+    }
+
+    @Override
+    public boolean isAlliedTo(org.bukkit.entity.Entity other) {
+        Preconditions.checkArgument(other != null, "other cannot be null");
+        return this.getHandle().isAlliedTo(((CraftEntity) other).getHandle());
+    }
+
+    @Override
+    public java.util.Map<net.kyori.adventure.key.Key, java.util.function.Predicate<org.bukkit.entity.Entity>> getAdditionalAlliedRules() {
+        return java.util.Collections.unmodifiableMap(this.additionalAlliedRules);
+    }
+
+    @Override
+    public void addAdditionalAlliedRule(net.kyori.adventure.key.Key key, java.util.function.Predicate<org.bukkit.entity.Entity> rule) {
+        Preconditions.checkArgument(key != null, "key cannot be null");
+        Preconditions.checkArgument(rule != null, "predicate cannot be null");
+        this.additionalAlliedRules.put(key, rule);
+    }
+
+    @Override
+    public void removeAdditionalAlliedRule(net.kyori.adventure.key.Key key) {
+        Preconditions.checkArgument(key != null, "key cannot be null");
+        this.additionalAlliedRules.remove(key);
+    }
+
+    @Override
+    public void removeAdditionalAlliedRule(net.kyori.adventure.key.Namespaced namespace) {
+        Preconditions.checkArgument(namespace != null, "namespace cannot be null");
+        this.additionalAlliedRules.keySet().removeIf(key -> key.namespace().equals(namespace.namespace()));
+    }
+    @Override
+    public float getAirDrag() {
+        return this.getHandle().getAirDrag();
+    }
+
+
+    @Override
+    public double getDefaultGravity() { return this.getHandle().getDefaultGravity(); }
+    @Override
+    public double getGravity() { return this.getHandle().getGravity(); }
+    @Override
+    public int getInvulnerableTime() { return this.getHandle().getInvulnerableTime(); }
+    @Override
+    public void setInvulnerableTime(int ticks) {
+        Preconditions.checkArgument(ticks >= 0, "ticks cannot be negative");
+        this.getHandle().setInvulnerableTime(ticks);
+    }
+    @Override
+    public boolean isMarkedInvulnerable() { return this.getHandle().isInvulnerable(); }
+    @Override
+    public boolean isInvulnerableTo(org.bukkit.damage.DamageSource source) {
+        Preconditions.checkArgument(source != null, "DamageSource cannot be null");
+        return this.getHandle().isInvulnerableToBase(((org.bukkit.craftbukkit.damage.CraftDamageSource) source).getHandle());
+    }
+    @Override
+    public org.bukkit.inventory.ItemStack getWeapon() {
+        var stack = this.getHandle().getWeaponItem();
+        return stack == null ? null : org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitCopy(stack);
+    }
 }

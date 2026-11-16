@@ -1,0 +1,11 @@
+name: CardboardPort263Audit
+version: 1.0.0
+main: org.cardboardpowered.test.Port263AuditPlugin
+api-version: '26.3'
+commands:
+  port263audit:
+    description: Exercise public API contracts on a disposable 26.3 world
+    permission: port263audit.run
+permissions:
+  port263audit.run:
+    default: op

@@ -16,7 +16,7 @@ import org.cardboardpowered.bridge.commands.CommandSourceStackBridge;
 import org.cardboardpowered.impl.command.NullCommandSender;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.level.LevelBridge;
-import org.cardboardpowered.impl.world.CraftWorld;
+import org.bukkit.craftbukkit.CraftWorld;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -164,6 +164,39 @@ public abstract class CommandSourceStackMixin
     }
 
     @Override
+    public org.bukkit.entity.Player getPlayerOrThrow() throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        return (org.bukkit.entity.Player) ((EntityBridge) ((CommandSourceStack) (Object) this).getPlayerOrException()).getBukkitEntity();
+    }
+
+    @Override
+    public org.bukkit.entity.Entity getEntityOrThrow() throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        return ((EntityBridge) ((CommandSourceStack) (Object) this).getEntityOrException()).getBukkitEntity();
+    }
+
+    @Override
+    public void sendReply(net.kyori.adventure.text.ComponentLike message) {
+        com.google.common.base.Preconditions.checkArgument(message != null, "message cannot be null");
+        if (this.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            player.sendSystemMessage(io.papermc.paper.adventure.PaperAdventure.asVanilla(message.asComponent()));
+        } else {
+            this.getSender().sendMessage(message.asComponent());
+        }
+    }
+
+    @Override
+    public void sendSuccess(net.kyori.adventure.text.ComponentLike message, boolean allowInformingAdmins) {
+        com.google.common.base.Preconditions.checkArgument(message != null, "message cannot be null");
+        ((CommandSourceStack) (Object) this).sendSuccess(
+                () -> io.papermc.paper.adventure.PaperAdventure.asVanilla(message.asComponent()), allowInformingAdmins);
+    }
+
+    @Override
+    public void sendFailure(net.kyori.adventure.text.ComponentLike message) {
+        com.google.common.base.Preconditions.checkArgument(message != null, "message cannot be null");
+        ((CommandSourceStack) (Object) this).sendFailure(io.papermc.paper.adventure.PaperAdventure.asVanilla(message.asComponent()));
+    }
+
+    @Override
     public io.papermc.paper.command.brigadier.CommandSourceStack withLocation(
             Location location
     ) {
@@ -198,3 +231,4 @@ public abstract class CommandSourceStackMixin
                 );
     }
 }
+

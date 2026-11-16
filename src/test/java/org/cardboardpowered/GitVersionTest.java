@@ -23,7 +23,7 @@ final class GitVersionTest {
         assertEquals("org.cardboardpowered", GitVersion.MAVEN_GROUP);
         assertEquals("cardboard", GitVersion.MAVEN_NAME);
         assertEquals(gradleProperties.getProperty("mod_version"), GitVersion.VERSION);
-        assertEquals("ver/26.2", GitVersion.GIT_BRANCH);
+        assertEquals(gradleProperties.getProperty("git_version_branch"), GitVersion.GIT_BRANCH);
 
         assertTrue(GitVersion.GIT_REVISION > 0);
         assertTrue(GitVersion.GIT_SHA.matches("[0-9a-f]{40}"));

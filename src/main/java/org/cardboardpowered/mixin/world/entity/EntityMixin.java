@@ -520,4 +520,14 @@ public abstract class EntityMixin implements CommandSourceBridge, EntityBridge {
         }
     };
     
+
+    @Inject(method = "isAlliedTo(Lnet/minecraft/world/entity/Entity;)Z", at = @At("RETURN"), cancellable = true)
+    private void cardboard$additionalAlliedRules(Entity other, CallbackInfoReturnable<Boolean> cir) {
+        if (!cir.getReturnValueZ()) {
+            org.bukkit.craftbukkit.entity.CraftEntity bukkit = this.getBukkitEntityRaw();
+            if (bukkit != null && !bukkit.getAdditionalAlliedRules().isEmpty()) {
+                cir.setReturnValue(bukkit.considersEntityAsAlly0(((EntityBridge) other).getBukkitEntity()));
+            }
+        }
+    }
 }

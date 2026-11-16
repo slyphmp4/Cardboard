@@ -62,7 +62,7 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 
 
 	private org.bukkit.inventory.Recipe toBukkitRecipe(TransmuteRecipe thiz, NamespacedKey id) {
-		return new org.bukkit.craftbukkit.inventory.CraftTransmuteRecipe(id, org.bukkit.craftbukkit.inventory.CraftItemType.minecraftToBukkit(thiz.result.item().value()), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.input), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.material));
+		return new org.bukkit.craftbukkit.inventory.CraftTransmuteRecipe(id, org.bukkit.craftbukkit.inventory.CraftItemType.minecraftToBukkit(thiz.result.item().orElseGet(() -> thiz.input.items().findFirst().orElseThrow()).value()), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.input), org.bukkit.craftbukkit.inventory.CraftRecipe.toBukkit(thiz.material));
 	}
 
 	private org.bukkit.inventory.Recipe toBukkitRecipe(SmithingTrimRecipe thiz, NamespacedKey id) {
@@ -101,7 +101,13 @@ public class RecipeHolderMixin implements RecipeHolderBridge {
 		Recipe<?> nmsRecipe = recipeEntry.value();
 		ResourceKey<Recipe<?>> id = recipeEntry.id();
 
-		if(nmsRecipe instanceof BlastingRecipe nms) {
+		if (nmsRecipe instanceof BrewingRecipe brewing) {
+            return new org.bukkit.inventory.BrewingRecipe(CraftNamespacedKey.fromMinecraft(id.identifier()),
+                    CraftItemStack.asBukkitCopy(brewing.getOutput().create()),
+                    CraftRecipe.toBukkit(brewing.getInput().ingredient()),
+                    CraftRecipe.toBukkit(brewing.getReagent().ingredient()));
+        }
+        if(nmsRecipe instanceof BlastingRecipe nms) {
 			/*
 			CraftItemStack result = CraftItemStack.asCraftMirror(nms.getResult(null));
 

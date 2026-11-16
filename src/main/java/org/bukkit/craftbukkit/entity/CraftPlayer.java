@@ -198,6 +198,7 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.cardboardpowered.bridge.network.ConnectionBridge;
 import org.cardboardpowered.bridge.network.protocol.game.ClientboundSectionBlocksUpdatePacketBridge;
 import org.cardboardpowered.bridge.server.level.ServerPlayerBridge;
+import org.cardboardpowered.bridge.server.level.PlayerPersonalStateBridge;
 import org.cardboardpowered.bridge.server.network.ServerGamePacketListenerImplBridge;
 import org.cardboardpowered.bridge.world.entity.EntityBridge;
 import org.cardboardpowered.bridge.world.inventory.AbstractContainerMenuBridge;
@@ -1060,13 +1061,13 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
     private void sendSignChange0(Component[] components, Location loc, DyeColor dyeColor, boolean hasGlowingText) {
         // Paper end
         SignBlockEntity sign = new SignBlockEntity(CraftLocation.toBlockPosition(loc), Blocks.OAK_SIGN.defaultBlockState());
-        SignText text = sign.getFrontText();
+        SignText.Mutable text = sign.getText(net.minecraft.world.level.block.entity.SignTextSlot.FRONT).asMutable();
         text = text.setColor(net.minecraft.world.item.DyeColor.byId(dyeColor.getWoolData()));
-        text = text.setHasGlowingText(hasGlowingText);
+        text = text.setTextGlowing(hasGlowingText);
         for (int i = 0; i < components.length; i++) {
-            text = text.setMessage(i, components[i]);
+            text = text.setLine(i, components[i]);
         }
-        sign.setText(text, true);
+        sign.setText(text.asImmutable(), net.minecraft.world.level.block.entity.SignTextSlot.FRONT);
 
         this.getHandle().connection.send(new ClientboundBlockEntityDataPacket(sign.getBlockPos(), sign.getType(), sign.getUpdateTag(this.getHandle().registryAccess())));
     }
@@ -1361,15 +1362,12 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
 
     @Override
     public void setSleepingIgnored(boolean isSleeping) {
-        //this.getHandle().fauxSleeping = isSleeping;
-        //((CraftWorld) this.getWorld()).getHandle().updateSleepingPlayerList();
-        // TODO
+        ((PlayerPersonalStateBridge) this.getHandle()).cardboard$setSleepingIgnored(isSleeping);
     }
 
     @Override
     public boolean isSleepingIgnored() {
-        //return this.getHandle().fauxSleeping; // TODO
-        return false;
+        return ((PlayerPersonalStateBridge) this.getHandle()).cardboard$isSleepingIgnored();
     }
 
     @Override
@@ -1534,36 +1532,22 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
 
     @Override
     public void setPlayerTime(long time, boolean relative) {
-        // TODO
-        /*this.getHandle().timeOffset = time;
-        this.getHandle().relativeTime = relative;
-
-        if (this.getHandle().connection == null) {
-            return;
-        }
-
-        final long gameTime = this.getHandle().level().getGameTime();
-        final long dayTime = this.getHandle().getPlayerTime();
-        final boolean tickDayTime = this.getHandle().relativeTime && this.getHandle().level().getGameRules().get(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME);
-        this.getHandle().connection.send(new net.minecraft.network.protocol.game.ClientboundSetTimePacket(gameTime, dayTime, tickDayTime));*/
+        ((PlayerPersonalStateBridge) this.getHandle()).cardboard$setPlayerTime(time, relative);
     }
 
     @Override
     public long getPlayerTimeOffset() {
-        //return this.getHandle().timeOffset; // TODO
-        return 0;
+        return ((PlayerPersonalStateBridge) this.getHandle()).cardboard$getTimeOffset();
     }
 
     @Override
     public long getPlayerTime() {
-        //return this.getHandle().getPlayerTime(); // TODO
-        return 0;
+        return ((PlayerPersonalStateBridge) this.getHandle()).cardboard$getPlayerTime();
     }
 
     @Override
     public boolean isPlayerTimeRelative() {
-        //return this.getHandle().relativeTime; // TODO
-        return false;
+        return ((PlayerPersonalStateBridge) this.getHandle()).cardboard$isTimeRelative();
     }
 
     @Override
@@ -1573,13 +1557,12 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
 
     @Override
     public void setPlayerWeather(WeatherType type) {
-       // this.getHandle().setPlayerWeather(type, true); // TODO
+        ((PlayerPersonalStateBridge) this.getHandle()).cardboard$setPlayerWeather(type, true);
     }
 
     @Override
     public WeatherType getPlayerWeather() {
-        //return this.getHandle().weatherType; // TODO
-        return WeatherType.CLEAR;
+        return ((PlayerPersonalStateBridge) this.getHandle()).cardboard$getPlayerWeather();
     }
 
     @Override
@@ -1594,7 +1577,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
 
     @Override
     public void resetPlayerWeather() {
-        //this.getHandle().resetPlayerWeather(); // TODO
+        ((PlayerPersonalStateBridge) this.getHandle()).cardboard$resetPlayerWeather();
     }
 
     @Override
@@ -2766,7 +2749,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
     public void openVirtualSign(Position block, Side side) {
         if (this.getHandle().connection == null) return;
 
-        this.getHandle().connection.send(new ClientboundOpenSignEditorPacket(MCUtil.toBlockPos(block), side == Side.FRONT));
+        this.getHandle().connection.send(new ClientboundOpenSignEditorPacket(MCUtil.toBlockPos(block), org.bukkit.craftbukkit.block.sign.CraftSignSide.toVanilla(side)));
     }
 
     @Override
@@ -3309,7 +3292,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
             leftovers.add(CraftItemStack.asBukkitCopy(nmsStack)); // Insert copy to avoid mutation to the dropped item from affecting leftovers
             if (!dropIfFull) continue;
 
-            final ItemEntity entity = handle.drop(nmsStack, false, true);
+            final ItemEntity entity = handle.drop(nmsStack, false, net.minecraft.util.Prediction.SERVER_ONLY);
             if (entity != null) drops.add((Item) ((EntityBridge)entity).getBukkitEntity());
         }
 
@@ -3444,4 +3427,29 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
         this.getHandle().connection.resetFlyingTicks();
     }
 
+
+    @Override
+    public io.papermc.paper.entity.PlayerPostEffects postEffects() {
+        return new io.papermc.paper.entity.PaperPlayerPostEffects(this.getHandle());
+    }
+    @Override
+    public java.net.SocketAddress getSocketAddress() {
+        return this.getHandle().connection.getRemoteAddress();
+    }
+
+    @Override
+    public <T> void spawnParticle(Particle particle, double x, double y, double z, int count,
+            double offsetX, double offsetY, double offsetZ, double speedX, double speedY, double speedZ,
+            T data, boolean force, Particle.RandomizationType randomizationType) {
+        Preconditions.checkArgument(particle != null, "particle cannot be null");
+        Preconditions.checkArgument(randomizationType != null, "randomizationType cannot be null");
+        data = CraftParticle.convertLegacy(data);
+        Preconditions.checkArgument(data == null || particle.getDataType().isInstance(data), "Invalid particle data");
+        if (this.getHandle().connection == null) return;
+        this.getHandle().connection.send(new ClientboundLevelParticlesPacket(
+                CraftParticle.createParticleParam(particle, data), force, false, x, y, z,
+                (float) offsetX, (float) offsetY, (float) offsetZ,
+                (float) speedX, (float) speedY, (float) speedZ, count,
+                ClientboundLevelParticlesPacket.RandomizationType.valueOf(randomizationType.name())));
+    }
 }

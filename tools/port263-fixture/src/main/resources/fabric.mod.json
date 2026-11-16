@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "cardboard_port263_fixture",
+  "version": "1.0.0",
+  "name": "Cardboard 26.3 runtime fixture",
+  "environment": "*",
+  "entrypoints": { "main": ["org.cardboardpowered.test.Port263Fixture"] },
+  "depends": {
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabricloader": ">=0.20.1",
+    "fabric-api": ">=0.166.2+26.3"
+  }
+}

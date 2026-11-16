@@ -35,7 +35,6 @@ import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.craftbukkit.util.CraftLocation;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.*;
@@ -96,7 +95,6 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 @Mixin(value = ServerPlayer.class, priority = 999)
 public abstract class ServerPlayerMixin extends PlayerMixin implements CommandSourceBridge, ServerPlayerBridge {
@@ -649,40 +647,6 @@ public abstract class ServerPlayerMixin extends PlayerMixin implements CommandSo
         cardboard_stored_entity = ie;
     }
     */
-
-    @SuppressWarnings("deprecation")
-    @Inject(at = @At("RETURN"),
-            method = "drop(Lnet/minecraft/world/item/ItemStack;ZZ)Lnet/minecraft/world/entity/item/ItemEntity;",
-            cancellable = true, locals = LocalCapture.CAPTURE_FAILHARD)
-    public void cardboard_doPlayerDropItemEvent(
-            net.minecraft.world.item.ItemStack stack,
-            boolean throwRandomly,
-            boolean retainOwnership,
-            CallbackInfoReturnable<ItemEntity> ci,
-            @Local ItemEntity itemEntity
-    ) {
-        if (stack.isEmpty()) {
-            return;
-        }
-        Player player = (Player)(((EntityBridge)this).getBukkitEntity());
-        Item drop = (Item) ((EntityBridge)itemEntity).getBukkitEntity();
-        PlayerDropItemEvent event = new PlayerDropItemEvent(player, drop);
-        Bukkit.getServer().getPluginManager().callEvent(event);
-
-        if (event.isCancelled()) {
-            org.bukkit.inventory.ItemStack cur = player.getInventory().getItemInHand();
-            if (retainOwnership && (cur == null || cur.getAmount() == 0)) {
-                player.getInventory().setItemInHand(drop.getItemStack());
-            } else if (retainOwnership && cur.isSimilar(drop.getItemStack()) && cur.getAmount() < cur.getMaxStackSize() && drop.getItemStack().getAmount() == 1) {
-                cur.setAmount(cur.getAmount() + 1);
-                player.getInventory().setItemInHand(cur);
-            } else player.getInventory().addItem(drop.getItemStack());
-
-            itemEntity = null;
-            ci.setReturnValue(null);
-        }
-        // cardboard_stored_entity = null;
-    }
 
     @Inject(method = "setRespawnPosition", at = @At("HEAD"), cancellable = true)
     public void setRespawnPositionPaper(RespawnConfig respawnConfig, boolean displayInChat, CallbackInfo ci) {

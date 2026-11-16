@@ -21,7 +21,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerAbilitiesPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
+import net.minecraft.network.protocol.game.ServerboundPunchPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -632,8 +632,8 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
      * @author Cardboard
      * @reason Events
      */
-    @Inject(at = @At("HEAD"), method = "handleAnimate", cancellable = true)
-    public void onHandSwingBF(ServerboundSwingPacket packet, CallbackInfo ci) {
+    @Inject(at = @At("HEAD"), method = "handlePunch", cancellable = true)
+    public void onHandSwingBF(ServerboundPunchPacket packet, CallbackInfo ci) {
         PacketUtils.ensureRunningOnSameThread(packet, get(), this.player.level());
         this.player.resetLastActionTime();
         float f1 = this.player.xRot;
@@ -664,14 +664,13 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
             ci.cancel();
             return;
         }
-        this.player.swing(packet.getHand());
         return;
     }
 
     @Inject(at = @At("HEAD"), method = "handleUseItem", cancellable = true)
     public void onPlayerInteractItemBF(ServerboundUseItemPacket packetplayinblockplace, CallbackInfo ci) {
         PacketUtils.ensureRunningOnSameThread(packetplayinblockplace, get(), this.player.level());
-        InteractionHand enumhand = packetplayinblockplace.getHand();
+        InteractionHand enumhand = packetplayinblockplace.hand();
         ItemStack itemstack = this.player.getItemInHand(enumhand);
 
         this.player.resetLastActionTime();

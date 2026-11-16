@@ -73,7 +73,7 @@ public abstract class BrewingStandBlockEntityMixin implements Container, Contain
      * @reason BrewingStandFuelEvent
      */
     @Inject(at = @At("HEAD"), method = "serverTick", cancellable = true)
-    private static void doBukkitEvent_BrewingStandFuelEvent(Level world, BlockPos pos, BlockState state, BrewingStandBlockEntity be, CallbackInfo ci) {
+    private static void doBukkitEvent_BrewingStandFuelEvent(net.minecraft.server.level.ServerLevel world, BlockPos pos, BlockState state, BrewingStandBlockEntity be, CallbackInfo ci) {
         ItemStack itemstack = (ItemStack) ((BrewingStandBlockEntityBridge)be).cardboard_getInventory().get(4);
 
         if (be.fuel <= 0 && itemstack.getItem() == Items.BLAZE_POWDER) {

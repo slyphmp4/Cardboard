@@ -1,0 +1,4 @@
+name: CardboardPort263Probe
+version: 1.0.0
+main: org.cardboardpowered.ci.Port263Probe
+api-version: '26.3'

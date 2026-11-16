@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class KostiaFedP2ParityTest {
 
     private static String source(String path) throws Exception {
-        return Files.readString(Path.of(path));
+        return Files.readString(Path.of(path)).replace("\r\n", "\n");
     }
 
     @Test

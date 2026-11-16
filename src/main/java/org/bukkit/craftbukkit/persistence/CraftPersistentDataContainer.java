@@ -19,7 +19,9 @@ import org.jetbrains.annotations.NotNull;
 
 public class CraftPersistentDataContainer extends io.papermc.paper.persistence.PaperPersistentDataContainerView implements PersistentDataContainer { // Paper - split up view and mutable
 
+    private static final Runnable NO_CHANGE_OBSERVER = () -> {};
     private final Map<String, Tag> customDataTags = new HashMap<>();
+    private final Runnable changeObserver;
 
     public CraftPersistentDataContainer(Map<String, Tag> customTags, CraftPersistentDataTypeRegistry registry) {
         this(registry);
@@ -27,7 +29,12 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
     }
 
     public CraftPersistentDataContainer(CraftPersistentDataTypeRegistry registry) {
+        this(registry, NO_CHANGE_OBSERVER);
+    }
+
+    public CraftPersistentDataContainer(CraftPersistentDataTypeRegistry registry, Runnable changeObserver) {
         super(registry);
+        this.changeObserver = Objects.requireNonNull(changeObserver, "changeObserver");
     }
 
     @Override
@@ -42,6 +49,7 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
         Preconditions.checkArgument(value != null, "The provided value cannot be null");
 
         this.customDataTags.put(key.toString(), this.registry.wrap(type, type.toPrimitive(value, this.adapterContext)));
+        this.changeObserver.run();
     }
 
     @NotNull
@@ -63,7 +71,7 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
     public void remove(@NotNull NamespacedKey key) {
         Preconditions.checkArgument(key != null, "The NamespacedKey key cannot be null");
 
-        this.customDataTags.remove(key.toString());
+        if (this.customDataTags.remove(key.toString()) != null) this.changeObserver.run();
     }
 
     @Override
@@ -82,6 +90,7 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
         } else {
             this.customDataTags.forEach(target.customDataTags::putIfAbsent);
         }
+        if (!this.customDataTags.isEmpty()) target.changeObserver.run();
     }
 
     @Override
@@ -111,16 +120,19 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
 
     public void put(String key, Tag base) {
         this.customDataTags.put(key, base);
+        this.changeObserver.run();
     }
 
     public void putAll(Map<String, Tag> map) {
         this.customDataTags.putAll(map);
+        if (!map.isEmpty()) this.changeObserver.run();
     }
 
     public void putAll(CompoundTag compound) {
         for (String key : compound.keySet()) {
             this.customDataTags.put(key, compound.get(key));
         }
+        if (!compound.isEmpty()) this.changeObserver.run();
     }
 
     public Map<String, Tag> getRaw() {
@@ -143,7 +155,10 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
     }
 
     public void clear() {
-        this.customDataTags.clear();
+        if (!this.customDataTags.isEmpty()) {
+            this.customDataTags.clear();
+            this.changeObserver.run();
+        }
     }
 
     @Override
@@ -154,6 +169,8 @@ public class CraftPersistentDataContainer extends io.papermc.paper.persistence.P
         try (final java.io.DataInputStream dataInput = new java.io.DataInputStream(new java.io.ByteArrayInputStream(bytes))) {
             final net.minecraft.nbt.CompoundTag compound = net.minecraft.nbt.NbtIo.read(dataInput);
             this.putAll(compound);
+        } catch (final net.minecraft.nbt.ReportedNbtException | net.minecraft.nbt.NbtException ex) {
+            throw new java.io.IOException("Invalid NBT data", ex);
         }
     }
 

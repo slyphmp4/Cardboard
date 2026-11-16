@@ -547,7 +547,7 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
             handledTags = extraHandledTags;
         }
         // Paper end - improve checking handled data component types
-        Set<Map.Entry<DataComponentType<?>, Optional<?>>> keys = tag.entrySet();
+        Set<Map.Entry<DataComponentType<?>, Optional<?>>> keys = org.cardboardpowered.util.DataComponentPatches.entries(tag);
         for (Map.Entry<DataComponentType<?>, Optional<?>> key : keys) {
             if (!handledTags.contains(key.getKey())) { // Paper - improve checking handled data component types
                 key.getValue().ifPresent((value) -> {
@@ -782,7 +782,7 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
                 });
                 ((DataComponentPatch_BuilderBridge)this.unhandledTags).copy(unhandledPatch.forget(type -> type == CraftMetaItem.CAN_PLACE_ON.TYPE || type == CraftMetaItem.CAN_BREAK.TYPE));
 
-                for (Entry<DataComponentType<?>, Optional<?>> entry : unhandledPatch.entrySet()) {
+                for (Entry<DataComponentType<?>, Optional<?>> entry : org.cardboardpowered.util.DataComponentPatches.entries(unhandledPatch)) {
                     // Move removed unhandled tags to dedicated removedTags
                     if (entry.getValue().isEmpty()) {
                         DataComponentType<?> key = entry.getKey();
@@ -1046,7 +1046,7 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
             tag.put(CraftMetaItem.CAN_BREAK, new net.minecraft.world.item.AdventureModePredicate(this.canBreakPredicates));
         }
 
-        for (Map.Entry<DataComponentType<?>, Optional<?>> e : this.unhandledTags.build().entrySet()) {
+        for (Map.Entry<DataComponentType<?>, Optional<?>> e : org.cardboardpowered.util.DataComponentPatches.entries(this.unhandledTags.build())) {
             e.getValue().ifPresent((value) -> {
                 tag.builder.set((DataComponentType) e.getKey(), value);
             });
@@ -1857,7 +1857,7 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
         Registry<DataComponentType<?>> componentTypeRegistry = registryAccess.lookupOrThrow(Registries.DATA_COMPONENT_TYPE);
 
         StringJoiner componentString = new StringJoiner(",", "[", "]");
-        for (Entry<DataComponentType<?>, Optional<?>> entry : patch.entrySet()) {
+        for (Entry<DataComponentType<?>, Optional<?>> entry : org.cardboardpowered.util.DataComponentPatches.entries(patch)) {
             DataComponentType<?> componentType = entry.getKey();
             Optional<?> componentValue = entry.getValue();
             String componentKey = componentTypeRegistry.getResourceKey(componentType).orElseThrow().identifier().toString();
@@ -2472,7 +2472,7 @@ class CraftMetaItem implements ItemMeta, Damageable, Repairable, BlockDataMeta {
                 map.put(CraftMetaFirework.class, Set.of(CraftMetaFirework.FIREWORKS.TYPE));
                 map.put(CraftMetaKnowledgeBook.class, Set.of(CraftMetaKnowledgeBook.BOOK_RECIPES.TYPE));
                 map.put(CraftMetaLeatherArmor.class, Set.of(CraftMetaLeatherArmor.COLOR.TYPE));
-                map.put(CraftMetaMap.class, Set.of(CraftMetaMap.MAP_COLOR.TYPE, CraftMetaMap.MAP_POST_PROCESSING.TYPE, CraftMetaMap.MAP_ID.TYPE));
+                map.put(CraftMetaMap.class, Set.of(CraftMetaMap.MAP_POST_PROCESSING.TYPE, CraftMetaMap.MAP_ID.TYPE));
                 map.put(CraftMetaMusicInstrument.class, Set.of(CraftMetaMusicInstrument.GOAT_HORN_INSTRUMENT.TYPE));
                 map.put(CraftMetaOminousBottle.class, Set.of(CraftMetaOminousBottle.OMINOUS_BOTTLE_AMPLIFIER.TYPE));
                 map.put(CraftMetaPotion.class, Set.of(CraftMetaPotion.POTION_CONTENTS.TYPE));

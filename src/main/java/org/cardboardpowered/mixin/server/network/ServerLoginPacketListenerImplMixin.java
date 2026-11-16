@@ -9,7 +9,7 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.exceptions.AuthenticationUnavailableException;
-import com.mojang.authlib.yggdrasil.ProfileResult;
+import com.mojang.authlib.services.ProfileResult;
 
 import io.netty.channel.local.LocalAddress;
 import io.papermc.paper.adventure.PaperAdventure;

@@ -16,7 +16,22 @@ public final class ClientCommandArgumentSerialization {
 
     private ClientCommandArgumentSerialization() {}
 
+    /** Resolve only declared client types; parsing stays on the original API argument. */
+    public static ArgumentType<?> nativeType(ArgumentType<?> type) {
+        var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ArgumentType<?>, Boolean>());
+        for (int depth = 0; depth < 64; depth++) {
+            if (type == null || !seen.add(type)) throw new IllegalArgumentException("Cyclic or null native argument type");
+            if (type instanceof io.papermc.paper.command.brigadier.argument.VanillaArgumentProviderImpl.NativeWrapperArgumentType<?, ?> wrapper) {
+                type = wrapper.nativeNmsArgumentType();
+            } else if (type instanceof io.papermc.paper.command.brigadier.argument.CustomArgumentType<?, ?> custom) {
+                type = custom.getNativeType();
+            } else return type;
+        }
+        throw new IllegalArgumentException("Native argument type nesting exceeds 64 wrappers");
+    }
+
     public static ArgumentTypeInfo.Template<?> forClient(ArgumentType<?> type) {
+        type = nativeType(type);
         try {
             return ArgumentTypeInfos.unpack(type);
         } catch (IllegalArgumentException exception) {
@@ -32,3 +47,4 @@ public final class ClientCommandArgumentSerialization {
         }
     }
 }
+

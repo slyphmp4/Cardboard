@@ -19,7 +19,7 @@ public record PaperBundleContents(
 
     @Override
     public List<ItemStack> contents() {
-    	return this.impl.itemCopyStream().map(CraftItemStack::asBukkitCopy).toList();
+        return MCUtil.transformUnmodifiable(this.impl.items(), CraftItemStack::asBukkitCopy);
     }
 
     static final class BuilderImpl implements BundleContents.Builder {

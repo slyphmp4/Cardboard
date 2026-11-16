@@ -23,6 +23,8 @@ import java.util.Optional;
 @Mixin(RecipeManager.class)
 public abstract class RecipeManagerMixin implements RecipeManagerBridge {
 
+    @org.spongepowered.asm.mixin.Final
+    @org.spongepowered.asm.mixin.Mutable
     @Shadow
     private RecipeMap recipes;
 
@@ -31,7 +33,7 @@ public abstract class RecipeManagerMixin implements RecipeManagerBridge {
 
     @Override
 	public  Multimap<RecipeType<?>, RecipeHolder<?>> cb$get_recipesByType() {
-		return null; // TODO return recipesByType;
+		return this.recipes.byType;
 	}
 
     @Unique
@@ -81,7 +83,7 @@ public abstract class RecipeManagerMixin implements RecipeManagerBridge {
 
     @Override
     public void cardboard$clearRecipes() {
-        this.recipes = RecipeMap.create(java.util.Collections.emptyList());
+        this.recipes = new RecipeMap(com.google.common.collect.LinkedHashMultimap.create(), new java.util.LinkedHashMap<>());
         this.cardboard$finalizeRecipeLoading();
     }
     // CraftBukkit end

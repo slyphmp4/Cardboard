@@ -82,6 +82,9 @@ public class BukkitLogger extends Logger {
     
     @Override
     public void log(LogRecord lr) {
+        if (!this.isLoggable(lr.getLevel())) return;
+        java.util.logging.Filter filter = this.getFilter();
+        if (filter != null && !filter.isLoggable(lr)) return;
     	org.slf4j.event.Level level = convertLevel1(lr.getLevel());
     	
         if (lr.getThrown() == null) {

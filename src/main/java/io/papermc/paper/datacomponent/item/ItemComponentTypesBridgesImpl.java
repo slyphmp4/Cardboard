@@ -2,16 +2,9 @@ package io.papermc.paper.datacomponent.item;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.google.common.base.Preconditions;
-
-import io.papermc.paper.datacomponent.item.BlocksAttacks.Builder;
-import io.papermc.paper.datacomponent.item.KineticWeapon.Condition;
-import io.papermc.paper.datacomponent.item.ResolvableProfile.SkinPatch;
-import io.papermc.paper.datacomponent.item.ResolvableProfile.SkinPatchBuilder;
-import io.papermc.paper.registry.PaperRegistries;
 import io.papermc.paper.registry.data.util.Conversions;
 import io.papermc.paper.registry.set.PaperRegistrySets;
 import io.papermc.paper.registry.set.RegistryKeySet;
-import io.papermc.paper.registry.tag.TagKey;
 import io.papermc.paper.text.Filtered;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.util.TriState;
@@ -21,13 +14,17 @@ import org.bukkit.JukeboxSong;
 import org.bukkit.block.BlockType;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.damage.DamageType;
+import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ItemType;
 import org.bukkit.inventory.meta.trim.ArmorTrim;
 import org.bukkit.map.MapCursor;
-import org.cardboardpowered.Registries_Bridge;
 import org.jspecify.annotations.Nullable;
+
+import static io.papermc.paper.util.BoundChecker.requireNonNegative;
+import static io.papermc.paper.util.BoundChecker.requirePositive;
+import static io.papermc.paper.util.BoundChecker.requireRange;
 
 public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBridge {
 
@@ -40,13 +37,6 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     public PotDecorations.Builder potDecorations() {
         return new PaperPotDecorations.BuilderImpl();
     }
-
-    /*
-    @Override
-    public Unbreakable.Builder unbreakable() {
-        return null; // Removed in 1.21.8: return new PaperUnbreakable.BuilderImpl();
-    }
-    */
 
     @Override
     public ItemLore.Builder lore() {
@@ -89,22 +79,12 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public MapItemColor.Builder mapItemColor() {
-        return new PaperMapItemColor.BuilderImpl();
-    }
-
-    @Override
     public MapDecorations.Builder mapDecorations() {
         return new PaperMapDecorations.BuilderImpl();
     }
 
     @Override
-    public MapDecorations.DecorationEntry decorationEntry(
-            final MapCursor.Type type,
-            final double x,
-            final double z,
-            final float rotation
-    ) {
+    public MapDecorations.DecorationEntry mapDecorationEntry(final MapCursor.Type type, final double x, final double z, final float rotation) {
         return PaperMapDecorations.PaperDecorationEntry.toApi(type, x, z, rotation);
     }
 
@@ -129,11 +109,7 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public Tool.Rule rule(
-            final RegistryKeySet<BlockType> blocks,
-            final @Nullable Float speed,
-            final TriState correctForDrops
-    ) {
+    public Tool.Rule toolRule(final RegistryKeySet<BlockType> blocks, final @Nullable Float speed, final TriState correctForDrops) {
         return PaperItemTool.PaperRule.fromUnsafe(blocks, speed, correctForDrops);
     }
 
@@ -143,10 +119,7 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public WrittenBookContent.Builder writtenBookContent(
-            final Filtered<String> title,
-            final String author
-    ) {
+    public WrittenBookContent.Builder writtenBookContent(final Filtered<String> title, final String author) {
         return new PaperWrittenBookContent.BuilderImpl(title, author);
     }
 
@@ -171,13 +144,23 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
+    public ResolvableProfile resolvableProfile(final PlayerProfile profile) {
+        return PaperResolvableProfile.toApi(profile);
+    }
+
+    @Override
     public ResolvableProfile.Builder resolvableProfile() {
         return new PaperResolvableProfile.BuilderImpl();
     }
 
     @Override
-    public ResolvableProfile resolvableProfile(final PlayerProfile profile) {
-        return PaperResolvableProfile.toApi(profile);
+    public ResolvableProfile.SkinPatchBuilder skinPatch() {
+        return new PaperResolvableProfile.SkinPatchBuilderImpl();
+    }
+
+    @Override
+    public ResolvableProfile.SkinPatch emptySkinPatch() {
+        return new PaperResolvableProfile.PaperSkinPatch(null, null, null, null);
     }
 
     @Override
@@ -192,23 +175,15 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
 
     @Override
     public MapId mapId(final int id) {
-        return new PaperMapId(
-                new net.minecraft.world.level.saveddata.maps.MapId(id)
-        );
+        return new PaperMapId(new net.minecraft.world.level.saveddata.maps.MapId(id));
     }
 
     @Override
-    public UseRemainder useRemainder(final ItemStack itemStack) {
-        Preconditions.checkArgument(itemStack != null, "Item cannot be null");
-        Preconditions.checkArgument(
-                !itemStack.isEmpty(),
-                "Remaining item cannot be empty!"
-        );
-
+    public UseRemainder useRemainder(final ItemStack item) {
+        Preconditions.checkArgument(item != null, "item cannot be null");
+        Preconditions.checkArgument(!item.isEmpty(), "item cannot be empty!");
         return new PaperUseRemainder(
-                new net.minecraft.world.item.component.UseRemainder(
-                        CraftItemStack.asTemplate(itemStack)
-                )
+            new net.minecraft.world.item.component.UseRemainder(CraftItemStack.asTemplate(item))
         );
     }
 
@@ -219,52 +194,28 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
 
     @Override
     public UseCooldown.Builder useCooldown(final float seconds) {
-        Preconditions.checkArgument(
-                seconds > 0,
-                "seconds must be positive, was %s",
-                seconds
-        );
-
-        return new PaperUseCooldown.BuilderImpl(seconds);
+        return new PaperUseCooldown.BuilderImpl(requirePositive(seconds, "seconds"));
     }
 
     @Override
-    public DamageResistant damageResistant(
-            final RegistryKeySet<DamageType> types
-    ) {
-        return new PaperDamageResistant(
-                new net.minecraft.world.item.component.DamageResistant(
-                        PaperRegistrySets.convertToNms(
-                                Registries.DAMAGE_TYPE,
-                                Conversions.global().lookup(),
-                                types
-                        )
-                )
-        );
+    public DamageResistant damageResistant(final RegistryKeySet<DamageType> types) {
+        return new PaperDamageResistant(new net.minecraft.world.item.component.DamageResistant(PaperRegistrySets.convertToNms(Registries.DAMAGE_TYPE, Conversions.global().lookup(), types)));
     }
 
     @Override
     public Enchantable enchantable(final int level) {
-        return new PaperEnchantable(
-                new net.minecraft.world.item.enchantment.Enchantable(level)
-        );
+        return new PaperEnchantable(new net.minecraft.world.item.enchantment.Enchantable(level));
     }
 
     @Override
     public Repairable repairable(final RegistryKeySet<ItemType> types) {
-        return new PaperRepairable(
-                new net.minecraft.world.item.enchantment.Repairable(
-                        PaperRegistrySets.convertToNms(
-                                Registries.ITEM,
-                                Registries_Bridge.BUILT_IN_CONVERSIONS.lookup(),
-                                types
-                        )
-                )
-        );
+        return new PaperRepairable(new net.minecraft.world.item.enchantment.Repairable(
+            PaperRegistrySets.convertToNms(Registries.ITEM, Conversions.global().lookup(), types)
+        ));
     }
 
     @Override
-    public Equippable.Builder equippable(final EquipmentSlot slot) {
+    public Equippable.Builder equippable(EquipmentSlot slot) {
         return new PaperEquippable.BuilderImpl(slot);
     }
 
@@ -279,25 +230,14 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public PaperOminousBottleAmplifier ominousBottleAmplifier(
-            final int amplifier
-    ) {
-        Preconditions.checkArgument(
-                OminousBottleAmplifier.MIN_AMPLIFIER <= amplifier
-                        && amplifier <= OminousBottleAmplifier.MAX_AMPLIFIER,
-                "amplifier must be between %s-%s, was %s",
-                OminousBottleAmplifier.MIN_AMPLIFIER,
-                OminousBottleAmplifier.MAX_AMPLIFIER,
-                amplifier
-        );
-
+    public PaperOminousBottleAmplifier ominousBottleAmplifier(final int amplifier) {
         return new PaperOminousBottleAmplifier(
-                new OminousBottleAmplifier(amplifier)
+            new OminousBottleAmplifier(requireRange(amplifier, "amplifier", OminousBottleAmplifier.MIN_AMPLIFIER, OminousBottleAmplifier.MAX_AMPLIFIER))
         );
     }
 
     @Override
-    public Builder blocksAttacks() {
+    public BlocksAttacks.Builder blocksAttacks() {
         return new PaperBlocksAttacks.BuilderImpl();
     }
 
@@ -312,50 +252,15 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
-    public SkinPatchBuilder skinPatch() {
-        return new PaperResolvableProfile.SkinPatchBuilderImpl();
-    }
-
-    @Override
-    public SkinPatch emptySkinPatch() {
-        return new PaperResolvableProfile.PaperSkinPatch(
-                null,
-                null,
-                null,
-                null
-        );
-    }
-
-    // Minecraft / Paper 26.2 data components
-
-    @Override
     public KineticWeapon.Builder kineticWeapon() {
         return new PaperKineticWeapon.BuilderImpl();
     }
 
     @Override
-    public Condition kineticWeaponCondition(
-            final int maxDurationTicks,
-            final float minSpeed,
-            final float minRelativeSpeed
-    ) {
-        return new PaperKineticWeapon.PaperKineticWeaponCondition(
-                new net.minecraft.world.item.component.KineticWeapon.Condition(
-                        maxDurationTicks,
-                        minSpeed,
-                        minRelativeSpeed
-                )
-        );
-    }
-
-    @Override
-    public PiercingWeapon.Builder piercingWeapon() {
-        return new PaperPiercingWeapon.BuilderImpl();
-    }
-
-    @Override
-    public SwingAnimation.Builder swingAnimation() {
-        return new PaperSwingAnimation.BuilderImpl();
+    public KineticWeapon.Condition kineticWeaponCondition(int maxDurationTicks, float minSpeed, float minRelativeSpeed) {
+        return new PaperKineticWeapon.PaperKineticWeaponCondition(new net.minecraft.world.item.component.KineticWeapon.Condition(
+            maxDurationTicks, minSpeed, requireNonNegative(minRelativeSpeed, "minRelativeSpeed")
+        ));
     }
 
     @Override
@@ -364,16 +269,42 @@ public final class ItemComponentTypesBridgesImpl implements ItemComponentTypesBr
     }
 
     @Override
+    public PiercingWeapon.Builder piercingWeapon() {
+        return new PaperPiercingWeapon.BuilderImpl();
+    }
+
+    @Override
     public AttackRange.Builder attackRange() {
         return new PaperAttackRange.BuilderImpl();
     }
 
     @Override
-    public SulfurCubeContent sulfurCubeContent(final ItemStack stack) {
-        return new PaperSulfurCubeContent(
-                net.minecraft.world.item.component.SulfurCubeContent.ofNonEmpty(
-                        CraftItemStack.asNMSCopy(stack)
-                )
+    public SwingAnimation.Builder swingAnimation() {
+        return new PaperSwingAnimation.BuilderImpl();
+    }
+
+    @Override
+    public SulfurCubeContent sulfurCubeContent(final ItemStack absorbedItem) {
+        Preconditions.checkArgument(absorbedItem != null, "absorbedItem cannot be null");
+        Preconditions.checkArgument(!absorbedItem.isEmpty(), "absorbedItem cannot be empty");
+        return new PaperSulfurCubeContent(new net.minecraft.world.item.component.SulfurCubeContent(CraftItemStack.asTemplate(absorbedItem)));
+    }
+
+    @Override
+    public MobVisibility mobVisibility(final RegistryKeySet<EntityType> targetingEntityTypes, final float visibility) {
+        return new PaperMobVisibility(new net.minecraft.world.item.component.MobVisibility(
+            PaperRegistrySets.convertToNms(Registries.ENTITY_TYPE, Conversions.global().lookup(), targetingEntityTypes),
+            requireRange(visibility, "visibility", net.minecraft.world.item.component.MobVisibility.MIN_VISIBILITY, net.minecraft.world.item.component.MobVisibility.MAX_VISIBILITY))
         );
+    }
+
+    @Override
+    public VillagerFood villagerFood(final int nutrition) {
+        return new PaperVillagerFood(new net.minecraft.world.food.VillagerFood(requirePositive(nutrition, "nutrition")));
+    }
+
+    @Override
+    public SignText.Builder signText() {
+        return new PaperSignText.BuilderImpl();
     }
 }

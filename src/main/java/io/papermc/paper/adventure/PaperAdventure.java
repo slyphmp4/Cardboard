@@ -394,7 +394,7 @@ public final class PaperAdventure {
             return Collections.emptyMap();
         }
         final Map<Key, DataComponentValue> map = new HashMap<>();
-        for (final Map.Entry<DataComponentType<?>, Optional<?>> entry : patch.entrySet()) {
+        for (final Map.Entry<DataComponentType<?>, Optional<?>> entry : org.cardboardpowered.util.DataComponentPatches.entries(patch)) {
             if (entry.getKey().isTransient()) continue;
             @Subst("key:value") final String typeKey = requireNonNull(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(entry.getKey())).toString();
             if (entry.getValue().isEmpty()) {

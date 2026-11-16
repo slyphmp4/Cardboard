@@ -24,13 +24,13 @@ public abstract class ServerEntityMixin {
 
     /**
      * CraftBukkit/Paper fires PlayerVelocityEvent when a player's marked
-     * velocity is about to be synchronized. Clearing hurtMarked on
+     * velocity is about to be synchronized. Clearing syncVelocity on
      * cancellation skips only the motion packet while allowing the rest of
      * ServerEntity#sendChanges to continue normally.
      */
     @Inject(method = "sendChanges", at = @At("HEAD"))
     private void cardboard$playerVelocityEvent(CallbackInfo ci) {
-        if (!(this.entity instanceof ServerPlayer) || !this.entity.hurtMarked) {
+        if (!(this.entity instanceof ServerPlayer) || !this.entity.syncVelocity) {
             return;
         }
 
@@ -40,7 +40,7 @@ public abstract class ServerEntityMixin {
         Bukkit.getPluginManager().callEvent(event);
 
         if (event.isCancelled()) {
-            this.entity.hurtMarked = false;
+            this.entity.syncVelocity = false;
             return;
         }
 

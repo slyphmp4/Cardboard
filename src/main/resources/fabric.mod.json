@@ -21,21 +21,23 @@
   "entrypoints": {
     "main": [
       "com.javazilla.bukkitfabric.BukkitFabricMod",
-      "org.cardboardpowered.event.ChunkLifecycleBridge"
+      "org.cardboardpowered.event.ChunkLifecycleBridge",
+      "org.cardboardpowered.event.ServerResourceReloadBridge"
     ]
   },
   "mixins": [
     "bukkitfabric.mixins.json",
     "cardboard-adventure-fix.mixins.json",
-    "cardboard-modded-entity-fix.mixins.json"
+    "cardboard-modded-entity-fix.mixins.json",
+    "cardboard-registry-fix.mixins.json"
   ],
 
   "depends": {
-    "fabricloader": ">=0.19.0",
-    "fabric-api": "*",
+    "fabricloader": ">=0.20.1",
+    "fabric-api": ">=0.166.2+26.3",
     "java": ">=25",
     "icommon": "*",
-    "minecraft": ">=26.2"
+    "minecraft": "~26.3"
   },
   "custom": {
     "loom:injected_interfaces": {

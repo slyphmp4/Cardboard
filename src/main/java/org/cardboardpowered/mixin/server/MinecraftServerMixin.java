@@ -502,6 +502,10 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
 
     @Inject(at = @At("HEAD"), method = "tickChildren")
     public void doBukkitRunnables(BooleanSupplier b, CallbackInfo ci) {
+        // Activate newly registered Adventure and dialog callbacks on the server thread.
+        // The managers also evict expired entries on their regular 100-tick cadence.
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue(tickCount);
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue(tickCount);
         ((CraftScheduler)CraftServer.INSTANCE.getScheduler()).mainThreadHeartbeat(tickCount);
 
         ((io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler)
@@ -517,6 +521,19 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
     }
 
     private boolean hasStopped = false;
+    @Unique private org.cardboardpowered.impl.util.ServerRestart cardboard$restartController;
+
+    @Override
+    public void cardboard$setRestartController(org.cardboardpowered.impl.util.ServerRestart controller) {
+        this.cardboard$restartController = controller;
+    }
+
+    @Inject(at = @At("RETURN"), method = "stopServer")
+    private void cardboard$afterStop(CallbackInfo ci) {
+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.clearForServerStop();
+        if (this.cardboard$restartController != null) this.cardboard$restartController.afterStop();
+    }
+
     private final Object stopLock = new Object();
     public final boolean hasStopped() {
         synchronized (stopLock) {
@@ -780,3 +797,4 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
         cir.setReturnValue(level != null ? level : this.overworld());
     }
 }
+
